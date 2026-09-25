@@ -308,3 +308,9 @@ svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }
 .ae-compare { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ae-compare .arrow { color: var(--muted); font-size: 12px; }
 .big-number { margin: 0 0 6px !important; font-size: 26px; font-weight: 700; color: var(--pos); }
+
+/* Оптимизаторы */
+.opt-list { display: flex; flex-direction: column; gap: 4px; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+.boundary-wrap { display: flex; justify-content: center; margin: 8px 0 2px; }
+#boundary { width: 220px; height: 220px; border-radius: 6px; border: 1px solid var(--border); }

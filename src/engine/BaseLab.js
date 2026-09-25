@@ -109,7 +109,11 @@ export class BaseLab {
       if (ev.pointerType !== 'mouse') { this.pointerEvent = ev; this.pick(ev); }
     });
     canvas.addEventListener('pointerleave', () => { this.pointerEvent = null; this.setHovered(null); });
+    // Клик после перетаскивания (вращения сцены) — не клик
+    let downAt = null;
+    canvas.addEventListener('pointerdown', ev => { downAt = [ev.clientX, ev.clientY]; });
     canvas.addEventListener('click', ev => {
+      if (downAt && Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 5) return;
       const obj = this.pickObject(ev);
       if (obj?.userData.onClick) obj.userData.onClick(ev);
       else if (this.onSceneClick) this.onSceneClick(ev, this.raycaster);

@@ -9,6 +9,9 @@ const VISUALIZERS = {
   stack: () => import('./StackLab.js').then(m => m.StackLab),
   tokens: () => import('./TokensLab.js').then(m => m.TokensLab),
   scatter: () => import('./ScatterLab.js').then(m => m.ScatterLab),
+  surface: () => import('./SurfaceLab.js').then(m => m.SurfaceLab),
+  train: () => import('./TrainLab.js').then(m => m.TrainLab),
+  gridworld: () => import('./GridLab.js').then(m => m.GridLab),
 };
 
 const sidebar = document.getElementById('sidebar');

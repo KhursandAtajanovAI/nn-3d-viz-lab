@@ -1,1 +1,1 @@
-["autoencoder","cifar10","clustering","fashion-mnist","imagenet","lstm","mnist","next-word","playground","recommender","regression","sentiment","simple-mlp","word2vec","xor"]
+["autoencoder","backprop","cifar10","clustering","fashion-mnist","gradient-descent","imagenet","lstm","mnist","next-word","playground","q-learning","recommender","regression","sentiment","simple-mlp","training-loop","word2vec","xor"]

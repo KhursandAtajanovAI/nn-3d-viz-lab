@@ -16,6 +16,7 @@ const LINE_REST = { width: 1, opacity: 0.45, gain: 0.55 };
 const LINE_ACTIVE = { width: 3.5, opacity: 1, gain: 1.9 };
 
 const COLOR_IDLE = new THREE.Color(PALETTE.neuronIdle);
+const GRAD_COLOR = new THREE.Color(0xc77dff);
 
 function makeLabel(className, text = '') {
   const el = document.createElement('div');
@@ -286,6 +287,37 @@ export class NetworkView {
       halo.scale.setScalar(1.8);
       this.highlight.add(halo);
     }
+  }
+
+  /** Перекрасить связи по текущим весам (после шага обучения) */
+  refreshWeights() {
+    const c = new THREE.Color();
+    this.connections.forEach((lines, l) => {
+      const W = this.network.weights[l];
+      const maxW = Math.max(...W.flat().map(Math.abs)) || 1;
+      const cols = [];
+      for (const [i, j] of lines.userData.pairs) {
+        weightColor(W[j][i], maxW, c);
+        cols.push(c.r, c.g, c.b, c.r, c.g, c.b);
+      }
+      lines.geometry.setColors(cols);
+    });
+  }
+
+  /** Окраска нейрона градиентом ошибки δ (фиолетовый — «ошибка», бежит назад при backprop) */
+  setGradient(l, i, delta, amount, maxAbs = 1) {
+    const m = this.neurons[l][i];
+    const k = Math.min(1, Math.abs(delta) / (maxAbs || 1)) * amount;
+    m.material.color.copy(COLOR_IDLE).lerp(GRAD_COLOR, Math.min(1, k * 1.5));
+    m.material.emissive.copy(GRAD_COLOR);
+    m.material.emissiveIntensity = 0.1 + k * 1.8;
+    m.scale.setScalar(1 + 0.3 * k);
+    m.userData.label.element.textContent = `δ ${formatValue(delta * amount)}`;
+    m.userData.label.element.classList.remove('pos', 'neg');
+  }
+
+  setPulseColor(color) {
+    this.pulses?.forEach(p => p.material.color.set(color));
   }
 
   get pickables() {

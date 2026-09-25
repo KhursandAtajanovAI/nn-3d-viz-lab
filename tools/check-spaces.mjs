@@ -60,6 +60,20 @@ for (const id of ids) {
         else c.run(state);
       }
     }
+    if (type === 'surface') {
+      for (const s of space.surfaces ?? []) {
+        const v = s.f(...s.start);
+        if (!Number.isFinite(v)) throw new Error(`поверхность ${s.id}: f(start) не число`);
+      }
+    }
+    if (type === 'train') {
+      if (!space.model?.layers) throw new Error('нужен model.layers');
+      if (space.mode === 'backprop' && !space.samples?.length) throw new Error('для режима backprop нужны samples');
+    }
+    if (type === 'gridworld') {
+      const cells = (space.map ?? []).join('');
+      if (!cells.includes('S') || !cells.includes('G')) throw new Error('в map нужны старт S и цель G');
+    }
   } catch (e) {
     errors.push(`${where}: ошибка в логике пространства — ${e.message}`);
   }
