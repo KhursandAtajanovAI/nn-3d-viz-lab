@@ -1,1 +1,1 @@
-["cifar10","fashion-mnist","imagenet","mnist","playground","simple-mlp","xor"]
+["cifar10","fashion-mnist","imagenet","lstm","mnist","next-word","playground","sentiment","simple-mlp","word2vec","xor"]

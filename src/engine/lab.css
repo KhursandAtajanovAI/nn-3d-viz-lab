@@ -282,3 +282,22 @@ ul.legend.kinds li > .kind-swatch { flex: 0 0 12px; margin: 4px 7px 0; }
 
 b.ok { color: #7ee081; }
 b.bad { color: var(--error); }
+
+/* ---------- Текст (tokens) ---------- */
+.token-label { color: #fff; font-weight: 600; font-size: 13px; white-space: nowrap; text-shadow: 0 1px 2px #000; }
+.cand-label { color: #1a1100; background: rgba(255, 209, 102, .95); padding: 0 5px; border-radius: 3px; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.dim-label { color: var(--muted); font-size: 11px; white-space: nowrap; background: rgba(10, 14, 23, .6); padding: 0 4px; border-radius: 3px; }
+.gate-label { color: #d9fff5; font: 600 10px/1.15 ui-monospace, Consolas, monospace; white-space: pre; text-align: center; text-shadow: 0 1px 2px #000; }
+.token-swatch { display: inline-block; width: 22px !important; height: 10px; margin-top: 5px !important; border-radius: 3px; background: #2f9bff; }
+label.check { display: flex; gap: 6px; align-items: center; cursor: pointer; color: var(--text); font-size: 13px; }
+.table-scroll { max-height: 260px; overflow: auto; }
+table.vocab td, table.vocab th { padding: 2px 4px; }
+.point-label { color: var(--text); font-size: 12px; white-space: nowrap; text-shadow: 0 1px 3px #000, 0 0 2px #000; transition: opacity .2s; }
+
+/* Графики */
+svg.chart { width: 100%; height: auto; display: block; margin: 4px 0; }
+svg.chart .grid { stroke: rgba(149, 163, 186, .15); }
+svg.chart .tick, svg.chart .axis { fill: var(--muted); font-size: 10px; }
+svg.chart .legend text { font-size: 10px; font-weight: 600; }
+svg.chart .marker { stroke: var(--accent); stroke-dasharray: 3 3; }
+svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }

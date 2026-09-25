@@ -42,6 +42,27 @@ for (const id of ids) {
       if (!space.layers?.[s.from] || !space.layers?.[s.to]) errors.push(`${where}: skip ${s.from}→${s.to} ссылается на несуществующий слой`);
     }
   }
+  // «Дымовые» прогоны логики пространств (всё, что не требует браузера)
+  try {
+    if (type === 'tokens') {
+      if (typeof space.process !== 'function') throw new Error('нужна функция process(text)');
+      for (const text of space.presets ?? []) {
+        const tr = space.process(text);
+        if (!tr.tokens?.length || tr.embeddings?.length !== tr.tokens.length) throw new Error(`process("${text}") вернул некорректную трассу`);
+      }
+    }
+    if (type === 'scatter') {
+      const state = await space.setup({ rnd: Math.random, onProgress() {} });
+      if (!state.points?.length) throw new Error('setup() не вернул точки');
+      for (const c of space.controls ?? []) {
+        if (c.kind === 'select') for (const o of c.options) c.run(state, o.value);
+        else if (c.kind === 'range') c.run(state, c.value);
+        else c.run(state);
+      }
+    }
+  } catch (e) {
+    errors.push(`${where}: ошибка в логике пространства — ${e.message}`);
+  }
   if (type === 'mlp' && !space.model?.layers && !space.createModel) {
     errors.push(`${where}: для type "mlp" нужен model.layers или createModel()`);
   }

@@ -17,7 +17,7 @@ export function headerHtml(meta) {
       <h1>${escapeHtml(meta.title)}</h1>
       ${meta.summary ? `<p class="muted">${escapeHtml(meta.summary)}</p>` : ''}
       ${meta.uses ? `<p class="uses"><b>Где применяется:</b> ${escapeHtml(meta.uses)}</p>` : ''}
-      ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${fid.hint}</p>` : ''}
+      ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${escapeHtml(meta.fidelityNote ?? fid.hint)}</p>` : ''}
     </header>`;
 }
 

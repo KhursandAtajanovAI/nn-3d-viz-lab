@@ -7,6 +7,8 @@ import { escapeHtml } from './format.js';
 const VISUALIZERS = {
   mlp: () => import('./NetworkLab.js').then(m => m.NetworkLab),
   stack: () => import('./StackLab.js').then(m => m.StackLab),
+  tokens: () => import('./TokensLab.js').then(m => m.TokensLab),
+  scatter: () => import('./ScatterLab.js').then(m => m.ScatterLab),
 };
 
 const sidebar = document.getElementById('sidebar');
