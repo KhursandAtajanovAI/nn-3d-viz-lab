@@ -1,1 +1,1 @@
-["autoencoder","backprop","cifar10","clustering","fashion-mnist","gradient-descent","imagenet","lstm","mnist","next-word","playground","q-learning","recommender","regression","sentiment","simple-mlp","training-loop","word2vec","xor"]
+["alexnet","autoencoder","backprop","bert","cifar10","clustering","dqn","fashion-mnist","gan","gpt","gradient-descent","imagenet","lenet5","lstm","mnist","mobilenet","next-word","perceptron","playground","q-learning","recommender","regression","resnet","sentiment","simple-mlp","training-loop","transformer","unet","vae","vgg16","word2vec","xor"]

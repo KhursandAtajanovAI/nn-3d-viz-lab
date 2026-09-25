@@ -5,6 +5,7 @@ export default {
     id: 'my-space',                 // = имя файла без .js: латиница в нижнем регистре, цифры, дефисы
     title: 'Название пространства',
     category: 'basics',             // basics | vision | nlp | tasks | training | library (src/engine/catalog.js)
+    fidelity: 'real',               // real | trained | demo — насколько «настоящие» числа
     order: 100,                     // порядок внутри категории
     level: 1,                       // 1 — начальный, 2 — средний, 3 — продвинутый
     summary: 'Одно-два предложения: что показывает пространство.',

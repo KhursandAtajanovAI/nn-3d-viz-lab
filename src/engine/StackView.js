@@ -183,7 +183,9 @@ export class StackView {
     this.items.forEach((it, i) => {
       const L = it.layer;
       // Чередуем высоту подписей, чтобы соседние не наезжали друг на друга
-      const lift = 0.45 + (this.items.length > 5 && i % 2 ? 0.5 : 0);
+      // Чередуем высоту подписей (2 или 3 уровня), чтобы соседние не наезжали друг на друга
+      const levels = this.items.length > 8 ? 3 : this.items.length > 5 ? 2 : 1;
+      const lift = 0.45 + (i % levels) * 0.5;
       const name = label('layer-label', `${L.name}${L.repeat > 1 ? ` ×${L.repeat}` : ''}`);
       name.position.set(it.cx, it.h / 2 + lift, 0);
       this.group.add(name);
@@ -334,7 +336,12 @@ export class StackView {
     const it = this.items[i];
     if (!it.slices) return;
     const isImage = !Array.isArray(maps);
-    const list = isImage ? [maps] : maps;
+    let list = isImage ? [maps] : maps;
+    // Многоканальная картинка (например, 4 кадра игры) — каждый канал на своей плоскости
+    if (isImage && maps.c > 1 && maps.c !== 3) {
+      const n = maps.w * maps.h;
+      list = Array.from({ length: maps.c }, (_, k) => ({ w: maps.w, h: maps.h, c: 1, data: maps.data.subarray(k * n, (k + 1) * n) }));
+    }
     const max = isImage ? 1 : Math.max(1e-6, ...list.map(m => m.data.reduce((a, v) => Math.max(a, v), 0)));
     it.maps = list;
     it.mapMax = max;
@@ -384,14 +391,16 @@ export class StackView {
   setVector(i, values, amount = 1) {
     const it = this.items[i];
     if (!it.spheres) return;
+    // Выход-вероятности показываем в процентах; format: 'value' — просто числами (например, Q-значения)
+    const isProb = it.layer.kind === 'output' && it.layer.format !== 'value';
     const maxAbs = Math.max(1e-6, ...values.map(Math.abs));
     it.vector = values;
     it.spheres.forEach((s, k) => {
       const v = values[k] ?? 0;
       s.userData.value = v * amount;
-      this.paintSphere(s, v, amount, it.layer.kind === 'output' ? 1 : maxAbs);
+      this.paintSphere(s, v, amount, isProb ? 1 : maxAbs);
       const l = s.userData.valueLabel;
-      l.element.textContent = it.layer.kind === 'output' ? `${Math.round(v * amount * 100)}%` : formatValue(v * amount);
+      l.element.textContent = isProb ? `${Math.round(v * amount * 100)}%` : formatValue(v * amount);
       l.visible = this.showNumbers;
     });
   }

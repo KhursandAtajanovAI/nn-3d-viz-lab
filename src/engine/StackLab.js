@@ -289,25 +289,31 @@ export class StackLab extends BaseLab {
   showResult(result) {
     this.setStatus('Прогон завершён — результат ниже');
     const probs = result.probs ?? [];
+    // Демо-функция может вернуть свои названия классов (например, варианты следующего слова)
+    const classes = result.classes ?? this.classes;
     let html = '';
-    if (probs.length && this.classes.length) {
+    if (probs.length && classes.length) {
+      // resultFormat: 'value' — выходы не вероятности (например, Q-значения), показываем как числа
+      const asValue = this.space.resultFormat === 'value';
       const order = probs.map((p, i) => [p, i]).sort((a, b) => b[0] - a[0]).slice(0, Math.min(10, probs.length));
       const best = order[0][1];
+      const maxAbs = Math.max(1e-9, ...probs.map(Math.abs));
       html += `<ul class="bars">${order.map(([p, i]) => `
         <li class="${i === best ? 'best' : ''}">
-          <span class="name">${escapeHtml(this.classes[i])}</span>
-          <span class="bar"><span style="width:${(p * 100).toFixed(1)}%"></span></span>
-          <span class="num">${(p * 100).toFixed(1)}%</span><span></span>
+          <span class="name">${escapeHtml(classes[i])}</span>
+          <span class="bar"><span style="width:${((asValue ? Math.abs(p) / maxAbs : p) * 100).toFixed(1)}%"></span></span>
+          <span class="num">${asValue ? formatValue(p, 2) : `${(p * 100).toFixed(1)}%`}</span><span></span>
         </li>`).join('')}</ul>`;
       // Проверка «верно/ошибка» — только когда классы результата совпадают с классами примеров
-      const truth = !this.space.resultClasses && this.current && !this.current.drawn ? this.current.label : null;
+      // В демонстрационных пространствах ответ заранее согласован с картинкой — «верно» там ничего не значит
+      const truth = !this.space.resultClasses && this.space.meta.fidelity !== 'demo' && this.current && !this.current.drawn ? this.current.label : null;
       if (truth !== null && truth !== undefined) {
         html += truth === best
           ? `<p><b class="ok">✓ Верно:</b> на входе «${escapeHtml(this.input.classes[truth])}».</p>`
-          : `<p><b class="bad">✗ Ошибка:</b> на входе был «${escapeHtml(this.input.classes[truth])}», сеть ответила «${escapeHtml(this.classes[best])}».</p>`;
+          : `<p><b class="bad">✗ Ошибка:</b> на входе был «${escapeHtml(this.input.classes[truth])}», сеть ответила «${escapeHtml(classes[best])}».</p>`;
       }
     }
-    const extra = this.space.explainResult?.(result, { classes: this.classes, current: this.current, runtime: this.runtime });
+    const extra = this.space.explainResult?.(result, { classes, current: this.current, runtime: this.runtime });
     if (extra) html += extra;
     this.setResult(html);
   }

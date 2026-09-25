@@ -35,9 +35,11 @@ python -m http.server 8000        # открыть http://localhost:8000/
 | `meta.id` | да | Совпадает с именем файла |
 | `meta.title`, `meta.summary` | да | Название и краткое описание (карточка каталога и шапка панели) |
 | `meta.category` | да | `basics`, `vision`, `nlp`, `tasks`, `training`, `library` — см. `src/engine/catalog.js` |
-| `meta.order`, `meta.level`, `meta.uses`, `meta.tags` | нет | Порядок в категории, сложность 1–3, «где применяется», теги |
-| `meta.preview` | нет | Нейронов в слоях для мини-схемы в карточке, например `[3, 4, 2]` |
-| `type` | нет | Визуализатор; сейчас `mlp` (полносвязная сеть) |
+| `meta.uses` | да | «Где применяется» — показывается на карточке и в шапке |
+| `meta.fidelity` | нет | `real`, `trained` или `demo` — бейдж «насколько настоящие числа»; `meta.fidelityNote` — пояснение |
+| `meta.order`, `meta.level`, `meta.tags` | нет | Порядок в категории, сложность 1–3, теги (по ним работает фильтр каталога) |
+| `meta.preview` | нет | Мини-схема карточки: `[3, 4, 2]`, `{ blocks }`, `{ tokens }`, `{ scatter }`, `{ surface }`, `{ grid }` — см. `src/hub/previews.js` |
+| `type` | нет | Визуализатор: `mlp`, `stack`, `tokens`, `scatter`, `surface`, `train`, `gridworld` (по умолчанию `mlp`) — примеры в соседних файлах |
 | `model` | да* | `{ layers, activation, outputActivation, seed }` — движок создаст `MLP` |
 | `createModel()` | да* | Своя модель вместо `model`: например, MLP с готовыми весами (см. `xor.js`) |
 | `names` | нет | `{ input: [...], output: [...] }` — подписи нейронов входного и выходного слоёв |
