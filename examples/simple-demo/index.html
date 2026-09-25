@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple NN Demo — nn-3d-viz-lab</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0d1117; color: #c9d1d9; font-family: system-ui, sans-serif; overflow: hidden; }
+    #info { position: absolute; top: 12px; left: 12px; font-size: 14px; opacity: .85; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="info">Simple demo: 3 → 4 → 2</div>
+  <script type="module">
+    import * as THREE from 'three';
+
+    const layers = [3, 4, 2];
+    const layerGap = 3, neuronGap = 1.5;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 2, 10);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(5, 5, 5);
+    scene.add(light);
+
+    const net = new THREE.Group();
+    scene.add(net);
+
+    // Позиции нейронов по слоям
+    const positions = layers.map((count, l) => {
+      const x = (l - (layers.length - 1) / 2) * layerGap;
+      return Array.from({ length: count }, (_, i) =>
+        new THREE.Vector3(x, (i - (count - 1) / 2) * neuronGap, 0));
+    });
+
+    const colors = [0x58a6ff, 0x3fb950, 0xf78166];
+    const sphereGeo = new THREE.SphereGeometry(0.3, 32, 16);
+    positions.forEach((layer, l) => layer.forEach(p => {
+      const mesh = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({ color: colors[l] }));
+      mesh.position.copy(p);
+      net.add(mesh);
+    }));
+
+    // Связи: полносвязные линии между соседними слоями
+    const points = [];
+    for (let l = 0; l < positions.length - 1; l++)
+      for (const a of positions[l]) for (const b of positions[l + 1]) points.push(a, b);
+    const lines = new THREE.LineSegments(
+      new THREE.BufferGeometry().setFromPoints(points),
+      new THREE.LineBasicMaterial({ color: 0x8b949e, transparent: true, opacity: 0.5 }));
+    net.add(lines);
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    renderer.setAnimationLoop(() => {
+      net.rotation.y += 0.005;
+      renderer.render(scene, camera);
+    });
+
+    window.__demoReady = { neurons: layers.reduce((a, b) => a + b), connections: points.length / 2 };
+  </script>
+</body>
+</html>
