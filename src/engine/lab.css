@@ -1,40 +1,8 @@
-/* Палитра совпадает с src/palette.js */
-:root {
-  --bg: #0a0e17;
-  --sidebar: #0e1420;
-  --card: #141b29;
-  --border: #243047;
-  --text: #e8eef8;
-  --muted: #95a3ba;
-  --pos: #ff9f1c;
-  --neg: #2f9bff;
-  --neutral: #4a5264;
-  --idle: #8a9ab3;
-  --accent: #ffd166;
-  --btn: #1f7a3a;
-  --btn-hover: #269048;
-  --error: #ff6b6b;
-  --sidebar-w: 380px;
-}
+@import url("base.css");
 
-* { box-sizing: border-box; }
-
-html, body {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-
+html, body { height: 100%; }
 body { display: flex; overflow: hidden; }
 
-a { color: var(--neg); }
-.muted { color: var(--muted); }
-.small { font-size: 12px; }
-.pos { color: var(--pos); }
-.neg { color: var(--neg); }
-b.pos, b.neg { font-weight: 600; }
 
 /* ---------- Боковая панель ---------- */
 #sidebar {
@@ -157,8 +125,18 @@ ul.links { margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; }
 ul.links li { display: flex; gap: 10px; padding: 2px 0; border-bottom: 1px dashed rgba(149, 163, 186, .15); }
 
 /* Результат */
-ul.bars { margin: 0 0 8px; padding: 0; list-style: none; }
-ul.bars li { display: grid; grid-template-columns: 30px 1fr 52px 38px; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; }
+/* Сетка на весь список: колонка имён подстраивается под самое длинное имя выхода */
+ul.bars {
+  display: grid;
+  grid-template-columns: minmax(24px, max-content) 1fr 52px 38px;
+  gap: 6px 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+ul.bars li { display: contents; }
 ul.bars .bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
 ul.bars .bar span { display: block; height: 100%; background: var(--neutral); border-radius: 4px; }
 ul.bars li.best .bar span { background: var(--pos); box-shadow: 0 0 8px var(--pos); }
@@ -236,4 +214,20 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
   #scene { flex: none; height: 62vh; }
   #sidebar { flex: none; height: auto; overflow: visible; border-right: 0; border-top: 1px solid var(--border); }
   #tooltip { white-space: normal; }
+}
+
+/* ---------- Шапка пространства, имена нейронов ---------- */
+.back { display: inline-block; margin-bottom: 8px; font-size: 13px; text-decoration: none; }
+.back:hover { text-decoration: underline; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.span2 { grid-column: span 2; }
+
+.name-label {
+  padding: 1px 6px;
+  color: var(--text);
+  background: rgba(10, 14, 23, .75);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }

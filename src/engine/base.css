@@ -1,0 +1,46 @@
+/* Общие токены и базовые стили — каталог и страницы пространств. Палитра совпадает с palette.js */
+:root {
+  --bg: #0a0e17;
+  --sidebar: #0e1420;
+  --card: #141b29;
+  --border: #243047;
+  --text: #e8eef8;
+  --muted: #95a3ba;
+  --pos: #ff9f1c;
+  --neg: #2f9bff;
+  --neutral: #4a5264;
+  --idle: #8a9ab3;
+  --accent: #ffd166;
+  --btn: #1f7a3a;
+  --btn-hover: #269048;
+  --error: #ff6b6b;
+  --sidebar-w: 380px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a { color: var(--neg); }
+code { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; background: rgba(149, 163, 186, .12); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+b.pos, b.neg { font-weight: 600; }
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(36, 48, 71, .5);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.badge.muted { color: var(--muted); }

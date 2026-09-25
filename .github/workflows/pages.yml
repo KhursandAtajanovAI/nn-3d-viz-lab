@@ -22,6 +22,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Каталог строится по списку файлов spaces/*.js — новые пространства попадают в него автоматически
+      - name: Build spaces manifest
+        run: bash tools/build-manifest.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check spaces
+        run: node tools/check-spaces.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

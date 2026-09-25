@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NN 3D Viz Lab</title>
-  <meta name="description" content="Лаборатория 3D-визуализации нейронных сетей: слои, веса и анимация forward-pass." />
-  <link rel="stylesheet" href="src/styles.css" />
+  <title>NN 3D Viz Lab — каталог</title>
+  <meta name="description" content="Интерактивная лаборатория для изучения нейронных сетей в 3D: от одного нейрона до свёрточных сетей и трансформеров." />
+  <link rel="stylesheet" href="src/hub/hub.css" />
+  <!-- Конфиги пространств обычно не используют Three.js, но если используют — импорт будет работать и здесь -->
   <script type="importmap">
     {
       "imports": {
@@ -16,95 +17,29 @@
   </script>
 </head>
 <body>
-  <aside id="sidebar">
-    <header class="brand">
-      <h1>NN 3D Viz Lab</h1>
-      <p class="muted">Как сигнал проходит через нейросеть — в 3D</p>
+  <div class="page">
+    <header class="hero">
+      <h1>NN 3D Viz Lab <span class="accent">·</span> лаборатория нейросетей</h1>
+      <p>Интерактивные 3D-пространства, в которых видно, как нейросети устроены и как по ним проходит сигнал.
+        Выберите пространство — внутри можно вращать сцену, запускать вычисление и наводить курсор на любой нейрон или связь.
+        Сейчас доступно пространств: <b id="total">…</b>.</p>
     </header>
 
-    <section class="card">
-      <h2>Управление</h2>
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Поиск: MNIST, свёртки, XOR…" aria-label="Поиск по пространствам" />
+      <nav id="filters" aria-label="Категории"></nav>
+    </div>
 
-      <label for="arch">Архитектура (нейронов в каждом слое)</label>
-      <input id="arch" type="text" value="4, 6, 6, 3" spellcheck="false" />
+    <main id="catalog"><p class="muted">Загрузка каталога…</p></main>
 
-      <div class="grid2">
-        <div>
-          <label for="activation">Активация скрытых слоёв</label>
-          <select id="activation">
-            <option value="tanh">tanh</option>
-            <option value="relu">ReLU</option>
-            <option value="sigmoid">sigmoid</option>
-          </select>
-        </div>
-        <div>
-          <label for="speed">Скорость анимации</label>
-          <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />
-        </div>
-      </div>
-
-      <div class="row">
-        <button id="build">Построить</button>
-        <button id="randomize">Новые веса</button>
-      </div>
-      <button id="run" class="primary">▶ Запустить forward pass</button>
-
-      <label>Режим отображения</label>
-      <div class="segmented" role="group" aria-label="Режим отображения">
-        <button id="mode-visual" aria-pressed="true">Визуальный</button>
-        <button id="mode-detail" aria-pressed="false">Детальный · числа</button>
-      </div>
-
-      <p id="status" role="status"></p>
-    </section>
-
-    <section class="card" id="hover-card">
-      <h2>Под курсором</h2>
-      <div id="hover-info"></div>
-    </section>
-
-    <section class="card" id="result-card" hidden>
-      <h2>Результат на выходе</h2>
-      <div id="result"></div>
-    </section>
-
-    <section class="card">
-      <h2>Сцена</h2>
-      <div id="scene-info"></div>
-    </section>
-
-    <details class="card" open>
-      <summary><h2>Что такое forward pass</h2></summary>
-      <p>Forward pass (прямой проход) — это вычисление ответа сети. Сигнал идёт строго слева направо, слой за слоем:</p>
-      <ol class="steps">
-        <li>Во <b>входной слой</b> подаются числа — это «данные».</li>
-        <li>Каждое число умножается на <b>вес</b> связи и передаётся дальше.</li>
-        <li>Нейрон следующего слоя <b>складывает</b> всё, что пришло, добавляет смещение и пропускает сумму через <b>функцию активации</b>.</li>
-        <li>Так повторяется до <b>выходного слоя</b> — его значения и есть ответ сети.</li>
-      </ol>
-      <p class="muted">На экране: слой «загорается», когда его нейроны посчитали значения, а по связям бегут светящиеся импульсы — это сигнал, переходящий в следующий слой.</p>
-      <p id="stage" class="stage muted">Нажмите «Запустить forward pass» или пробел.</p>
-    </details>
-
-    <details class="card" open>
-      <summary><h2>Как читать картинку</h2></summary>
-      <ul class="legend">
-        <li><span class="dot idle"></span><span><b>Шар — нейрон.</b> Хранит одно число — активацию. Серый шар — нейрон ещё не посчитан или его значение около нуля.</span></li>
-        <li><span class="dot glow-pos"></span><span><b>Яркость и свечение</b> — насколько сильно нейрон активирован: чем больше |значение|, тем ярче. <b class="pos">Тёплый</b> — значение положительное, <b class="neg">холодный</b> — отрицательное.</span></li>
-        <li><span class="line pos"></span><span><b>Линия — связь с весом.</b> <b class="pos">Оранжевая</b> — вес положительный (усиливает сигнал).</span></li>
-        <li><span class="line neg"></span><span><b class="neg">Синяя</b> — вес отрицательный (подавляет сигнал).</span></li>
-        <li><span class="line weak"></span><span><b>Серая</b> — слабый вес, почти не влияет. Чем насыщеннее цвет, тем больше |вес|.</span></li>
-        <li><span class="line thick"></span><span><b>Толстая яркая линия</b> — по связи прямо сейчас идёт сигнал.</span></li>
-      </ul>
-    </details>
-
-    <p class="hint muted">Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг.<br />Клавиши: пробел — forward pass, N — показать/скрыть числа.<br /><a href="examples/simple-demo/">Простой пример</a></p>
-  </aside>
-
-  <main id="scene">
-    <div id="tooltip" hidden></div>
-  </main>
-
-  <script type="module" src="src/main.js"></script>
+    <footer>
+      <p>Каждое пространство — это один файл в папке
+        <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/tree/main/spaces">spaces/</a>;
+        новые файлы появляются здесь автоматически. Как добавить своё — в
+        <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/blob/main/spaces/README.md">spaces/README.md</a>.</p>
+      <p>Технический тест рендера без движка: <a href="examples/simple-demo/">examples/simple-demo</a>.</p>
+    </footer>
+  </div>
+  <script type="module" src="src/hub/hub.js"></script>
 </body>
 </html>

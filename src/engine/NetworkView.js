@@ -35,7 +35,13 @@ export class NetworkView {
     this.showNumbers = false;
   }
 
-  build(network) {
+  /**
+   * @param {object} network — модель с полями layers, weights (см. models/mlp.js)
+   * @param {object} [opts]
+   * @param {(string[]|undefined)[]} [opts.names] — имена нейронов по слоям; показываются
+   *   слева от входного и справа от выходного слоя (например, «Кот», «Цена»)
+   */
+  build(network, { names = [] } = {}) {
     this.dispose();
     this.network = network;
     const { layers } = network;
@@ -79,6 +85,22 @@ export class NetworkView {
       label.position.set(layer[0].x, top + 0.9, 0);
       this.group.add(label);
     });
+
+    // Имена нейронов: у входного слоя — слева, у выходного — справа
+    const last = layers.length - 1;
+    for (const l of [0, last]) {
+      const list = names[l];
+      if (!list) continue;
+      const side = l === 0 ? -1 : 1;
+      this.positions[l].forEach((p, i) => {
+        if (!list[i]) return;
+        const label = makeLabel(`name-label ${side < 0 ? 'left' : 'right'}`, list[i]);
+        label.position.copy(p).add(new THREE.Vector3(side * (RADIUS + 0.2), 0, 0));
+        // Выравниваем по краю, обращённому к нейрону
+        label.center.set(side < 0 ? 1 : 0, 0.5);
+        this.group.add(label);
+      });
+    }
 
     // Одна LineSegments2 на каждый промежуток между слоями; цвет — знак и сила веса
     this.connections = [];

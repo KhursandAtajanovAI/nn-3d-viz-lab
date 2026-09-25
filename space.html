@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NN 3D Viz Lab</title>
+  <link rel="stylesheet" href="src/engine/lab.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Содержимое панели и сцены строит движок по конфигу spaces/<id>.js -->
+  <aside id="sidebar"><p class="muted">Загрузка пространства…</p></aside>
+  <main id="scene"></main>
+  <script type="module" src="src/engine/boot.js"></script>
+</body>
+</html>

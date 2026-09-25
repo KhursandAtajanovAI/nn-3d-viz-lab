@@ -1,0 +1,10 @@
+{
+  "name": "nn-3d-viz-lab",
+  "private": true,
+  "description": "Статический сайт без сборки. package.json нужен только чтобы Node считал .js файлы ES-модулями (для tools/check-spaces.mjs).",
+  "type": "module",
+  "scripts": {
+    "manifest": "bash tools/build-manifest.sh",
+    "check": "bash tools/build-manifest.sh && node tools/check-spaces.mjs"
+  }
+}
