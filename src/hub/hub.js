@@ -1,68 +1,74 @@
 // Каталог пространств. Список берётся из spaces/manifest.json, метаданные — из самих конфигов
 // (они не импортируют Three.js, поэтому загружаются быстро).
-import { CATEGORIES, LEVELS, loadManifest } from '../engine/catalog.js';
-import { escapeHtml } from '../engine/format.js';
+//
+// Фильтры: категория, тег, уровень, тип вычислений и поиск. Они сочетаются друг с другом
+// и сохраняются в адресе страницы (?cat=…&tag=…&level=…&fid=…&q=…), поэтому ссылку можно отправить.
+import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../engine/catalog.js';
+import { escapeHtml, plural } from '../engine/format.js';
+import { previewSvg } from './previews.js';
 
-const root = document.getElementById('catalog');
-const search = document.getElementById('search');
-const filters = document.getElementById('filters');
+const $ = id => document.getElementById(id);
+const root = $('catalog');
+const search = $('search');
+
 let spaces = [];
-let activeCategory = 'all';
+const state = { cat: 'all', tag: null, level: null, fid: null, q: '' };
 
-/** Мини-схема архитектуры: столбцы точек по числу нейронов в слоях */
-function previewSvg(layers) {
-  if (!Array.isArray(layers) || layers.length < 2) return '';
-  const W = 220, H = 96, MAX = 7, R = 4;
-  const colX = i => 18 + (i * (W - 36)) / (layers.length - 1);
-  const cols = layers.map((n, i) => {
-    const count = Math.min(n, MAX);
-    const gap = Math.min(13, (H - 20) / Math.max(count - 1, 1));
-    return Array.from({ length: count }, (_, k) => ({
-      x: colX(i),
-      y: H / 2 + (k - (count - 1) / 2) * gap,
-      more: n > MAX && k === count - 1,
-    }));
-  });
-  let lines = '';
-  for (let i = 0; i < cols.length - 1; i++) {
-    for (const a of cols[i]) for (const b of cols[i + 1]) {
-      lines += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" />`;
-    }
-  }
-  const dots = cols.flat().map(p => p.more
-    ? `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle">⋯</text>`
-    : `<circle cx="${p.x}" cy="${p.y}" r="${R}" />`).join('');
-  return `<svg class="preview" viewBox="0 0 ${W} ${H}" aria-hidden="true"><g class="links">${lines}</g><g class="nodes">${dots}</g></svg>`;
+// ---------- Фильтрация ----------
+
+const norm = s => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+
+function searchText(s) {
+  const m = s.meta;
+  return norm([
+    m.title, m.summary, m.uses, ...(m.tags ?? []),
+    categoryById(m.category)?.title, LEVELS[m.level], FIDELITY[m.fidelity]?.title,
+  ].join(' '));
 }
+
+/** Проходит ли пространство фильтры; except — какой фильтр не учитывать (для счётчиков) */
+function passes(s, except = null) {
+  const m = s.meta;
+  if (except !== 'cat' && state.cat !== 'all' && m.category !== state.cat) return false;
+  if (except !== 'tag' && state.tag && !(m.tags ?? []).includes(state.tag)) return false;
+  if (except !== 'level' && state.level && String(m.level) !== state.level) return false;
+  if (except !== 'fid' && state.fid && m.fidelity !== state.fid) return false;
+  if (except !== 'q' && state.q) {
+    const text = s.searchText;
+    // Все слова запроса должны встретиться (в любом порядке)
+    if (!norm(state.q).split(/\s+/).filter(Boolean).every(w => text.includes(w))) return false;
+  }
+  return true;
+}
+
+// ---------- Отрисовка ----------
 
 function cardHtml(s) {
   const m = s.meta;
+  const href = `space.html?id=${encodeURIComponent(m.id)}`;
+  const tagBtn = (kind, value, label, extra = '') =>
+    `<button type="button" class="tag ${extra}" data-${kind}="${escapeHtml(value)}"
+      aria-pressed="${(kind === 'tag' && state.tag === value) || (kind === 'level' && state.level === String(value)) || (kind === 'fid' && state.fid === value)}"
+      title="Показать только: ${escapeHtml(label)}">${escapeHtml(label)}</button>`;
   return `
-    <a class="space-card" href="space.html?id=${encodeURIComponent(m.id)}">
-      ${previewSvg(m.preview)}
+    <article class="space-card">
+      <a class="preview-link" href="${href}" tabindex="-1" aria-hidden="true">${previewSvg(m.preview)}</a>
       <div class="body">
-        <h3>${escapeHtml(m.title)}</h3>
+        <h3><a class="title-link" href="${href}">${escapeHtml(m.title)}</a></h3>
         <p>${escapeHtml(m.summary ?? '')}</p>
         ${m.uses ? `<p class="uses"><span class="muted">Где применяется:</span> ${escapeHtml(m.uses)}</p>` : ''}
-        <div class="badges">
-          ${m.level ? `<span class="badge">${LEVELS[m.level]}</span>` : ''}
-          ${(m.tags ?? []).map(t => `<span class="badge muted">${escapeHtml(t)}</span>`).join('')}
+        <div class="tags">
+          ${m.fidelity ? tagBtn('fid', m.fidelity, FIDELITY[m.fidelity].title, `fidelity ${m.fidelity}`) : ''}
+          ${m.level ? tagBtn('level', m.level, LEVELS[m.level], 'level') : ''}
+          ${(m.tags ?? []).map(t => tagBtn('tag', t, t)).join('')}
         </div>
+        <a class="open" href="${href}">Открыть пространство →</a>
       </div>
-    </a>`;
+    </article>`;
 }
 
-function matches(s, q) {
-  if (!q) return true;
-  const m = s.meta;
-  return [m.title, m.summary, m.uses, ...(m.tags ?? [])].join(' ').toLowerCase().includes(q);
-}
-
-function render() {
-  const q = search.value.trim().toLowerCase();
-  const visible = spaces.filter(s =>
-    (activeCategory === 'all' || s.meta.category === activeCategory) && matches(s, q));
-
+function renderCatalog() {
+  const visible = spaces.filter(s => passes(s));
   const sections = CATEGORIES.map(cat => {
     const list = visible.filter(s => s.meta.category === cat.id)
       .sort((a, b) => (a.meta.order ?? 999) - (b.meta.order ?? 999));
@@ -75,26 +81,116 @@ function render() {
       </section>`;
   }).join('');
 
-  root.innerHTML = sections || `<p class="empty muted">Ничего не найдено. Попробуйте другой запрос или категорию.</p>`;
+  root.innerHTML = sections || `
+    <div class="empty">
+      <p>Ничего не найдено по текущим фильтрам.</p>
+      <button type="button" class="reset" data-reset>Сбросить фильтры</button>
+    </div>`;
+
+  $('result-count').textContent = visible.length === spaces.length
+    ? `Показаны все ${spaces.length} ${plural(spaces.length, ['пространство', 'пространства', 'пространств'])}`
+    : `Найдено: ${visible.length} из ${spaces.length}`;
 }
 
-function renderFilters() {
-  const present = new Set(spaces.map(s => s.meta.category));
-  const chips = [{ id: 'all', title: 'Все', icon: '' }, ...CATEGORIES.filter(c => present.has(c.id))];
-  filters.innerHTML = chips.map(c => {
-    const n = c.id === 'all' ? spaces.length : spaces.filter(s => s.meta.category === c.id).length;
-    return `<button data-cat="${c.id}" aria-pressed="${c.id === activeCategory}">${c.icon ? `${c.icon} ` : ''}${escapeHtml(c.title)} <span class="count">${n}</span></button>`;
+function renderCategoryFilters() {
+  // Счётчик у категории учитывает все остальные фильтры (тег, поиск…), но не саму категорию
+  const base = spaces.filter(s => passes(s, 'cat'));
+  const chips = [{ id: 'all', title: 'Все', icon: '' }, ...CATEGORIES];
+  $('filters').innerHTML = chips.map(c => {
+    const n = c.id === 'all' ? base.length : base.filter(s => s.meta.category === c.id).length;
+    const total = c.id === 'all' ? spaces.length : spaces.filter(s => s.meta.category === c.id).length;
+    if (c.id !== 'all' && !total) return '';
+    return `<button type="button" data-cat="${c.id}" aria-pressed="${c.id === state.cat}" ${n === 0 ? 'class="dim"' : ''}>
+      ${c.icon ? `<span class="icon">${c.icon}</span> ` : ''}${escapeHtml(c.title)} <span class="count">${n}</span></button>`;
   }).join('');
 }
 
-filters.addEventListener('click', e => {
-  const btn = e.target.closest('button[data-cat]');
-  if (!btn) return;
-  activeCategory = btn.dataset.cat;
-  renderFilters();
+function renderTagCloud() {
+  const base = spaces.filter(s => passes(s, 'tag'));
+  const counts = new Map();
+  for (const s of base) for (const t of s.meta.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+  const all = [...new Set(spaces.flatMap(s => s.meta.tags ?? []))]
+    .sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b, 'ru'));
+  $('tag-cloud').innerHTML = all.map(t => `
+    <button type="button" class="tag" data-tag="${escapeHtml(t)}" aria-pressed="${state.tag === t}"
+      ${counts.get(t) ? '' : 'disabled'}>${escapeHtml(t)} <span class="count">${counts.get(t) ?? 0}</span></button>`).join('');
+}
+
+function renderActiveFilters() {
+  const chips = [];
+  if (state.cat !== 'all') chips.push(['cat', `Категория: ${categoryById(state.cat)?.title}`]);
+  if (state.tag) chips.push(['tag', `Тег: ${state.tag}`]);
+  if (state.level) chips.push(['level', `Уровень: ${LEVELS[state.level]}`]);
+  if (state.fid) chips.push(['fid', FIDELITY[state.fid]?.title]);
+  if (state.q) chips.push(['q', `Поиск: «${state.q}»`]);
+  $('active-filters').innerHTML = chips.length ? `
+    ${chips.map(([k, label]) => `<button type="button" class="active-chip" data-clear="${k}" title="Убрать фильтр">${escapeHtml(label)} <span aria-hidden="true">✕</span></button>`).join('')}
+    <button type="button" class="reset" data-reset>Сбросить всё</button>` : '';
+}
+
+function render() {
+  renderCategoryFilters();
+  renderTagCloud();
+  renderActiveFilters();
+  renderCatalog();
+  syncUrl();
+}
+
+// ---------- Состояние в адресе ----------
+
+function syncUrl() {
+  const p = new URLSearchParams();
+  if (state.cat !== 'all') p.set('cat', state.cat);
+  if (state.tag) p.set('tag', state.tag);
+  if (state.level) p.set('level', state.level);
+  if (state.fid) p.set('fid', state.fid);
+  if (state.q) p.set('q', state.q);
+  const qs = p.toString();
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
+function readUrl() {
+  const p = new URLSearchParams(location.search);
+  state.cat = categoryById(p.get('cat')) ? p.get('cat') : 'all';
+  state.tag = p.get('tag');
+  state.level = LEVELS[p.get('level')] ? p.get('level') : null;
+  state.fid = FIDELITY[p.get('fid')] ? p.get('fid') : null;
+  state.q = p.get('q') ?? '';
+  search.value = state.q;
+}
+
+// ---------- События ----------
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.cat) state.cat = d.cat;
+  else if (d.tag) state.tag = state.tag === d.tag ? null : d.tag; // повторный клик снимает фильтр
+  else if (d.level) state.level = state.level === d.level ? null : d.level;
+  else if (d.fid) state.fid = state.fid === d.fid ? null : d.fid;
+  else if (d.clear) {
+    if (d.clear === 'cat') state.cat = 'all';
+    else if (d.clear === 'q') { state.q = ''; search.value = ''; }
+    else state[d.clear] = null;
+  } else if ('reset' in d) {
+    Object.assign(state, { cat: 'all', tag: null, level: null, fid: null, q: '' });
+    search.value = '';
+  } else return;
   render();
+  if (d.tag || d.level || d.fid) $('toolbar').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
-search.addEventListener('input', render);
+
+let searchTimer;
+search.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.q = search.value.trim(); render(); }, 120);
+});
+search.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { search.value = ''; state.q = ''; render(); }
+});
+
+// ---------- Загрузка ----------
 
 async function init() {
   try {
@@ -105,8 +201,10 @@ async function init() {
       console.warn(`Пространство ${ids[i]} не загрузилось`, r.reason);
       return [];
     });
-    document.getElementById('total').textContent = spaces.length;
-    renderFilters();
+    for (const s of spaces) s.searchText = searchText(s);
+    $('total').textContent = spaces.length;
+    $('total-categories').textContent = new Set(spaces.map(s => s.meta.category)).size;
+    readUrl();
     render();
   } catch (e) {
     console.error(e);

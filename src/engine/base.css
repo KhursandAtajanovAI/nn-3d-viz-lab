@@ -44,3 +44,8 @@ b.pos, b.neg { font-weight: 600; }
   white-space: nowrap;
 }
 .badge.muted { color: var(--muted); }
+a.badge { color: inherit; text-decoration: none; }
+a.badge:hover { border-color: var(--muted); }
+.badge.fidelity.real { color: #7ee081; border-color: rgba(126, 224, 129, .35); }
+.badge.fidelity.trained { color: var(--accent); border-color: rgba(255, 209, 102, .35); }
+.badge.fidelity.demo { color: #c9a7ff; border-color: rgba(201, 167, 255, .35); }

@@ -20,14 +20,26 @@
   <div class="page">
     <header class="hero">
       <h1>NN 3D Viz Lab <span class="accent">·</span> лаборатория нейросетей</h1>
-      <p>Интерактивные 3D-пространства, в которых видно, как нейросети устроены и как по ним проходит сигнал.
-        Выберите пространство — внутри можно вращать сцену, запускать вычисление и наводить курсор на любой нейрон или связь.
-        Сейчас доступно пространств: <b id="total">…</b>.</p>
+      <p>Интерактивные 3D-пространства, в которых видно, как нейросети устроены, как по ним проходит сигнал и как они учатся.
+        Внутри пространства можно вращать сцену, запускать вычисления и наводить курсор на любой нейрон, слой или связь.</p>
+      <p class="stats">Всего пространств: <b id="total">…</b> · категорий: <b id="total-categories">…</b></p>
     </header>
 
-    <div class="toolbar">
-      <input id="search" type="search" placeholder="Поиск: MNIST, свёртки, XOR…" aria-label="Поиск по пространствам" />
+    <div class="toolbar" id="toolbar">
+      <div class="search-wrap">
+        <input id="search" type="search" placeholder="Поиск: MNIST, свёртки, внимание, регрессия…" aria-label="Поиск по названию, описанию и тегам" autocomplete="off" />
+      </div>
       <nav id="filters" aria-label="Категории"></nav>
+    </div>
+
+    <details class="tag-panel">
+      <summary>Фильтр по тегам</summary>
+      <div id="tag-cloud" aria-label="Теги"></div>
+    </details>
+
+    <div class="status-row">
+      <span id="result-count" class="muted" role="status"></span>
+      <div id="active-filters"></div>
     </div>
 
     <main id="catalog"><p class="muted">Загрузка каталога…</p></main>
@@ -37,6 +49,9 @@
         <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/tree/main/spaces">spaces/</a>;
         новые файлы появляются здесь автоматически. Как добавить своё — в
         <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/blob/main/spaces/README.md">spaces/README.md</a>.</p>
+      <p>Бейджи на карточках: <span class="badge fidelity real">Реальные вычисления</span>
+        <span class="badge fidelity trained">Обучается в браузере</span>
+        <span class="badge fidelity demo">Упрощённая иллюстрация</span> — насколько «настоящие» числа в пространстве.</p>
       <p>Технический тест рендера без движка: <a href="examples/simple-demo/">examples/simple-demo</a>.</p>
     </footer>
   </div>

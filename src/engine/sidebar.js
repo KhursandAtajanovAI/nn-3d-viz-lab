@@ -1,19 +1,23 @@
 // Общие блоки боковой панели, которые повторяются во всех пространствах.
-import { categoryById, LEVELS } from './catalog.js';
+import { categoryById, LEVELS, FIDELITY } from './catalog.js';
 import { escapeHtml } from './format.js';
 
-/** Шапка: ссылка в каталог, категория, название и краткое описание пространства */
+/** Шапка: ссылка в каталог, категория, название, описание и «где применяется» */
 export function headerHtml(meta) {
   const cat = categoryById(meta.category);
+  const fid = FIDELITY[meta.fidelity];
   return `
     <header class="brand">
       <a class="back" href="./">← Каталог</a>
       <div class="badges">
-        ${cat ? `<span class="badge">${cat.icon} ${escapeHtml(cat.title)}</span>` : ''}
+        ${cat ? `<a class="badge" href="./?cat=${cat.id}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
         ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}
+        ${fid ? `<span class="badge fidelity ${meta.fidelity}" title="${escapeHtml(fid.hint)}">${fid.title}</span>` : ''}
       </div>
       <h1>${escapeHtml(meta.title)}</h1>
       ${meta.summary ? `<p class="muted">${escapeHtml(meta.summary)}</p>` : ''}
+      ${meta.uses ? `<p class="uses"><b>Где применяется:</b> ${escapeHtml(meta.uses)}</p>` : ''}
+      ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${fid.hint}</p>` : ''}
     </header>`;
 }
 

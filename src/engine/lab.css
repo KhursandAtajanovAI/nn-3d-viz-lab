@@ -231,3 +231,5 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
   font-weight: 600;
   white-space: nowrap;
 }
+.brand .uses { margin: 0 0 8px; font-size: 13px; }
+.brand .fidelity-note { margin: -4px 0 12px; }
