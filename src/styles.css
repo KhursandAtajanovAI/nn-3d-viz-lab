@@ -1,0 +1,94 @@
+:root {
+  --bg: #0d1117;
+  --panel: rgba(22, 27, 34, 0.88);
+  --border: #30363d;
+  --text: #c9d1d9;
+  --muted: #8b949e;
+  --accent: #ffd166;
+  --btn: #238636;
+  --btn-hover: #2ea043;
+  --error: #f85149;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+#scene { position: fixed; inset: 0; }
+#scene canvas { display: block; }
+
+#panel {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 290px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+
+#panel h1 { margin: 0 0 4px; font-size: 18px; }
+#panel .sub { margin: 0 0 14px; color: var(--muted); font-size: 12px; }
+
+label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+
+input[type="text"], select {
+  width: 100%;
+  padding: 7px 9px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+input[type="range"] { width: 100%; }
+
+.row { display: flex; gap: 8px; margin-top: 12px; }
+.row > * { flex: 1; }
+
+button {
+  padding: 8px 10px;
+  color: #fff;
+  background: #21262d;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { background: #30363d; }
+button.primary { background: var(--btn); border-color: var(--btn); font-weight: 600; }
+button.primary:hover { background: var(--btn-hover); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+#status { margin-top: 12px; color: var(--accent); font-size: 12px; min-height: 1.4em; }
+#status.error { color: var(--error); }
+#output { margin-top: 4px; color: var(--muted); font: 12px ui-monospace, monospace; word-break: break-word; }
+
+#legend {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+#legend span { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; border-radius: 50%; vertical-align: -1px; }
+#legend span:first-child { margin-left: 0; }
+
+@media (max-width: 600px) {
+  #panel { top: 8px; left: 8px; right: 8px; width: auto; padding: 12px; }
+  #legend { display: none; }
+}

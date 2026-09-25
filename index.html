@@ -1,8 +1,58 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><meta charset="UTF-8"><title>nn-3d-viz-lab</title></head>
-<body style="background:#0d1117;color:#c9d1d9;font-family:system-ui,sans-serif;padding:24px">
-  <h1>nn-3d-viz-lab</h1>
-  <p><a style="color:#58a6ff" href="examples/simple-demo/">Simple demo (3 → 4 → 2)</a></p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NN 3D Viz Lab</title>
+  <link rel="stylesheet" href="src/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="scene"></div>
+
+  <div id="panel">
+    <h1>NN 3D Viz Lab</h1>
+    <p class="sub">ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг</p>
+
+    <label for="arch">Архитектура (нейронов в слоях)</label>
+    <input id="arch" type="text" value="4, 6, 6, 3" />
+
+    <label for="activation">Активация скрытых слоёв</label>
+    <select id="activation">
+      <option value="tanh">tanh</option>
+      <option value="relu">ReLU</option>
+      <option value="sigmoid">sigmoid</option>
+    </select>
+
+    <label for="speed">Скорость анимации</label>
+    <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />
+
+    <div class="row">
+      <button id="build">Построить</button>
+      <button id="randomize">Новые веса</button>
+    </div>
+    <div class="row">
+      <button id="run" class="primary">▶ Forward pass</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="output"></div>
+    <p class="sub" style="margin:10px 0 0">Пробел — запустить forward pass · <a href="examples/simple-demo/" style="color:#58a6ff">простой пример</a></p>
+  </div>
+
+  <div id="legend">
+    <span style="background:#f78166"></span>w &gt; 0
+    <span style="background:#58a6ff"></span>w &lt; 0
+    <span style="background:#ffd166"></span>активный нейрон
+  </div>
+
+  <script type="module" src="src/main.js"></script>
 </body>
 </html>
