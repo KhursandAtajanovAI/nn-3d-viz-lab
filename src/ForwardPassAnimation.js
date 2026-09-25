@@ -19,7 +19,7 @@ export class ForwardPassAnimation {
 
   stop() {
     this.running = false;
-    this.view.reset();
+    if (this.view.network) this.view.reset();
   }
 
   get totalStages() {

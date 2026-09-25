@@ -38,17 +38,26 @@ export class Network {
     return Array.from({ length: this.layers[0] }, () => Math.random() * 2 - 1);
   }
 
-  /** @returns {number[][]} активации всех слоёв, включая входной */
+  /** Функция активации слоя l (у выходного слоя всегда sigmoid) */
+  activationName(l) {
+    if (l === 0) return null;
+    return l === this.layers.length - 1 ? 'sigmoid' : this.activation;
+  }
+
+  /**
+   * @returns {number[][]} активации всех слоёв, включая входной.
+   * Взвешенные суммы z = Σ w·x + b сохраняются в this.lastZ (для пояснений в UI).
+   */
   forward(input) {
-    const f = activations[this.activation];
     const out = [input];
+    this.lastZ = [null];
     for (let l = 0; l < this.weights.length; l++) {
       const prev = out[l];
-      const isLast = l === this.weights.length - 1;
-      out.push(this.weights[l].map((row, j) => {
-        const z = row.reduce((s, w, i) => s + w * prev[i], this.biases[l][j]);
-        return isLast ? activations.sigmoid(z) : f(z);
-      }));
+      const f = activations[this.activationName(l + 1)];
+      const z = this.weights[l].map((row, j) =>
+        row.reduce((s, w, i) => s + w * prev[i], this.biases[l][j]));
+      this.lastZ.push(z);
+      out.push(z.map(f));
     }
     return out;
   }
