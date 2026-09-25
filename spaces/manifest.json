@@ -1,1 +1,1 @@
-["cifar10","fashion-mnist","imagenet","lstm","mnist","next-word","playground","sentiment","simple-mlp","word2vec","xor"]
+["autoencoder","cifar10","clustering","fashion-mnist","imagenet","lstm","mnist","next-word","playground","recommender","regression","sentiment","simple-mlp","word2vec","xor"]

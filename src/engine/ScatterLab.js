@@ -141,6 +141,7 @@ export class ScatterLab extends BaseLab {
   /** Применить «вид», который вернуло действие пространства */
   apply(view) {
     if (!view) return;
+    if (view.rebuild) { this.tweens = []; this.buildPoints(); } // набор точек сменился целиком
     // Перемещения и перекраска точек — плавно
     if (view.points) {
       for (const [id, upd] of Object.entries(view.points)) {

@@ -301,3 +301,10 @@ svg.chart .tick, svg.chart .axis { fill: var(--muted); font-size: 10px; }
 svg.chart .legend text { font-size: 10px; font-weight: 600; }
 svg.chart .marker { stroke: var(--accent); stroke-dasharray: 3 3; }
 svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }
+
+/* Автоэнкодер и регрессия */
+.pix-grid { display: grid; grid-template-columns: repeat(3, 22px); gap: 2px; }
+.pix-grid span { width: 22px; height: 22px; border-radius: 3px; background: rgba(255, 209, 102, var(--v)); border: 1px solid rgba(149, 163, 186, .25); }
+.ae-compare { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ae-compare .arrow { color: var(--muted); font-size: 12px; }
+.big-number { margin: 0 0 6px !important; font-size: 26px; font-weight: 700; color: var(--pos); }

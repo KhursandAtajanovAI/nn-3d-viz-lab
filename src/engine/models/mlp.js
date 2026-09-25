@@ -48,6 +48,7 @@ export class MLP {
     this.weights = [];
     this.biases = [];
     this.lastZ = null;
+    this.vW = this.vB = null; // скорости для градиентного спуска с моментом
     for (let l = 0; l < this.layers.length - 1; l++) {
       const nIn = this.layers[l], nOut = this.layers[l + 1];
       const scale = Math.sqrt(2 / (nIn + nOut));
@@ -101,7 +102,8 @@ export class MLP {
     const eps = 1e-9;
     switch (this.lossName) {
       case 'ce': return -target.reduce((s, t, j) => s + t * Math.log(output[j] + eps), 0);
-      case 'bce': return -target.reduce((s, t, j) => s + t * Math.log(output[j] + eps) + (1 - t) * Math.log(1 - output[j] + eps), 0) / target.length;
+      // BCE — сумма по выходам: тогда градиент по z выхода ровно (a − t), как в backward()
+      case 'bce': return -target.reduce((s, t, j) => s + t * Math.log(output[j] + eps) + (1 - t) * Math.log(1 - output[j] + eps), 0);
       default: return target.reduce((s, t, j) => s + (output[j] - t) ** 2, 0) / target.length;
     }
   }
@@ -144,8 +146,15 @@ export class MLP {
     this.biases.forEach((b, l) => { for (let j = 0; j < b.length; j++) b[j] -= lr * gradB[l][j]; });
   }
 
-  /** Один шаг обучения на одном примере; возвращает значение ошибки до шага */
-  trainStep(input, target, lr) {
+  /**
+   * Один шаг обучения на одном примере; возвращает значение ошибки до шага.
+   * momentum > 0 — градиентный спуск с моментом: шаг «разгоняется» в устойчивом направлении.
+   */
+  trainStep(input, target, lr, momentum = 0) {
+    if (momentum && !this.vW) {
+      this.vW = this.weights.map(W => W.map(r => r.map(() => 0)));
+      this.vB = this.biases.map(b => b.map(() => 0));
+    }
     const acts = this.forward(input);
     const loss = this.loss(acts.at(-1), target);
     // Быстрый путь без хранения полных градиентов: сразу обновляем веса
@@ -168,8 +177,15 @@ export class MLP {
       }
       for (let j = 0; j < W.length; j++) {
         const row = W[j], d = lr * delta[j];
-        for (let i = 0; i < row.length; i++) row[i] -= d * prev[i];
-        B[j] -= d;
+        if (momentum) {
+          const v = this.vW[l][j], vb = this.vB[l];
+          for (let i = 0; i < row.length; i++) { v[i] = momentum * v[i] - d * prev[i]; row[i] += v[i]; }
+          vb[j] = momentum * vb[j] - d;
+          B[j] += vb[j];
+        } else {
+          for (let i = 0; i < row.length; i++) row[i] -= d * prev[i];
+          B[j] -= d;
+        }
       }
       delta = next;
     }
@@ -180,7 +196,7 @@ export class MLP {
    * Обучение на наборе данных (синхронно). Возвращает историю средней ошибки по эпохам.
    * @param {number[][]} X @param {number[][]} Y
    */
-  fit(X, Y, { epochs = 100, lr = 0.1, onEpoch } = {}) {
+  fit(X, Y, { epochs = 100, lr = 0.1, momentum = 0, onEpoch } = {}) {
     const history = [];
     const order = X.map((_, i) => i);
     for (let e = 0; e < epochs; e++) {
@@ -189,7 +205,7 @@ export class MLP {
         [order[i], order[k]] = [order[k], order[i]];
       }
       let sum = 0;
-      for (const i of order) sum += this.trainStep(X[i], Y[i], lr);
+      for (const i of order) sum += this.trainStep(X[i], Y[i], lr, momentum);
       history.push(sum / X.length);
       onEpoch?.(e, history.at(-1));
     }
