@@ -6,6 +6,7 @@ import { escapeHtml } from './format.js';
 // сами пространства при этом остаются просто файлами с данными.
 const VISUALIZERS = {
   mlp: () => import('./NetworkLab.js').then(m => m.NetworkLab),
+  stack: () => import('./StackLab.js').then(m => m.StackLab),
 };
 
 const sidebar = document.getElementById('sidebar');

@@ -233,3 +233,52 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
 }
 .brand .uses { margin: 0 0 8px; font-size: 13px; }
 .brand .fidelity-note { margin: -4px 0 12px; }
+
+/* ---------- Визуализатор архитектур (stack) ---------- */
+.input-panel { display: flex; gap: 12px; align-items: flex-start; margin-top: 4px; }
+#input-canvas {
+  flex: none;
+  width: 140px;
+  height: 140px;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+#input-canvas.drawable { cursor: crosshair; border-color: var(--pos); }
+.input-side { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.input-side label { margin-top: 0; }
+.input-side button { width: 100%; }
+
+.kind-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--c);
+  box-shadow: 0 0 6px var(--c);
+  vertical-align: -1px;
+}
+ul.legend.kinds li > .kind-swatch { flex: 0 0 12px; margin: 4px 7px 0; }
+
+.arch-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.arch-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+.arch-table td { padding: 3px 4px; border-bottom: 1px dashed rgba(149, 163, 186, .12); }
+.arch-table td.num { white-space: nowrap; }
+
+.kernel { display: grid; grid-template-columns: repeat(var(--n), 16px); gap: 2px; margin: 6px 0 2px; }
+.kernel span { width: 16px; height: 16px; border-radius: 2px; border: 1px solid rgba(149, 163, 186, .2); }
+
+.shape-label, .skip-label, .group-label {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font: 600 11px ui-monospace, "Cascadia Code", Consolas, monospace;
+  white-space: nowrap;
+}
+.shape-label { color: var(--muted); background: rgba(10, 14, 23, .7); }
+.skip-label { color: #7cc0ff; background: rgba(10, 14, 23, .8); border: 1px solid rgba(47, 155, 255, .5); }
+.group-label { color: var(--group-color, var(--accent)); font-family: inherit; font-size: 13px; background: rgba(10, 14, 23, .75); }
+
+b.ok { color: #7ee081; }
+b.bad { color: var(--error); }
