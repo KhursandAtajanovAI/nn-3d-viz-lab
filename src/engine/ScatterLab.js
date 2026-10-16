@@ -92,8 +92,10 @@ export class ScatterLab extends BaseLab {
       m.userData.point = p;
       m.userData.info = () => this.space.describe?.(p, this.state) ?? { tooltip: p.label, html: `<h3>${escapeHtml(p.label)}</h3>` };
       if (p.label && !this.space.hideLabels) {
-        const l = makeLabel('point-label', p.label, { center: [0, 0.5] });
-        l.position.set(0.18, 0, 0);
+        // labelOffset: [dx, dy] — сдвиг подписи, чтобы соседние не слипались; dx < 0 — подпись слева от точки
+        const [dx, dy] = p.labelOffset ?? [0, 0];
+        const l = makeLabel('point-label', p.label, { center: [dx < 0 ? 1 : 0, 0.5] });
+        l.position.set(dx < 0 ? -0.18 + dx : 0.18 + dx, dy, 0);
         m.add(l);
         m.userData.label = l;
       }
