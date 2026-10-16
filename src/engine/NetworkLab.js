@@ -50,7 +50,7 @@ export class NetworkLab {
   }
 
   get ctx() {
-    return { model: this.model, values: this.view.values, names: this.names };
+    return { model: this.model, values: this.view.values, names: this.names, valueText: this.space.valueText };
   }
 
   createModel(layers) {
@@ -83,8 +83,9 @@ export class NetworkLab {
           <label for="input-preset">Входные данные</label>
           <select id="input-preset">
             ${inputs.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join('')}
-            ${s.randomInput !== false ? '<option value="random">Случайный вход</option>' : ''}
-          </select>` : ''}
+            ${s.randomInput !== false ? `<option value="random" title="${escapeHtml(s.randomInputNote ?? 'Случайные числа в диапазоне [−1, 1]')}">Случайный вход</option>` : ''}
+          </select>
+          ${s.randomInputNote ? `<p id="random-note" class="small muted" hidden>${s.randomInputNote}</p>` : ''}` : ''}
         <div class="grid2">
           ${editable ? `
             <div>
@@ -334,6 +335,9 @@ export class NetworkLab {
 
   bindControls() {
     const { ui } = this;
+    // Пояснение к «Случайному входу» показываем, только когда он выбран
+    const note = this.sidebar.querySelector('#random-note');
+    ui.inputPreset?.addEventListener('change', () => { if (note) note.hidden = ui.inputPreset.value !== 'random'; });
     ui.build?.addEventListener('click', () => this.buildFromInputs());
     ui.arch?.addEventListener('keydown', e => { if (e.key === 'Enter') this.buildFromInputs(); });
     ui.activation?.addEventListener('change', () => {

@@ -1,8 +1,16 @@
 // Простейшие текстовые утилиты для NLP-пространств (без зависимостей).
 
-/** Разбить текст на слова: нижний регистр, ё → е, только буквы и дефис */
+/** Сколько слов максимум обрабатывают текстовые пространства (больше не помещается в сцену) */
+export const MAX_TOKENS = 12;
+
+const words = text => text.toLowerCase().replace(/ё/g, 'е').match(/[a-zа-я]+(?:-[a-zа-я]+)?/g) ?? [];
+
+/** Сколько слов в тексте всего (до обрезки) */
+export const countWords = text => words(text).length;
+
+/** Разбить текст на слова: нижний регистр, ё → е, только буквы и дефис; не больше MAX_TOKENS */
 export function tokenize(text) {
-  return (text.toLowerCase().replace(/ё/g, 'е').match(/[a-zа-я]+(?:-[a-zа-я]+)?/g) ?? []).slice(0, 12);
+  return words(text).slice(0, MAX_TOKENS);
 }
 
 export const sigmoid = x => 1 / (1 + Math.exp(-x));

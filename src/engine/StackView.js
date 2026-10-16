@@ -188,7 +188,9 @@ export class StackView {
       const lift = 0.45 + (i % levels) * 0.5;
       const name = label('layer-label', `${L.name}${L.repeat > 1 ? ` ×${L.repeat}` : ''}`);
       name.position.set(it.cx, it.h / 2 + lift, 0);
+      name.element.title = name.element.textContent;
       this.group.add(name);
+      it.nameLabel = name;
       const params = ''; // число параметров — в таблице «Сцена» и в «Под курсором», чтобы подписи не наезжали
       const extra = it.hidden > 0 && L.kind !== 'input' ? ` (показано ${L.shape[2] - it.hidden})` : '';
       const shape = label('shape-label', `${formatShape(L.shape)}${extra}${params}`);
@@ -432,9 +434,24 @@ export class StackView {
     s.line.material.color.set(PALETTE.negative).multiplyScalar(1 + fade);
   }
 
+  /**
+   * Компактные подписи слоёв: на тесной сцене длинные названия обрезаются многоточием,
+   * а подпись слоя под курсором раскрывается целиком (см. highlight).
+   */
+  setCompactLabels(on, tiny = false) {
+    const last = (this.items?.length ?? 0) - 1;
+    this.items?.forEach((it, k) => {
+      const cl = it.nameLabel?.element.classList;
+      cl?.toggle('compact', on);
+      // Совсем тесно (телефон): оставляем подписи первого и последнего слоя, остальные — при наведении
+      cl?.toggle('tiny', tiny && k !== 0 && k !== last);
+    });
+  }
+
   highlight(i) {
     this.items?.forEach((it, k) => {
       const on = k === i;
+      it.nameLabel?.element.classList.toggle('full', on);
       it.pick.forEach(m => {
         const b = m.userData.border;
         if (b) b.material.color.copy(on ? new THREE.Color(0xffffff) : it.color);

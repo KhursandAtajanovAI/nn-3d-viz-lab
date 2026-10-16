@@ -49,6 +49,7 @@ export default {
     return net;
   },
   names: { input: PIX, output: PIX },
+  randomInputNote: 'Случайный вход: значения пикселей берутся случайно из [−1, 1] (в том числе отрицательные — у настоящих картинок такого не бывает). Это «необычные» данные, которых сеть не видела, — они нужны, чтобы показать большую ошибку восстановления.',
   inputs: NAMES.map(n => ({ name: n, values: PATTERNS[n] })),
 
   explainResult(ctx, acts) {

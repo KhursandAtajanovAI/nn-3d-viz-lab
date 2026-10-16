@@ -4,6 +4,7 @@ import { Timeline } from './Timeline.js';
 import { PALETTE } from './palette.js';
 import { makeLabel, makeLines, curveSegments, setLineResolution, valueMaterial, paintValue, disposeTree } from './three-utils.js';
 import { escapeHtml, formatValue } from './format.js';
+import { MAX_TOKENS, countWords } from './models/text.js';
 
 const SX = 1.5;       // шаг между словами
 const CUBE = 0.28;    // кубик одного числа эмбеддинга
@@ -27,6 +28,7 @@ export class TokensLab extends BaseLab {
       controls: `
         <label for="text">Текст</label>
         <input id="text" type="text" value="${escapeHtml(s.presets?.[0] ?? '')}" spellcheck="false" autocomplete="off" />
+        <p id="trunc-note" class="notice" hidden></p>
         ${s.presets?.length ? `<label for="preset">Примеры</label>
           <select id="preset">${s.presets.map((p, i) => `<option value="${i}">${escapeHtml(p)}</option>`).join('')}</select>` : ''}
         ${SPEED_HTML}
@@ -80,6 +82,11 @@ export class TokensLab extends BaseLab {
   run() {
     const text = this.$('text').value.trim();
     if (!text) { this.setStatus('Введите текст', true); return; }
+    // Длинный текст обрезается до MAX_TOKENS слов — говорим об этом явно
+    const total = countWords(text);
+    const note = this.$('trunc-note');
+    note.hidden = total <= MAX_TOKENS;
+    note.textContent = `⚠ Показаны первые ${MAX_TOKENS} слов из ${total}: больше в сцену не помещается, остальные слова не учитываются.`;
     let trace;
     try {
       trace = this.space.process(text);

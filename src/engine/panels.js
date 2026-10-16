@@ -70,6 +70,9 @@ function neuronHtml({ layer: l, index: n }, ctx) {
   html += a === null
     ? `<p>Активация: <span class="muted">ещё не вычислена — запустите forward pass</span></p>`
     : `<p>Активация: ${num(a, 3)}</p>`;
+  // Пространство может перевести значение в понятные единицы (например, нормированную цену → млн ₸)
+  const unit = a !== null ? ctx.valueText?.(l, n, a) : null;
+  if (unit) html += `<p>${unit}</p>`;
 
   if (l === 0) {
     html += `<p class="muted">Входной нейрон: его значение просто подаётся в сеть, он ничего не вычисляет.</p>`;
@@ -132,7 +135,8 @@ export function tooltipText(hover, ctx) {
     const { layer: l, index: i } = hover;
     const a = ctx.values[l][i];
     const name = ctx.names?.[l]?.[i];
-    return `Слой ${l + 1} · нейрон ${i + 1}${name ? ` (${name})` : ''} · ${a === null ? 'не вычислен' : `a = ${formatValue(a, 3)}`}`;
+    const unit = a !== null ? ctx.valueText?.(l, i, a) : null;
+    return `Слой ${l + 1} · нейрон ${i + 1}${name ? ` (${name})` : ''} · ${a === null ? 'не вычислен' : `a = ${formatValue(a, 3)}`}${unit ? ` · ${unit.replace(/<[^>]+>/g, '')}` : ''}`;
   }
   const { gap, from, to } = hover;
   return `${plain(short(ctx, gap, from))} (сл. ${gap + 1}) → ${plain(short(ctx, gap + 1, to))} (сл. ${gap + 2}) · w = ${formatValue(ctx.model.weights[gap][to][from], 3)}`;

@@ -40,7 +40,12 @@ export class StackLab extends BaseLab {
 
     this.view = new StackView(this.kit.scene);
     this.view.build(this.layers, { skips: s.skips, groups: s.groups, outputNames: s.outputNames ?? [] });
-    this.kit.onResize((w, h) => this.view.setResolution(w, h));
+    this.kit.onResize((w, h) => {
+      this.view.setResolution(w, h);
+      // Меньше ~110 px ширины сцены на слой — подписи слоёв сокращаются (полные — при наведении)
+      const perLayer = w / this.layers.length;
+      this.view.setCompactLabels(perLayer < 110, perLayer < 60);
+    });
     this.kit.setAutoFrame(() => this.frameCamera());
 
     this.timeline = new Timeline();
@@ -113,20 +118,31 @@ export class StackLab extends BaseLab {
   }
 
   architectureHtml() {
-    const total = this.layers.reduce((a, l) => a + (l._params ?? 0), 0);
+    // Параметры слоёв с fixed: true заданы вручную и не обучаются — считаем их отдельно
+    const trainable = this.layers.reduce((a, l) => a + (l.fixed ? 0 : l._params ?? 0), 0);
+    const fixed = this.layers.reduce((a, l) => a + (l.fixed ? l._params ?? 0 : 0), 0);
+    const declared = this.space.totalParams;
     const rows = this.layers.map((L, i) => `
       <tr data-layer="${i}">
         <td><span class="kind-swatch" style="--c:#${new THREE.Color(kindInfo(L.kind).color).getHexString()}"></span></td>
         <td>${escapeHtml(L.name)}${L.repeat > 1 ? ` <span class="muted">×${L.repeat}</span>` : ''}</td>
         <td class="num">${formatShape(L.shape)}</td>
-        <td class="num muted">${L._params ? formatCount(L._params) : '—'}</td>
+        <td class="num muted">${L._params ? formatCount(L._params) : '—'}${L.fixed ? ' <span title="заданы вручную, не обучаются">фикс.</span>' : ''}</td>
       </tr>`).join('');
+    const lines = [`Всего слоёв на схеме: ${this.layers.length}.`];
+    if (trainable) lines.push(`Обучаемых параметров (сумма строк таблицы): <b>${trainable.toLocaleString('ru-RU')}</b>.`);
+    if (fixed) lines.push(`Ещё ${fixed.toLocaleString('ru-RU')} — веса фильтров, заданные вручную: они не обучаются.`);
+    if (declared) {
+      lines.push(declared === trainable + fixed
+        ? `Совпадает с заявленным общим числом: ${declared.toLocaleString('ru-RU')}.`
+        : `Заявленное общее число (по оригинальной работе): <b>${declared.toLocaleString('ru-RU')}</b> — ${this.space.paramsNote ?? 'сумма строк таблицы приближённая'}.`);
+    }
     return `
       <table class="arch-table">
         <thead><tr><th></th><th>Слой</th><th>Выход</th><th>Параметры</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <p class="small muted">Всего слоёв на схеме: ${this.layers.length}${total ? ` · обучаемых параметров: <b>${formatCount(this.space.totalParams ?? total)}</b>` : ''}.</p>`;
+      <p class="small muted">${lines.join('<br />')}</p>`;
   }
 
   // ---------- Подсказки при наведении ----------
@@ -151,9 +167,13 @@ export class StackLab extends BaseLab {
     } else if (ud.neuron !== undefined) {
       const v = it.vector?.[ud.neuron];
       const name = L.kind === 'output' ? this.space.outputNames?.[ud.neuron] : null;
-      tooltip = `${L.name} · нейрон ${ud.neuron + 1}${name ? ` (${name})` : ''}${v !== undefined ? ` · ${L.kind === 'output' ? `${(v * 100).toFixed(1)}%` : formatValue(v, 3)}` : ''}`;
-      extra = `<p>Нейрон <b>${ud.neuron + 1}</b>${name ? ` — класс «${escapeHtml(name)}»` : ''}${L.shape[0] > 12 ? ` (показаны первые 12 из ${L.shape[0]})` : ''}.</p>
-        ${v !== undefined ? `<p>${L.kind === 'output' ? 'Вероятность' : 'Активация'}: <b class="num">${L.kind === 'output' ? `${(v * 100).toFixed(1)}%` : formatValue(v, 3)}</b></p>` : '<p class="muted">Значение появится после прогона.</p>'}`;
+      // Выход-вероятность — в процентах; format: 'value' (например, Q-значения DQN) — просто число
+      const isProb = L.kind === 'output' && L.format !== 'value';
+      const label = isProb ? 'Вероятность' : L.kind === 'output' ? (L.valueLabel ?? 'Значение') : 'Активация';
+      const shown = v === undefined ? '' : isProb ? `${(v * 100).toFixed(1)}%` : formatValue(v, 3);
+      tooltip = `${L.name} · нейрон ${ud.neuron + 1}${name ? ` (${name})` : ''}${v !== undefined ? ` · ${isProb ? '' : `${label} `}${shown}` : ''}`;
+      extra = `<p>Нейрон <b>${ud.neuron + 1}</b>${name ? ` — ${isProb ? 'класс' : 'действие'} «${escapeHtml(name)}»` : ''}${L.shape[0] > 12 ? ` (показаны первые 12 из ${L.shape[0]})` : ''}.</p>
+        ${v !== undefined ? `<p>${label}: <b class="num">${shown}</b></p>` : '<p class="muted">Значение появится после прогона.</p>'}`;
     }
     const params = L._params
       ? `<p>${L.fixed ? 'Параметров (заданы вручную, не обучаются)' : 'Обучаемых параметров'}: <b>${formatCount(L._params)}</b></p>`
@@ -183,7 +203,7 @@ export class StackLab extends BaseLab {
             : `Обучаю классификатор: эпоха ${p.epoch} из ${p.epochs}, ошибка ${p.loss.toFixed(3)}`),
         });
         const acc = this.runtime.accuracy;
-        this.setStatus(acc !== undefined ? `Готово. Точность на новых картинках: ${Math.round(acc * 100)}%` : 'Готово');
+        this.setStatus(acc !== undefined ? `Готово. ${this.space.accuracyLabel ?? 'Точность на новых картинках'}: ${Math.round(acc * 100)}%` : 'Готово');
       } else {
         this.setStatus('Готово — нажмите «Прогнать через сеть»');
       }

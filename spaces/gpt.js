@@ -37,6 +37,7 @@ export default {
   type: 'stack',
   layers,
   totalParams: 124439808,
+  paramsNote: 'в таблице не учтены позиционные эмбеддинги (1024 × 768 = 786 432) и вторая нормализация в каждом из 12 блоков (12 × 1 536 = 18 432) — вместе ровно 804 864, вся разница',
   groups: [{ from: 3, to: 3 + blocks.length - 1, label: 'Декодер ×12 (маскированное внимание)', color: 0xff6fa3 }],
   inputs: EXAMPLES.map(e => ({ name: e.name })),
   resultClasses: EXAMPLES[0].cands.map(c => c[0]),

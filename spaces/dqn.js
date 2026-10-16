@@ -47,7 +47,7 @@ export default {
     { name: 'Conv 4×4, шаг 2', kind: 'conv', kernel: 4, shape: [9, 9, 64], params: 32832 },
     { name: 'Conv 3×3', kind: 'conv', kernel: 3, shape: [7, 7, 64], params: 36928 },
     { name: 'Dense 512', kind: 'dense', shape: [512], params: 1606144 },
-    { name: 'Q-значения', kind: 'output', format: 'value', shape: [3], params: 1539, note: 'По одному числу на действие: ожидаемая сумма будущих наград, если сделать это действие.' },
+    { name: 'Q-значения', kind: 'output', format: 'value', valueLabel: 'Q-значение', shape: [3], params: 1539, note: 'По одному числу на действие: ожидаемая сумма будущих наград, если сделать это действие.' },
   ],
   totalParams: 1685667,
   outputNames: ACTIONS,

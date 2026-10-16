@@ -32,6 +32,7 @@ export default {
     { name: 'Softmax 1000', kind: 'output', shape: [1000], params: 1025000 },
   ],
   totalParams: 4231976,
+  paramsNote: 'сумма строк приближённая: в таблице не учтены параметры батч-нормализации после свёрток',
   resultClasses: CIFAR_CLASSES,
   input: { kind: 'image', size: 32, channels: 3, classes: CIFAR_CLASSES, generate: generateCifar },
 

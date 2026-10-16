@@ -17,6 +17,7 @@ export default {
   },
 
   ...syntheticVision({ size: 28, channels: 1, classes: DIGIT_CLASSES, generate: generateDigit, draw: true }),
+  accuracyLabel: 'Точность на новых синтетических цифрах (шрифтах)',
 
   intro: `
     <p>Настоящий датасет MNIST — 70 000 рукописных цифр 28×28 пикселей. Здесь сеть той же формы:
