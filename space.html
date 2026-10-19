@@ -10,6 +10,12 @@
       var t = new URLSearchParams(location.search).get('theme');
       if (!/^(black|gray|green|white)$/.test(t || '')) t = localStorage.getItem('nnlab-theme');
       if (/^(black|gray|green|white)$/.test(t || '')) document.documentElement.dataset.theme = t;
+      // Масштаб интерфейса (та же логика, что в theme.js): ?scale=, затем сохранённый, по умолчанию 2; на узких экранах — меньше
+      var s = parseFloat(new URLSearchParams(location.search).get('scale'));
+      if (!isFinite(s)) s = parseFloat(localStorage.getItem('nnlab-scale'));
+      s = isFinite(s) ? Math.min(3, Math.max(0.75, s)) : 2;
+      var w = innerWidth;
+      document.documentElement.style.setProperty('--ui-scale', String(w < 600 ? Math.min(s, 1) : w < 900 ? Math.min(s, 1.2) : w < 1280 ? Math.min(s, 1.5) : s));
     } catch (e) {}
   </script>
   <script type="importmap">

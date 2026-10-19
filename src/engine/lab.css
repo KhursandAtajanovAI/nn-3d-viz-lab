@@ -5,7 +5,9 @@ body { display: flex; overflow: hidden; }
 
 
 /* ---------- Боковая панель ---------- */
+/* Масштаб интерфейса: вся панель (шрифты, отступы, кнопки, графики) увеличивается одним свойством zoom от --ui-scale */
 #sidebar {
+  zoom: var(--ui-scale);
   flex: 0 0 var(--sidebar-w);
   height: 100%;
   overflow-y: auto;
@@ -53,7 +55,7 @@ input[type="text"], select {
   width: 100%;
   padding: 7px 9px;
   color: var(--text);
-  background: var(--bg);
+  background: var(--field);
   border: 1px solid var(--border);
   border-radius: 6px;
   font: inherit;
@@ -86,7 +88,7 @@ button.primary {
 button.primary:hover { background: var(--btn-hover); }
 button:disabled { opacity: .5; cursor: default; }
 
-.segmented { display: flex; padding: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.segmented { display: flex; padding: 3px; background: var(--field); border: 1px solid var(--border); border-radius: 8px; }
 .segmented button { flex: 1; padding: 6px 8px; background: transparent; border: 0; border-radius: 6px; color: var(--muted); }
 .segmented button[aria-pressed="true"] { background: var(--control-hover); color: var(--text); font-weight: 600; }
 
@@ -139,7 +141,7 @@ ul.bars {
   font-size: 13px;
 }
 ul.bars li { display: contents; }
-ul.bars .bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+ul.bars .bar { height: 8px; background: var(--field); border-radius: 4px; overflow: hidden; }
 ul.bars .bar span { display: block; height: 100%; background: var(--neutral); border-radius: 4px; }
 ul.bars li.best .bar span { background: var(--pos); box-shadow: 0 0 8px var(--pos); }
 ul.bars li.best .name { color: var(--pos-ink); font-weight: 700; }
@@ -148,7 +150,7 @@ ul.bars .pct { text-align: right; }
 /* Forward pass и легенда */
 ol.steps { margin: 6px 0; padding-left: 20px; }
 ol.steps li { margin: 3px 0; }
-.stage { margin-top: 8px !important; padding: 8px 10px; background: var(--bg); border-left: 3px solid var(--neutral); border-radius: 4px; }
+.stage { margin-top: 8px !important; padding: 8px 10px; background: var(--field); border-left: 3px solid var(--neutral); border-radius: 4px; }
 .stage.live { color: var(--text); border-left-color: var(--accent); }
 
 ul.legend { margin: 6px 0 0; padding: 0; list-style: none; }
@@ -171,19 +173,19 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
 .labels { position: absolute; inset: 0; pointer-events: none; }
 
 .layer-label {
-  padding: 2px 8px;
+  padding: calc(2px * var(--label-scale)) calc(8px * var(--label-scale));
   color: var(--muted);
   background: rgba(var(--overlay), .7);
   border: 1px solid var(--border);
   border-radius: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--label-scale));
   white-space: nowrap;
 }
 .value-label, .weight-label {
-  padding: 0 4px;
+  padding: 0 calc(4px * var(--num-scale));
   background: rgba(var(--overlay), .78);
   border-radius: 4px;
-  font: 600 11px ui-monospace, "Cascadia Code", Consolas, monospace;
+  font: 600 calc(11px * var(--num-scale)) ui-monospace, "Cascadia Code", Consolas, monospace;
   color: var(--text);
   white-space: nowrap;
 }
@@ -194,19 +196,19 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
 #tooltip {
   position: absolute;
   z-index: 5;
-  max-width: 320px;
-  padding: 6px 10px;
+  max-width: calc(320px * var(--label-scale));
+  padding: calc(6px * var(--label-scale)) calc(10px * var(--label-scale));
   background: var(--tooltip);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--label-scale));
   pointer-events: none;
   white-space: nowrap;
   box-shadow: 0 4px 16px var(--shadow);
 }
 
 @media (max-width: 1100px) {
-  :root { --sidebar-w: 330px; }
+  :root { --sidebar-w: 350px; }
 }
 
 /* ---------- Узкие экраны: сцена сверху, панель под ней ---------- */
@@ -225,11 +227,11 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
 .span2 { grid-column: span 2; }
 
 .name-label {
-  padding: 1px 6px;
+  padding: calc(1px * var(--label-scale)) calc(6px * var(--label-scale));
   color: var(--text);
   background: rgba(var(--overlay), .75);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--label-scale));
   font-weight: 600;
   white-space: nowrap;
 }
@@ -273,28 +275,29 @@ ul.legend.kinds li > .kind-swatch { flex: 0 0 12px; margin: 4px 7px 0; }
 .kernel span { width: 16px; height: 16px; border-radius: 2px; border: 1px solid rgba(var(--line), .2); }
 
 .shape-label, .skip-label, .group-label {
-  padding: 1px 6px;
+  padding: calc(1px * var(--label-scale)) calc(6px * var(--label-scale));
   border-radius: 4px;
-  font: 600 11px ui-monospace, "Cascadia Code", Consolas, monospace;
+  font: 600 calc(11px * var(--label-scale)) ui-monospace, "Cascadia Code", Consolas, monospace;
   white-space: nowrap;
 }
 .shape-label { color: var(--muted); background: rgba(var(--overlay), .7); }
 .skip-label { color: var(--neg-text); background: rgba(var(--overlay), .8); border: 1px solid color-mix(in srgb, var(--neg) 50%, transparent); }
-.group-label { color: var(--group-color, var(--accent)); font-family: inherit; font-size: 13px; background: rgba(var(--overlay), .75); }
+.group-label { color: var(--group-color, var(--accent)); font-family: inherit; font-size: calc(13px * var(--label-scale)); background: rgba(var(--overlay), .75); }
 
 b.ok { color: var(--ok); }
 b.bad { color: var(--error); }
 
 /* ---------- Текст (tokens) ---------- */
-.token-label { color: var(--token-text); font-weight: 600; font-size: 13px; white-space: nowrap; text-shadow: 0 1px 2px var(--text-shadow); }
-.cand-label { color: var(--on-accent); background: rgba(255, 209, 102, .95); padding: 0 5px; border-radius: 3px; font-weight: 700; font-size: 12px; white-space: nowrap; }
-.dim-label { color: var(--muted); font-size: 11px; white-space: nowrap; background: rgba(var(--overlay), .6); padding: 0 4px; border-radius: 3px; }
-.gate-label { color: var(--gate-text); font: 600 10px/1.15 ui-monospace, Consolas, monospace; white-space: pre; text-align: center; text-shadow: 0 1px 2px var(--text-shadow); }
+.token-label { color: var(--token-text); font-weight: 600; font-size: calc(13px * var(--label-scale)); white-space: nowrap; text-shadow: 0 1px 2px var(--text-shadow); }
+.cand-label { color: var(--on-accent); background: rgba(255, 209, 102, .95); padding: 0 calc(5px * var(--label-scale)); border-radius: 3px; font-weight: 700; font-size: calc(12px * var(--label-scale)); white-space: nowrap; }
+.dim-label { color: var(--muted); font-size: calc(11px * var(--label-scale)); white-space: nowrap; background: rgba(var(--overlay), .6); padding: 0 calc(4px * var(--label-scale)); border-radius: 3px; }
+.gate-label { color: var(--gate-text); font: 600 calc(10px * var(--num-scale))/1.15 ui-monospace, Consolas, monospace; white-space: pre; text-align: center; text-shadow: 0 1px 2px var(--text-shadow); }
 .token-swatch { display: inline-block; width: 22px !important; height: 10px; margin-top: 5px !important; border-radius: 3px; background: #2f9bff; }
 label.check { display: flex; gap: 6px; align-items: center; cursor: pointer; color: var(--text); font-size: 13px; }
 .table-scroll { max-height: 260px; overflow: auto; }
-table.vocab td, table.vocab th { padding: 2px 4px; }
-.point-label { color: var(--text); font-size: 12px; white-space: nowrap; text-shadow: 0 1px 3px var(--text-shadow), 0 0 2px var(--text-shadow); transition: opacity .2s; }
+table.vocab td, table.vocab th { padding: 2px 3px; }
+table.vocab th { font-size: 11px; }
+.point-label { color: var(--text); font-size: calc(12px * var(--label-scale)); white-space: nowrap; text-shadow: 0 1px 3px var(--text-shadow), 0 0 2px var(--text-shadow); transition: opacity .2s; }
 
 /* Графики */
 svg.chart { width: 100%; height: auto; display: block; margin: 4px 0; }
@@ -321,6 +324,9 @@ svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }
 .notice { margin: 6px 0 0; padding: 6px 8px; border-left: 3px solid var(--accent); background: rgba(255, 209, 102, .1); color: var(--text); font-size: 12px; border-radius: 4px; }
 
 /* Компактные подписи слоёв на тесной сцене: обрезаем многоточием, полностью — при наведении */
-.layer-label.compact { max-width: 78px; overflow: hidden; text-overflow: ellipsis; font-size: 10px; padding: 1px 5px; }
-.layer-label.compact.full { max-width: none; font-size: 12px; z-index: 2; background: rgba(var(--overlay), .95); color: var(--text); }
+.layer-label.compact { max-width: calc(78px * var(--label-scale)); overflow: hidden; text-overflow: ellipsis; font-size: calc(10px * var(--label-scale)); padding: calc(1px * var(--label-scale)) calc(5px * var(--label-scale)); }
+.layer-label.compact.full { max-width: none; font-size: calc(12px * var(--label-scale)); z-index: 2; background: rgba(var(--overlay), .95); color: var(--text); }
 .layer-label.tiny:not(.full) { display: none; }
+
+/* Цветные образцы в легендах: тонкая обводка, чтобы светлые цвета не сливались с панелью (особенно в неоновой теме) */
+.swatch, .dot, .kind-swatch, .token-swatch { outline: 1px solid rgba(var(--line), .45); outline-offset: 0; }

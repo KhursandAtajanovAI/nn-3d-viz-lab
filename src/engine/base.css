@@ -15,7 +15,13 @@
   --btn: #1f7a3a;
   --btn-hover: #269048;
   --error: #ff6b6b;
-  --sidebar-w: 380px;
+  --sidebar-w: 370px;             /* ширина панели в «единицах масштаба»: на экране она ×--ui-scale */
+
+  /* Масштаб интерфейса. Выставляет theme.js (?scale=…, клавиши + / −, автоуменьшение на узких экранах); по умолчанию 2.
+     Панель и каталог увеличиваются через zoom от --ui-scale, подписи на сцене — через --label-scale. */
+  --ui-scale: 2;
+  --label-scale: calc(1 + (var(--ui-scale) - 1) * 0.8);
+  --num-scale: calc(1 + (var(--ui-scale) - 1) * 0.35);   /* числа у нейронов стоят плотно — крупнее не делаем */
 
   /* Производные цвета: кнопки, подложки подписей, текст на цветном фоне */
   --control: #1b2436;
@@ -38,42 +44,86 @@
   --gate-text: #d9fff5;
   --preview: #0c111c;
   --cell: #1b2436;
+  --field: var(--bg);              /* фон полей ввода, дорожек и вставок */
   color-scheme: dark;
 }
 
-:root[data-theme="gray"] {
-  --bg: #2b303a;
-  --sidebar: #252a33;
-  --card: #323844;
-  --border: #464e5f;
-  --text: #edf1f7;
-  --muted: #a9b3c4;
-  --neutral: #687286;
-  --idle: #9aa8bf;
-  --control: #3a4150;
-  --control-hover: #485164;
-  --overlay: 34, 38, 47;
-  --tooltip: rgba(37, 42, 51, .96);
-  --preview: #262a33;
-  --cell: #3a4150;
+/* Светлые панели: общие токены для серой, зелёной и белой тем (тёмный текст на светлой панели) */
+:root[data-theme="gray"], :root[data-theme="green"], :root[data-theme="white"] {
+  --on-accent: #1a1100;
+  --text-shadow: rgba(255, 255, 255, .95);
+  --token-text: #1a2233;
+  --gate-text: #0a5e4c;
+  color-scheme: light;
 }
 
+/* Серая: нейтральный средне-серый фон сцены (#8d939e) и светло-серая панель — светлые и тёмные объекты видны одинаково */
+:root[data-theme="gray"] {
+  --bg: #c6cad2;
+  --sidebar: #e4e7ec;
+  --card: #f2f4f7;
+  --border: #c0c6d0;
+  --text: #1b2130;
+  --muted: #4f596b;
+  --pos: #e07b00;
+  --neg: #1f6fd0;
+  --neutral: #7a8394;
+  --idle: #566176;
+  --accent: #ffc94a;
+  --error: #cc3333;
+  --control: #e8ebf0;
+  --control-hover: #d9dee6;
+  --overlay: 238, 241, 245;
+  --line: 60, 70, 90;
+  --tooltip: rgba(244, 246, 249, .97);
+  --shadow: rgba(20, 30, 50, .22);
+  --pos-text: #a85600;
+  --neg-text: #1260b8;
+  --accent-text: #8a5d00;
+  --pos-ink: #b35f00;
+  --neg-ink: #1260b8;
+  --ok: #1e8a3a;
+  --demo: #7347c7;
+  --grad: #8a3fd1;
+  --preview: #d3d7de;
+  --cell: #aab0bb;
+  --field: #e6e9ee;
+}
+
+/* Зелёная (неоновая): основной цвет #37fd12, панель — светлый тон того же оттенка, текст тёмный */
 :root[data-theme="green"] {
-  --bg: #0f2a22;
-  --sidebar: #0c231c;
-  --card: #133328;
-  --border: #23493b;
-  --text: #e7f3ed;
-  --muted: #9dbaae;
-  --neutral: #4f7064;
-  --idle: #93b3a7;
-  --control: #1a3d31;
-  --control-hover: #22503f;
-  --overlay: 9, 32, 25;
-  --line: 157, 186, 174;
-  --tooltip: rgba(11, 35, 28, .96);
-  --preview: #0c241d;
-  --cell: #1a3d31;
+  --bg: #37fd12;
+  --sidebar: #e6ffdd;
+  --card: #f4fff0;
+  --border: #86d672;
+  --text: #06240a;
+  --muted: #1f5a14;
+  --pos: #cc5200;
+  --neg: #0a52d1;
+  --neutral: #4a7a43;
+  --idle: #3f7a4a;
+  --accent: #f7c800;
+  --btn: #14702e;
+  --btn-hover: #0f5c25;
+  --error: #c4252a;
+  --control: #dff7d4;
+  --control-hover: #c9f0b8;
+  --overlay: 240, 255, 234;
+  --line: 20, 90, 10;
+  --tooltip: rgba(244, 255, 240, .97);
+  --shadow: rgba(0, 60, 0, .28);
+  --pos-text: #a63d00;
+  --neg-text: #0a47b3;
+  --accent-text: #6a4a00;
+  --pos-ink: #b34400;
+  --neg-ink: #0a47b3;
+  --ok: #087a24;
+  --demo: #5b2fb8;
+  --grad: #7a2fc0;
+  --gate-text: #064a3b;
+  --preview: #d4f7c6;
+  --cell: #bdeaa9;
+  --field: #ecffe5;
 }
 
 :root[data-theme="white"] {
@@ -95,7 +145,6 @@
   --line: 90, 101, 119;
   --tooltip: rgba(255, 255, 255, .97);
   --shadow: rgba(20, 30, 50, .18);
-  --text-shadow: rgba(255, 255, 255, .95);
   --pos-text: #b35c00;
   --neg-text: #1260b8;
   --accent-text: #8a5d00;
@@ -104,11 +153,8 @@
   --ok: #1e8a3a;
   --demo: #7347c7;
   --grad: #8a3fd1;
-  --token-text: #1a2233;
-  --gate-text: #0a5e4c;
   --preview: #eef2f7;
   --cell: #dfe5ee;
-  color-scheme: light;
 }
 
 * { box-sizing: border-box; }

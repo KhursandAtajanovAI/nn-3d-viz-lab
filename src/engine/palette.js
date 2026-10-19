@@ -21,8 +21,23 @@ export const PALETTE = {
   glow: T.glow,
 };
 
-const POS = new THREE.Color(PALETTE.positive);
-const NEG = new THREE.Color(PALETTE.negative);
+// Подмена цветов темы (theme.remap: hex → hex). Нужна яркой неоновой теме: светло-зелёные, жёлтые, оранжевые и голубые
+// объекты на зелёном фоне сливаются, поэтому они получают более тёмный оттенок. Подмена делается на самом низком уровне —
+// в THREE.Color.set (им пользуются конструкторы цветов и материалов), так что конфиги пространств менять не нужно.
+let remap = T.remap ?? null;
+const hexOf = v => (typeof v === 'number' ? v : /^#[0-9a-f]{6}$/i.test(v) ? parseInt(v.slice(1), 16) : null);
+const baseSet = THREE.Color.prototype.set;
+THREE.Color.prototype.set = function (r, g, b) {
+  if (remap && g === undefined && b === undefined && (typeof r === 'number' || typeof r === 'string')) {
+    const to = remap[hexOf(r)];
+    if (to !== undefined) r = to;
+  }
+  return baseSet.call(this, r, g, b);
+};
+
+const BASE_POS = 0xff9f1c, BASE_NEG = 0x2f9bff;
+const POS = new THREE.Color().set(BASE_POS);
+const NEG = new THREE.Color().set(BASE_NEG);
 const NEUTRAL = new THREE.Color(PALETTE.neutral);
 /** Цвет нейрона «в покое»; общий объект — при смене темы меняется на месте */
 export const IDLE_COLOR = new THREE.Color(PALETTE.neuronIdle);
@@ -60,9 +75,19 @@ export function applyScenePalette(next, prev) {
   PALETTE.cell = next.cell;
   PALETTE.links = next.links;
   PALETTE.glow = next.glow;
+  remap = next.remap ?? null;
   NEUTRAL.set(next.neutral);
   IDLE_COLOR.set(next.neuronIdle);
+  POS.set(BASE_POS);
+  NEG.set(BASE_NEG);
   // hover не перекрашиваем: белый цвет материала у линий с цветами вершин — это множитель, а не цвет
   const keys = ['neutral', 'neuronIdle', 'pulse', 'plate', 'axes', 'cell'];
-  return keys.filter(k => prev[k] !== next[k]).map(k => [prev[k], next[k]]);
+  const pairs = keys.filter(k => prev[k] !== next[k]).map(k => [prev[k], next[k]]);
+  // Подменённые цвета: что было на сцене при старой теме → что должно быть при новой
+  const bases = new Set([...Object.keys(prev.remap ?? {}), ...Object.keys(next.remap ?? {})].map(Number));
+  for (const h of bases) {
+    const from = prev.remap?.[h] ?? h, to = next.remap?.[h] ?? h;
+    if (from !== to) pairs.push([from, to]);
+  }
+  return pairs;
 }

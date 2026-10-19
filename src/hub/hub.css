@@ -3,7 +3,8 @@
 body { min-height: 100vh; }
 button { font: inherit; }
 
-.page { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
+/* Масштаб каталога — zoom от --ui-scale (см. base.css); max-width считается в масштабируемых единицах */
+.page { zoom: var(--ui-scale); max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
 
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .hero-top .theme-switch { margin-top: 8px; flex: none; }

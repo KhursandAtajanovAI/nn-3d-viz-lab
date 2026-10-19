@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { labelScale } from './theme.js';
 import { BaseLab, MODE_TOGGLE_HTML, SPEED_HTML, bindModeToggle } from './BaseLab.js';
 import { StackView } from './StackView.js';
 import { Timeline } from './Timeline.js';
@@ -44,7 +45,8 @@ export class StackLab extends BaseLab {
       this.view.setResolution(w, h);
       // Меньше ~110 px ширины сцены на слой — подписи слоёв сокращаются (полные — при наведении)
       const perLayer = w / this.layers.length;
-      this.view.setCompactLabels(perLayer < 110, perLayer < 60);
+      const k = labelScale(); // подписи крупнее — сокращаем их раньше
+    this.view.setCompactLabels(perLayer < 110 * k, perLayer < 60 * k);
     });
     this.kit.setAutoFrame(() => this.frameCamera());
 
