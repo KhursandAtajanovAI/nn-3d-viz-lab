@@ -61,8 +61,8 @@ export default {
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const X = v => 20 + ((v - x0) / (x1 - x0 || 1)) * 230, Y = v => 150 - ((v - y0) / (y1 - y0 || 1)) * 130;
     const map = `<svg class="chart" viewBox="0 0 320 170">
-      ${all.map(([n, c]) => `<circle cx="${X(c[0])}" cy="${Y(c[1])}" r="4" fill="#2f9bff" /><text x="${X(c[0]) + 6}" y="${Y(c[1]) + 4}" class="tick">${n}</text>`).join('')}
-      <circle cx="${X(code[0])}" cy="${Y(code[1])}" r="7" fill="none" stroke="#ff9f1c" stroke-width="2.5" />
+      ${all.map(([n, c]) => `<circle cx="${X(c[0])}" cy="${Y(c[1])}" r="4" style="fill:var(--neg)" /><text x="${X(c[0]) + 6}" y="${Y(c[1]) + 4}" class="tick">${n}</text>`).join('')}
+      <circle cx="${X(code[0])}" cy="${Y(code[1])}" r="7" fill="none" style="stroke:var(--pos)" stroke-width="2.5" />
     </svg>`;
     return `
       <div class="ae-compare">

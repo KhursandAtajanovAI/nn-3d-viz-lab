@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NN 3D Viz Lab</title>
   <link rel="stylesheet" href="src/engine/lab.css" />
+  <script>
+    try {
+      var t = new URLSearchParams(location.search).get('theme');
+      if (!/^(black|gray|green|white)$/.test(t || '')) t = localStorage.getItem('nnlab-theme');
+      if (/^(black|gray|green|white)$/.test(t || '')) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
   <script type="importmap">
     {
       "imports": {

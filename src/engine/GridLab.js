@@ -3,6 +3,7 @@ import { BaseLab, MODE_TOGGLE_HTML, bindModeToggle } from './BaseLab.js';
 import { makeLabel, makeLines, setLineResolution, paintValue, valueMaterial } from './three-utils.js';
 import { lineChartSvg } from './chart.js';
 import { seededRandom } from './models/mlp.js';
+import { PALETTE } from './palette.js';
 import { formatValue } from './format.js';
 
 const ACTIONS = [
@@ -82,7 +83,7 @@ export class GridLab extends BaseLab {
       for (let c = 0; c < this.C; c++) {
         const t = this.cellType(r, c);
         const wall = t === '#';
-        const color = { G: 0xffd166, X: 0xff4d4d, '#': 0x4a5264 }[t] ?? 0x1b2436;
+        const color = { G: 0xffd166, X: 0xff4d4d, '#': 0x4a5264 }[t] ?? PALETTE.cell;
         const tile = new THREE.Mesh(new THREE.BoxGeometry(0.94, wall ? 0.8 : 0.1, 0.94),
           new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: t === 'G' ? 0.9 : t === 'X' ? 0.5 : 0.05, roughness: 0.7 }));
         tile.position.copy(this.pos(r, c, wall ? 0.4 : 0));
@@ -208,7 +209,7 @@ export class GridLab extends BaseLab {
       ${u ? `<p class="small">Последнее обновление в клетке (${u.r + 1}, ${u.c + 1}), действие «${ACTIONS[u.a].name}»:<br />
         Q ← ${formatValue(u.old, 3)} + ${u.alpha} · (${formatValue(u.reward, 2)} + ${u.gamma} · ${formatValue(u.maxNext, 3)} − ${formatValue(u.old, 3)}) = <b class="num">${formatValue(u.value, 3)}</b></p>` : ''}
       <p class="list-title">Награда за эпизод (линия — среднее за 10)</p>
-      ${lineChartSvg([{ values: this.rewards, color: 'rgba(149,163,186,.6)' }, { values: avg, color: '#ffd166' }], { xLabel: 'эпизод', yLabel: 'награда' })}
+      ${lineChartSvg([{ values: this.rewards, color: 'rgba(var(--line), .6)' }, { values: avg, color: '#ffd166' }], { xLabel: 'эпизод', yLabel: 'награда' })}
       <p class="list-title">Шагов до конца эпизода</p>
       ${lineChartSvg([{ values: this.stepsHist, color: '#2f9bff' }], { xLabel: 'эпизод', yLabel: 'шаги', height: 110 })}`);
     if (this.hovered) this.refreshHover();

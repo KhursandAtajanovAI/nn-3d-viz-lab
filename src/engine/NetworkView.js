@@ -3,7 +3,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PALETTE, weightColor, signColor } from './palette.js';
+import { PALETTE, IDLE_COLOR as COLOR_IDLE, weightColor, signColor, setGlow } from './palette.js';
 import { formatValue, layerShortName } from './format.js';
 
 const LAYER_GAP = 4;
@@ -11,11 +11,9 @@ const NEURON_GAP = 1.2;
 const RADIUS = 0.28;
 
 // Связи: в покое — тонкие и приглушённые, при прохождении сигнала — толстые и яркие.
-// GAIN > 1 выводит цвет за порог bloom, и линия начинает светиться.
-const LINE_REST = { width: 1, opacity: 0.45, gain: 0.55 };
-const LINE_ACTIVE = { width: 3.5, opacity: 1, gain: 1.9 };
+// GAIN > 1 выводит цвет за порог bloom, и линия начинает светиться. Прозрачность и яркость зависят от темы (PALETTE.links).
+const LINE_WIDTH = { rest: 1, active: 3.5 };
 
-const COLOR_IDLE = new THREE.Color(PALETTE.neuronIdle);
 const GRAD_COLOR = new THREE.Color(0xc77dff);
 
 function makeLabel(className, text = '') {
@@ -103,6 +101,12 @@ export class NetworkView {
       });
     }
 
+    // При смене темы меняется нейтральный цвет слабых связей — перекрашиваем их (SceneKit.applyTheme)
+    this.group.userData.recolor = () => {
+      this.refreshWeights();
+      this.connections.forEach(lines => this.styleConnection(lines));
+    };
+
     // Одна LineSegments2 на каждый промежуток между слоями; цвет — знак и сила веса
     this.connections = [];
     this.pulses = [];
@@ -178,7 +182,7 @@ export class NetworkView {
     m.material.color.copy(COLOR_IDLE).lerp(sign, Math.min(1, k * 1.5));
     m.material.emissive.copy(COLOR_IDLE).lerp(sign, Math.min(1, k * 3));
     // Сила свечения растёт с активацией: всё, что выше порога bloom, начинает светиться
-    m.material.emissiveIntensity = 0.15 + k * 1.6;
+    setGlow(m.material, 0.15, k * 1.6);
     m.scale.setScalar(1 + 0.3 * k);
 
     const shown = activation * amount;
@@ -189,12 +193,19 @@ export class NetworkView {
     el.classList.toggle('neg', k > 0.05 && shown < 0);
   }
 
+  styleConnection(lines) {
+    const fade = lines.userData.fade ?? 0, { restOpacity, restGain, activeGain } = PALETTE.links;
+    const mat = lines.material;
+    mat.linewidth = LINE_WIDTH.rest + (LINE_WIDTH.active - LINE_WIDTH.rest) * fade;
+    mat.opacity = restOpacity + (1 - restOpacity) * fade;
+    mat.color.setScalar(restGain + (activeGain - restGain) * fade);
+  }
+
   /** Анимация связей между слоями l и l+1: t 0..1 — позиция импульса, fade — насколько связь «активна» */
   setConnections(l, t, fade = 1) {
-    const mat = this.connections[l].material;
-    mat.linewidth = LINE_REST.width + (LINE_ACTIVE.width - LINE_REST.width) * fade;
-    mat.opacity = LINE_REST.opacity + (LINE_ACTIVE.opacity - LINE_REST.opacity) * fade;
-    mat.color.setScalar(LINE_REST.gain + (LINE_ACTIVE.gain - LINE_REST.gain) * fade);
+    const lines = this.connections[l];
+    lines.userData.fade = fade;
+    this.styleConnection(lines);
 
     const p = this.pulses[l];
     const arr = p.geometry.attributes.position.array;
@@ -272,7 +283,7 @@ export class NetworkView {
       geo.setPositions(pos);
       geo.setColors(cols);
       const mat = new LineMaterial({ vertexColors: true, linewidth: 3, worldUnits: false, depthTest: false, transparent: true });
-      mat.color.setScalar(1.6);
+      mat.color.setScalar(PALETTE.links.activeGain > 1 ? 1.6 : 1);
       mat.resolution.copy(this.resolution);
       const lines = new LineSegments2(geo, mat);
       lines.renderOrder = 10;

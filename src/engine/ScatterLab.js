@@ -3,6 +3,7 @@ import { BaseLab, MODE_TOGGLE_HTML, bindModeToggle } from './BaseLab.js';
 import { makeLabel, makeLines, setLineResolution, GROUP_COLORS, disposeTree } from './three-utils.js';
 import { escapeHtml } from './format.js';
 import { seededRandom } from './models/mlp.js';
+import { PALETTE } from './palette.js';
 
 /**
  * Облако точек в 3D (type: 'scatter'): эмбеддинги слов, кластеризация, рекомендации.
@@ -124,7 +125,7 @@ export class ScatterLab extends BaseLab {
     const L = Math.max(...box.getSize(new THREE.Vector3()).toArray()) * 0.6 + 0.5;
     const o = new THREE.Vector3();
     const axes = [new THREE.Vector3(L, 0, 0), new THREE.Vector3(0, L, 0), new THREE.Vector3(0, 0, L)];
-    this.group.add(makeLines(axes.map(a => [a.clone().negate().multiplyScalar(0.3), a]), { width: 1, color: 0x3a4660, opacity: 0.8 }));
+    this.group.add(makeLines(axes.map(a => [a.clone().negate().multiplyScalar(0.3), a]), { width: 1, color: PALETTE.axes, opacity: 0.8 }));
     axes.forEach((a, i) => {
       const l = makeLabel('dim-label', this.space.axes[i]);
       l.position.copy(a).multiplyScalar(1.05).add(o);
@@ -188,12 +189,12 @@ export class ScatterLab extends BaseLab {
     const segs = [];
     for (const ln of view.lines ?? []) {
       const a = this.resolve(ln.from), b = this.resolve(ln.to);
-      segs.push([a, b, ln.color ?? '#ffd166']);
+      segs.push([a, b, ln.color ?? PALETTE.accent]);
       if (ln.arrow) {
         const dir = b.clone().sub(a);
         const len = dir.length();
         if (len > 0.3) {
-          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 12), new THREE.MeshBasicMaterial({ color: ln.color ?? '#ffd166' }));
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 12), new THREE.MeshBasicMaterial({ color: ln.color ?? PALETTE.accent }));
           cone.position.copy(b).addScaledVector(dir.normalize(), -0.2);
           cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
           this.overlay.add(cone);

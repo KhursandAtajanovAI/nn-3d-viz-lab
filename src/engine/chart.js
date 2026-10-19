@@ -1,5 +1,10 @@
 // Простой линейный график в SVG (без зависимостей): loss по эпохам, награда по эпизодам и т.п.
 
+// Цвета палитры → CSS-переменные темы (на светлом фоне они темнее)
+const THEMED = { '#ff9f1c': 'var(--pos)', '#2f9bff': 'var(--neg)', '#7ee081': 'var(--ok)', '#ffd166': 'var(--accent-text)', '#c77dff': 'var(--grad)' };
+const themed = c => THEMED[String(c).toLowerCase()] ?? c;
+const DEFAULT_COLORS = ['#ff9f1c', '#2f9bff', '#7ee081'];
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function niceNum(v) {
@@ -38,13 +43,13 @@ export function lineChartSvg(series, { width = 320, height = 150, xLabel = '', y
 
   const paths = series.map((s, si) => {
     const pts = s.values.map((v, i) => (Number.isFinite(v) ? `${X(i).toFixed(1)},${Y(v).toFixed(1)}` : null)).filter(Boolean);
-    const color = s.color ?? ['#ff9f1c', '#2f9bff', '#7ee081'][si % 3];
-    const last = s.values.length ? `<circle cx="${X(s.values.length - 1)}" cy="${Y(s.values.at(-1))}" r="3" fill="${color}" />` : '';
-    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.join(' ')}" />${last}`;
+    const color = themed(s.color ?? DEFAULT_COLORS[si % 3]);
+    const last = s.values.length ? `<circle cx="${X(s.values.length - 1)}" cy="${Y(s.values.at(-1))}" r="3" style="fill:${color}" />` : '';
+    return `<polyline fill="none" style="stroke:${color}" stroke-width="2" points="${pts.join(' ')}" />${last}`;
   }).join('');
 
   const legend = series.some(s => s.label)
-    ? `<g class="legend">${series.map((s, i) => `<text x="${width - pad.r}" y="${pad.t + 10 + i * 12}" text-anchor="end" fill="${s.color ?? ['#ff9f1c', '#2f9bff', '#7ee081'][i % 3]}">${esc(s.label ?? '')}</text>`).join('')}</g>`
+    ? `<g class="legend">${series.map((s, i) => `<text x="${width - pad.r}" y="${pad.t + 10 + i * 12}" text-anchor="end" style="fill:${themed(s.color ?? DEFAULT_COLORS[i % 3])}">${esc(s.label ?? '')}</text>`).join('')}</g>`
     : '';
   const mark = marker !== undefined && n > 1 ? `<line class="marker" x1="${X(marker)}" x2="${X(marker)}" y1="${pad.t}" y2="${height - pad.b}" />` : '';
 

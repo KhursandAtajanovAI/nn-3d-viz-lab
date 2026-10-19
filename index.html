@@ -6,6 +6,13 @@
   <title>NN 3D Viz Lab — каталог</title>
   <meta name="description" content="Интерактивная лаборатория для изучения нейронных сетей в 3D: от одного нейрона до свёрточных сетей и трансформеров." />
   <link rel="stylesheet" href="src/hub/hub.css" />
+  <script>
+    try {
+      var t = new URLSearchParams(location.search).get('theme');
+      if (!/^(black|gray|green|white)$/.test(t || '')) t = localStorage.getItem('nnlab-theme');
+      if (/^(black|gray|green|white)$/.test(t || '')) document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
   <!-- Конфиги пространств обычно не используют Three.js, но если используют — импорт будет работать и здесь -->
   <script type="importmap">
     {
@@ -19,7 +26,10 @@
 <body>
   <div class="page">
     <header class="hero">
-      <h1>NN 3D Viz Lab <span class="accent">·</span> лаборатория нейросетей</h1>
+      <div class="hero-top">
+        <h1>NN 3D Viz Lab <span class="accent">·</span> лаборатория нейросетей</h1>
+        <div id="theme-switch"></div>
+      </div>
       <p>Интерактивные 3D-пространства, в которых видно, как нейросети устроены, как по ним проходит сигнал и как они учатся.
         Внутри пространства можно вращать сцену, запускать вычисления и наводить курсор на любой нейрон, слой или связь.</p>
       <p class="stats">Всего пространств: <b id="total">…</b> · категорий: <b id="total-categories">…</b></p>

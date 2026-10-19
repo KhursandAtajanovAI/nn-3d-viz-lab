@@ -5,7 +5,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PALETTE } from './palette.js';
+import { PALETTE, applyScenePalette } from './palette.js';
+import { onThemeChange, themeScene } from './theme.js';
 
 /**
  * Общая 3D-сцена лаборатории: рендерер, свечение (bloom), HTML-подписи, камера с OrbitControls,
@@ -40,12 +41,16 @@ export class SceneKit {
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.3, 0.7);
     this.composer.addPass(this.bloom);
+    this.applyBloom(themeScene());
     this.composer.addPass(new OutputPass());
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.minDistance = 3;
     this.controls.maxDistance = 80;
+
+    // Смена темы — на лету: фон, свечение и «тематические» цвета уже созданных объектов, без перестройки сцены
+    onThemeChange((id, old) => this.applyTheme(themeScene(id), themeScene(old)));
 
     this.resizeListeners = [];
     this.frameListeners = [];
@@ -62,6 +67,32 @@ export class SceneKit {
       this.controls.update();
       this.composer.render();
       this.labelRenderer.render(this.scene, this.camera);
+    });
+  }
+
+  /** На светлом фоне свечение выключено: порог bloom ниже яркости фона, и иначе засвечивается весь кадр */
+  applyBloom(t) {
+    this.bloom.strength = t.bloom;
+    this.bloom.enabled = t.bloom > 0;
+  }
+
+  applyTheme(next, prev) {
+    const remap = new Map(applyScenePalette(next, prev));
+    this.scene.background.set(next.background);
+    this.applyBloom(next);
+    const swap = c => {
+      const to = c && remap.get(c.getHex());
+      if (to !== undefined) c.set(to);
+    };
+    this.scene.traverse(o => {
+      for (const m of [o.material].flat()) {
+        if (!m) continue;
+        swap(m.color);
+        swap(m.emissive);
+        const g = m.userData?.glow;
+        if (g) m.emissiveIntensity = g.base + g.k * next.glow;
+      }
+      o.userData.recolor?.();
     });
   }
 

@@ -5,11 +5,13 @@ button { font: inherit; }
 
 .page { max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
 
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.hero-top .theme-switch { margin-top: 8px; flex: none; }
 .hero h1 { margin: 0; font-size: 30px; letter-spacing: .2px; }
 .hero h1 .accent { color: var(--pos); }
 .hero p { max-width: 760px; margin: 8px 0 0; font-size: 15px; color: var(--muted); }
 .hero .stats { color: var(--text); }
-.hero .stats b { color: var(--accent); }
+.hero .stats b { color: var(--accent-text); }
 
 /* ---------- Панель фильтров ---------- */
 .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 24px 0 10px; scroll-margin-top: 12px; }
@@ -40,7 +42,7 @@ button { font: inherit; }
 #filters button:hover, .tag:hover:not(:disabled), .active-chip:hover, .reset:hover {
   color: var(--text);
   border-color: var(--muted);
-  background: rgba(149, 163, 186, .08);
+  background: rgba(var(--line), .08);
 }
 #filters button:active, .tag:active:not(:disabled), .active-chip:active, .reset:active { transform: scale(.96); }
 #filters button:focus-visible, .tag:focus-visible, .active-chip:focus-visible, .reset:focus-visible {
@@ -48,13 +50,13 @@ button { font: inherit; }
   outline-offset: 1px;
 }
 #filters button[aria-pressed="true"], .tag[aria-pressed="true"] {
-  color: #1a1100;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
   font-weight: 600;
 }
 #filters button.dim { opacity: .45; }
-#filters .icon { color: var(--pos); }
+#filters .icon { color: var(--pos-ink); }
 #filters button[aria-pressed="true"] .icon { color: inherit; }
 .count { opacity: .7; font-size: .85em; }
 
@@ -73,14 +75,14 @@ button { font: inherit; }
 
 .status-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 32px; }
 #active-filters { display: flex; flex-wrap: wrap; gap: 6px; }
-.active-chip { color: var(--text); background: rgba(255, 209, 102, .12); border-color: rgba(255, 209, 102, .4); }
+.active-chip { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .active-chip span { margin-left: 4px; opacity: .7; }
 .reset { border-style: dashed; }
 
 /* ---------- Категории и карточки ---------- */
 .category { margin-top: 30px; }
 .category h2 { margin: 0; font-size: 20px; }
-.category h2 .icon { color: var(--pos); }
+.category h2 .icon { color: var(--pos-ink); }
 .category > p { margin: 4px 0 14px; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
@@ -98,12 +100,12 @@ button { font: inherit; }
 .space-card:hover, .space-card:focus-within {
   border-color: var(--pos);
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(255, 159, 28, .12);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--pos) 14%, transparent);
 }
 .space-card .body { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; flex: 1; }
 .space-card h3 { margin: 0; font-size: 16px; }
 .title-link { color: var(--text); text-decoration: none; }
-.title-link:hover { color: var(--pos); }
+.title-link:hover { color: var(--pos-ink); }
 .title-link:focus-visible { outline: 2px solid var(--neg); outline-offset: 2px; border-radius: 3px; }
 .space-card p { margin: 0; font-size: 13px; color: var(--muted); }
 .space-card p.uses { color: var(--text); opacity: .9; }
@@ -112,20 +114,20 @@ button { font: inherit; }
 .space-card .open {
   align-self: flex-start;
   margin-top: 6px;
-  color: var(--pos);
+  color: var(--pos-ink);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
 .space-card .open:hover { text-decoration: underline; }
 
-.tag.fidelity.real { color: #7ee081; border-color: rgba(126, 224, 129, .35); }
-.tag.fidelity.trained { color: var(--accent); border-color: rgba(255, 209, 102, .35); }
-.tag.fidelity.demo { color: #c9a7ff; border-color: rgba(201, 167, 255, .35); }
-.tag.fidelity[aria-pressed="true"], .tag.level[aria-pressed="true"] { color: #1a1100; }
+.tag.fidelity.real { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.tag.fidelity.trained { color: var(--accent-text); border-color: color-mix(in srgb, var(--accent-text) 40%, transparent); }
+.tag.fidelity.demo { color: var(--demo); border-color: color-mix(in srgb, var(--demo) 40%, transparent); }
+.tag.fidelity[aria-pressed="true"], .tag.level[aria-pressed="true"] { color: var(--on-accent); }
 
 .preview-link { display: block; cursor: pointer; }
-.preview { display: block; width: 100%; height: 96px; background: #0c111c; border-bottom: 1px solid var(--border); }
+.preview { display: block; width: 100%; height: 96px; background: var(--preview); border-bottom: 1px solid var(--border); }
 .preview .links line { stroke: var(--neutral); stroke-width: .8; opacity: .55; }
 .preview .nodes circle { fill: var(--idle); }
 .preview text { fill: var(--muted); font-size: 12px; }
@@ -134,12 +136,12 @@ button { font: inherit; }
 .preview .token { fill: rgba(47, 155, 255, .15); stroke: var(--neg); }
 .preview.tokens text { fill: var(--text); font-size: 9px; }
 .preview .attn { fill: none; stroke: var(--pos); opacity: .7; }
-.preview .g0 { fill: var(--pos); } .preview .g1 { fill: var(--neg); } .preview .g2 { fill: #7ee081; } .preview .g3 { fill: #c9a7ff; }
+.preview .g0 { fill: var(--pos); } .preview .g1 { fill: var(--neg); } .preview .g2 { fill: var(--ok); } .preview .g3 { fill: var(--demo); }
 .preview .centroid { fill: none; stroke: var(--text); stroke-width: 2; }
 .preview .rings ellipse { fill: none; stroke: var(--neg); opacity: .5; }
 .preview .trail { fill: none; stroke: var(--pos); stroke-width: 2; stroke-dasharray: 4 3; }
 .preview .ball { fill: var(--accent); } .preview .start { fill: var(--muted); }
-.preview .cell { fill: #1b2436; } .preview .cell.goal { fill: var(--accent); } .preview .cell.pit { fill: #ff6b6b; } .preview .cell.wall { fill: #4a5264; }
+.preview .cell { fill: var(--cell); } .preview .cell.goal { fill: var(--accent); } .preview .cell.pit { fill: var(--error); } .preview .cell.wall { fill: var(--neutral); }
 .preview .agent { fill: var(--neg); }
 .space-card:hover .preview .nodes circle { fill: var(--pos); }
 .space-card:hover .preview .links line { stroke: var(--pos); opacity: .35; }

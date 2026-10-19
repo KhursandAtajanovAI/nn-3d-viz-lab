@@ -1,6 +1,7 @@
 // Общие блоки боковой панели, которые повторяются во всех пространствах.
 import { categoryById, LEVELS, FIDELITY } from './catalog.js';
 import { escapeHtml } from './format.js';
+import { themeSwitchHtml } from './theme.js';
 
 /** Шапка: ссылка в каталог, категория, название, описание и «где применяется» */
 export function headerHtml(meta) {
@@ -8,7 +9,7 @@ export function headerHtml(meta) {
   const fid = FIDELITY[meta.fidelity];
   return `
     <header class="brand">
-      <a class="back" href="./">← Каталог</a>
+      <div class="brand-top"><a class="back" href="./">← Каталог</a>${themeSwitchHtml()}</div>
       <div class="badges">
         ${cat ? `<a class="badge" href="./?cat=${cat.id}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
         ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}

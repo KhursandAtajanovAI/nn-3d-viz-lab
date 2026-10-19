@@ -1,4 +1,5 @@
-/* Общие токены и базовые стили — каталог и страницы пространств. Палитра совпадает с palette.js */
+/* Общие токены и базовые стили — каталог и страницы пространств. Палитра совпадает с palette.js.
+   Темы фона (data-theme на <html>): black — по умолчанию, gray, green, white. Цвета 3D-сцены — в theme.js */
 :root {
   --bg: #0a0e17;
   --sidebar: #0e1420;
@@ -15,6 +16,99 @@
   --btn-hover: #269048;
   --error: #ff6b6b;
   --sidebar-w: 380px;
+
+  /* Производные цвета: кнопки, подложки подписей, текст на цветном фоне */
+  --control: #1b2436;
+  --control-hover: #243047;
+  --overlay: 10, 14, 23;          /* RGB подложек подписей на сцене: rgba(var(--overlay), a) */
+  --line: 149, 163, 186;          /* RGB тонких линий и разделителей */
+  --tooltip: rgba(14, 20, 32, .95);
+  --shadow: rgba(0, 0, 0, .4);
+  --text-shadow: #000;
+  --pos-text: #ffc46b;            /* тёплый/холодный для текста: на светлом фоне темнее */
+  --neg-text: #7cc0ff;
+  --accent-text: var(--accent);
+  --pos-ink: var(--pos);          /* тёплый/холодный для обычного текста на фоне панели */
+  --neg-ink: var(--neg);
+  --on-accent: #1a1100;
+  --ok: #7ee081;
+  --demo: #c9a7ff;
+  --grad: #c77dff;
+  --token-text: #fff;
+  --gate-text: #d9fff5;
+  --preview: #0c111c;
+  --cell: #1b2436;
+  color-scheme: dark;
+}
+
+:root[data-theme="gray"] {
+  --bg: #2b303a;
+  --sidebar: #252a33;
+  --card: #323844;
+  --border: #464e5f;
+  --text: #edf1f7;
+  --muted: #a9b3c4;
+  --neutral: #687286;
+  --idle: #9aa8bf;
+  --control: #3a4150;
+  --control-hover: #485164;
+  --overlay: 34, 38, 47;
+  --tooltip: rgba(37, 42, 51, .96);
+  --preview: #262a33;
+  --cell: #3a4150;
+}
+
+:root[data-theme="green"] {
+  --bg: #0f2a22;
+  --sidebar: #0c231c;
+  --card: #133328;
+  --border: #23493b;
+  --text: #e7f3ed;
+  --muted: #9dbaae;
+  --neutral: #4f7064;
+  --idle: #93b3a7;
+  --control: #1a3d31;
+  --control-hover: #22503f;
+  --overlay: 9, 32, 25;
+  --line: 157, 186, 174;
+  --tooltip: rgba(11, 35, 28, .96);
+  --preview: #0c241d;
+  --cell: #1a3d31;
+}
+
+:root[data-theme="white"] {
+  --bg: #f4f6f9;
+  --sidebar: #ffffff;
+  --card: #ffffff;
+  --border: #d3d9e3;
+  --text: #1a2233;
+  --muted: #5a6577;
+  --pos: #f08c00;
+  --neg: #1f7fe0;
+  --neutral: #8a93a4;
+  --idle: #6f7c94;
+  --accent: #ffc94a;
+  --error: #d63c3c;
+  --control: #eef1f6;
+  --control-hover: #e1e6ee;
+  --overlay: 255, 255, 255;
+  --line: 90, 101, 119;
+  --tooltip: rgba(255, 255, 255, .97);
+  --shadow: rgba(20, 30, 50, .18);
+  --text-shadow: rgba(255, 255, 255, .95);
+  --pos-text: #b35c00;
+  --neg-text: #1260b8;
+  --accent-text: #8a5d00;
+  --pos-ink: #c06400;
+  --neg-ink: #1260b8;
+  --ok: #1e8a3a;
+  --demo: #7347c7;
+  --grad: #8a3fd1;
+  --token-text: #1a2233;
+  --gate-text: #0a5e4c;
+  --preview: #eef2f7;
+  --cell: #dfe5ee;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -26,12 +120,12 @@ html, body {
   font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-a { color: var(--neg); }
-code { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; background: rgba(149, 163, 186, .12); padding: 1px 4px; border-radius: 4px; }
+a { color: var(--neg-ink); }
+code { font: 12px ui-monospace, "Cascadia Code", Consolas, monospace; background: rgba(var(--line), .12); padding: 1px 4px; border-radius: 4px; }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
-.pos { color: var(--pos); }
-.neg { color: var(--neg); }
+.pos { color: var(--pos-ink); }
+.neg { color: var(--neg-ink); }
 b.pos, b.neg { font-weight: 600; }
 
 .badge {
@@ -39,13 +133,30 @@ b.pos, b.neg { font-weight: 600; }
   padding: 1px 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(36, 48, 71, .5);
+  background: rgba(var(--line), .1);
   font-size: 11px;
   white-space: nowrap;
 }
 .badge.muted { color: var(--muted); }
 a.badge { color: inherit; text-decoration: none; }
 a.badge:hover { border-color: var(--muted); }
-.badge.fidelity.real { color: #7ee081; border-color: rgba(126, 224, 129, .35); }
-.badge.fidelity.trained { color: var(--accent); border-color: rgba(255, 209, 102, .35); }
-.badge.fidelity.demo { color: #c9a7ff; border-color: rgba(201, 167, 255, .35); }
+.badge.fidelity.real { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.badge.fidelity.trained { color: var(--accent-text); border-color: color-mix(in srgb, var(--accent-text) 40%, transparent); }
+.badge.fidelity.demo { color: var(--demo); border-color: color-mix(in srgb, var(--demo) 40%, transparent); }
+
+/* Переключатель фона: 4 цветных кружка */
+.theme-switch { display: inline-flex; gap: 6px; align-items: center; }
+.theme-dot {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 2px solid var(--border);
+  box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45);
+  cursor: pointer;
+  transition: transform .1s, border-color .1s;
+}
+.theme-dot:hover { transform: scale(1.12); border-color: var(--muted); background: var(--swatch); }
+.theme-dot[aria-pressed="true"] { border-color: var(--pos); box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45), 0 0 0 2px color-mix(in srgb, var(--pos) 35%, transparent); }
+.theme-dot:focus-visible { outline: 2px solid var(--neg); outline-offset: 2px; }

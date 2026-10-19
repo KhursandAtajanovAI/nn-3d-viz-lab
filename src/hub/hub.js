@@ -6,6 +6,9 @@
 import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../engine/catalog.js';
 import { escapeHtml, plural } from '../engine/format.js';
 import { previewSvg } from './previews.js';
+import { themeSwitchHtml } from '../engine/theme.js';
+
+document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
 
 const $ = id => document.getElementById(id);
 const root = $('catalog');
@@ -145,6 +148,8 @@ function syncUrl() {
   if (state.level) p.set('level', state.level);
   if (state.fid) p.set('fid', state.fid);
   if (state.q) p.set('q', state.q);
+  const theme = new URLSearchParams(location.search).get('theme');
+  if (theme) p.set('theme', theme);
   const qs = p.toString();
   history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
 }

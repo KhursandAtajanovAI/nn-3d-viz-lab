@@ -4,7 +4,7 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PALETTE, signColor } from './palette.js';
+import { PALETTE, IDLE_COLOR as IDLE, signColor, setGlow } from './palette.js';
 
 export function makeLabel(className, text = '', { center } = {}) {
   const el = document.createElement('div');
@@ -51,7 +51,6 @@ export function setLineResolution(root, w, h) {
 }
 
 /** Материал «нейрона/ячейки» и окраска по значению: серый → тёплый (+) / холодный (−), яркость ∝ |v| */
-const IDLE = new THREE.Color(PALETTE.neuronIdle);
 export function valueMaterial() {
   return new THREE.MeshStandardMaterial({ color: IDLE.clone(), emissive: IDLE.clone(), emissiveIntensity: 0.15, roughness: 0.6 });
 }
@@ -60,7 +59,7 @@ export function paintValue(mesh, value, amount = 1, maxAbs = 1, { scale = true }
   const s = signColor(value);
   mesh.material.color.copy(IDLE).lerp(s, Math.min(1, k * 1.5));
   mesh.material.emissive.copy(IDLE).lerp(s, Math.min(1, k * 3));
-  mesh.material.emissiveIntensity = 0.15 + k * 1.5;
+  setGlow(mesh.material, 0.15, k * 1.5);
   if (scale) mesh.scale.setScalar(1 + 0.3 * k);
 }
 

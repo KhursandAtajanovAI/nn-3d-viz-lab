@@ -3,13 +3,12 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { PALETTE, signColor } from './palette.js';
+import { PALETTE, IDLE_COLOR as COLOR_IDLE, signColor, setGlow } from './palette.js';
 import { kindInfo, formatShape, formatCount } from './stackKinds.js';
 import { formatValue } from './format.js';
 
 const GAP = 0.7;
 const MAX_SPHERES = 12;
-const COLOR_IDLE = new THREE.Color(PALETTE.neuronIdle);
 
 function label(className, text) {
   const el = document.createElement('div');
@@ -97,7 +96,7 @@ export class StackView {
       const geo = new THREE.PlaneGeometry(ws, hs);
       const edges = new THREE.EdgesGeometry(geo);
       for (let k = ns - 1; k >= 0; k--) {
-        const mat = new THREE.MeshBasicMaterial({ color: 0x1a2130, side: THREE.DoubleSide, transparent: true, opacity: 0.96 });
+        const mat = new THREE.MeshBasicMaterial({ color: PALETTE.plate, side: THREE.DoubleSide, transparent: true, opacity: 0.96 });
         const plane = new THREE.Mesh(geo, mat);
         plane.position.set(-((ns - 1) * dx) / 2 + k * dx, 0, ((ns - 1) * dz) / 2 - k * dz);
         plane.userData = { layer: item.index, channel: k };
@@ -323,7 +322,7 @@ export class StackView {
     if (it.box) {
       it.box.material.emissiveIntensity = 0.08 + amount * 0.9;
       it.box.material.opacity = 0.55 + amount * 0.3;
-      it.box.userData.border.material.color.copy(it.color).lerp(new THREE.Color(0xffffff), amount * 0.5);
+      it.box.userData.border.material.color.copy(it.color).lerp(new THREE.Color(PALETTE.hover), amount * 0.5);
     }
     it.slices?.forEach(p => {
       // Вход (светлая картинка) не разгоняем выше 0.85 — иначе он «засвечивается» свечением
@@ -385,7 +384,7 @@ export class StackView {
     const sign = signColor(value);
     s.material.color.copy(COLOR_IDLE).lerp(sign, Math.min(1, k * 1.5));
     s.material.emissive.copy(COLOR_IDLE).lerp(sign, Math.min(1, k * 3));
-    s.material.emissiveIntensity = 0.15 + k * 1.6;
+    setGlow(s.material, 0.15, k * 1.6);
     s.scale.setScalar(1 + 0.35 * k);
   }
 
@@ -454,7 +453,7 @@ export class StackView {
       it.nameLabel?.element.classList.toggle('full', on);
       it.pick.forEach(m => {
         const b = m.userData.border;
-        if (b) b.material.color.copy(on ? new THREE.Color(0xffffff) : it.color);
+        if (b) b.material.color.copy(on ? new THREE.Color(PALETTE.hover) : it.color);
       });
     });
   }
