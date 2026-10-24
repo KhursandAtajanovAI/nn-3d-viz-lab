@@ -44,8 +44,12 @@
     <section id="my-spaces" class="my-spaces" aria-labelledby="my-title">
       <div class="my-head">
         <h2 id="my-title"><span class="icon">✎</span> Мои пространства</h2>
-        <button type="button" id="create-space" class="primary-btn">+ Создать пространство</button>
+        <div class="my-buttons">
+          <button type="button" id="import-space" class="ghost-btn" title="Файл .nn3d.json, скачанный кнопкой «Скачать»">Загрузить файл</button>
+          <button type="button" id="create-space" class="primary-btn">+ Создать пространство</button>
+        </div>
       </div>
+      <p id="my-msg" class="my-msg" role="status"></p>
       <p class="muted">Свои сети и графы блоков. Хранятся только в этом браузере; встроенные пространства ниже не меняются.</p>
       <div id="my-list"></div>
     </section>

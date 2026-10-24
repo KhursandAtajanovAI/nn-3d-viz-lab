@@ -7,11 +7,12 @@ import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../eng
 import { escapeHtml, plural } from '../engine/format.js';
 import { previewSvg } from './previews.js';
 import { themeSwitchHtml } from '../engine/theme.js';
-import { initCreateDialog, renderMySpaces } from './userHub.js';
+import { initCreateDialog, renderMySpaces, initImport } from './userHub.js';
 
 document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
 const openCreate = initCreateDialog();
 document.getElementById('create-space').addEventListener('click', openCreate);
+initImport(document.getElementById('import-space'), document.getElementById('my-msg'), () => renderMySpaces());
 renderMySpaces();
 
 const $ = id => document.getElementById(id);

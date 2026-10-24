@@ -374,3 +374,8 @@ svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }
 #cw-state.warn { color: var(--accent-text); font-weight: 600; }
 #cw-error { white-space: pre-line; min-height: 0; margin: 6px 0 0; }
 #cw-error.error-text { color: var(--error); }
+
+/* Моё пространство (userSpace.js) */
+.user-card .row { margin-top: 8px; }
+.user-card .row .primary { margin-top: 0; }
+.user-card [data-role="msg"] { white-space: pre-line; margin: 8px 0 0; }

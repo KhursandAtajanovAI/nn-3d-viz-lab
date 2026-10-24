@@ -225,3 +225,7 @@ footer p { margin: 6px 0; }
 .my-actions a, .my-actions button { padding: 4px 10px; font-size: 13px; text-decoration: none; }
 .my-actions [data-my-act="delete"] { color: var(--error); }
 .my-empty { margin: 10px 0 0; font-size: 13px; }
+.my-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.my-msg { margin: 6px 0 0; font-size: 13px; white-space: pre-line; }
+.my-msg:empty { display: none; }
+.ok-text { color: var(--ok); }

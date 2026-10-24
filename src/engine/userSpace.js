@@ -4,6 +4,7 @@
 // Все тексты пользователя проходят через textToHtml/escapeHtml: в HTML попадает только экранированный текст.
 import { FORMAT, FORMAT_VERSION, textToHtml, checkInput } from './spaceFormat.js';
 import { saveSpace } from './userStore.js';
+import { downloadSpaceFile, importSpaceFile, pickFile } from './spaceFile.js';
 
 /** Пустой файл нового пространства */
 export function newSpaceFile({ title, summary = '', type = 'mlp' }) {
@@ -85,6 +86,10 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
       <button type="button" data-act="save" class="primary">Сохранить</button>
       ${extraButtons}
     </div>
+    <div class="row">
+      <button type="button" data-act="download" title="Файл .nn3d.json с архитектурой, весами, входами и текстами">Скачать</button>
+      <button type="button" data-act="import" title="Открыть файл .nn3d.json как новое пространство">Загрузить</button>
+    </div>
     <p class="small" data-role="msg" role="status"></p>`;
   const header = lab.sidebar.querySelector('header.brand');
   header.after(card);
@@ -100,5 +105,26 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
       say(`Не сохранено: ${e.message}`, true);
     }
   });
+  card.querySelector('[data-act="download"]').addEventListener('click', () => {
+    try {
+      downloadSpaceFile(toFile()); // текущее состояние, даже если оно ещё не сохранено
+      say('Файл скачан');
+    } catch (e) {
+      say(e.message, true);
+    }
+  });
+  card.querySelector('[data-act="import"]').addEventListener('click', () => pickFile(async f => {
+    try {
+      const { id: newId, title, warnings } = await importSpaceFile(f);
+      msg.replaceChildren(`Загружено как новое пространство «${title}». `);
+      const a = document.createElement('a');
+      a.href = `space.html?user=${newId}`;
+      a.textContent = 'Открыть';
+      msg.append(a, warnings.length ? `\n${warnings.join('\n')}` : '');
+      msg.classList.remove('error-text');
+    } catch (e) {
+      say(e.message, true);
+    }
+  }));
   return { card, say };
 }

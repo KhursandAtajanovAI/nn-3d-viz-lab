@@ -4,6 +4,7 @@ import { LIMITS } from '../engine/spaceFormat.js';
 import { saveSpace, listSpaces, renameSpace, deleteSpace } from '../engine/userStore.js';
 import { newSpaceFile } from '../engine/userSpace.js';
 import { plural } from '../engine/format.js';
+import { downloadSpaceFile, importSpaceFile, pickFile } from '../engine/spaceFile.js';
 
 const $ = id => document.getElementById(id);
 
@@ -140,7 +141,7 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
     list.replaceChildren(el('p', 'muted my-empty', 'Пока пусто. Нажмите «Создать пространство» — оно появится здесь.'));
     return recs;
   }
-  const actions = [['rename', 'Переименовать'], ...extraActions, ['delete', 'Удалить']];
+  const actions = [['rename', 'Переименовать'], ['download', 'Скачать'], ...extraActions, ['delete', 'Удалить']];
   const grid = el('div', 'my-grid');
   grid.append(...recs.map(r => myCard(r, actions)));
   list.replaceChildren(grid);
@@ -159,6 +160,9 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
       } else if (act === 'delete') {
         if (!confirm(`Удалить пространство «${rec.file.meta.title}»? Его нельзя будет восстановить (если вы его не скачали).`)) return;
         await deleteSpace(rec.id);
+      } else if (act === 'download') {
+        downloadSpaceFile(rec.file);
+        return;
       } else {
         await onExtra?.(act, rec);
         return;
@@ -169,4 +173,19 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
     }
   });
   return recs;
+}
+
+/** Кнопка «Загрузить файл»: проверка валидатором, новое пространство в «Мои», понятные ошибки */
+export function initImport(button, msg, onDone) {
+  const say = (text, kind = '') => { msg.textContent = text; msg.className = `my-msg ${kind}`; };
+  button.addEventListener('click', () => pickFile(async f => {
+    say(`Читаю «${f.name}»…`);
+    try {
+      const { title, warnings } = await importSpaceFile(f);
+      say(`Загружено: «${title}» — пространство добавлено в «Мои».${warnings.length ? `\n${warnings.join('\n')}` : ''}`, 'ok-text');
+      await onDone?.();
+    } catch (e) {
+      say(e.message, 'error-text');
+    }
+  }));
 }
