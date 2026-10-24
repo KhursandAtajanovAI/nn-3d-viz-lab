@@ -38,7 +38,7 @@ export class StackView {
     this.showNumbers = false;
   }
 
-  build(layers, { skips = [], groups = [], outputNames = [] } = {}) {
+  build(layers, { skips = [], groups = [], outputNames = [], kinds = null } = {}) {
     this.dispose();
     this.layers = layers;
     const spatial = layers.filter(l => l.shape.length === 3).map(l => Math.max(l.shape[0], l.shape[1]));
@@ -47,7 +47,7 @@ export class StackView {
 
     // 1. Каждый слой строим в своей группе вокруг (0, 0, 0) и запоминаем его габариты
     this.items = layers.map((L, i) => {
-      const item = { index: i, layer: L, obj: new THREE.Group(), color: new THREE.Color(kindInfo(L.kind).color), pick: [] };
+      const item = { index: i, layer: L, obj: new THREE.Group(), color: new THREE.Color(kindInfo(L.kind, kinds).color), pick: [] };
       const form = L.shape.length === 3 ? 'volume' : L.shape.length === 2 ? 'sequence' : 'vector';
       item.form = form;
       if (form === 'volume') this.buildVolume(item, size);

@@ -1,7 +1,7 @@
 // Общая логика проверки конфигов пространств: её вызывают tools/check-spaces.mjs (Node, при деплое)
 // и tools/check-spaces.html (та же проверка в браузере). Модуль без зависимостей от Node и DOM.
 import { CATEGORIES, FIDELITY } from '../src/engine/catalog.js';
-import { KINDS } from '../src/engine/stackKinds.js';
+import { KINDS, checkCustomKinds } from '../src/engine/stackKinds.js';
 import { checkModelSpec, checkInput } from '../src/engine/spaceFormat.js';
 
 // Должен совпадать с VISUALIZERS в src/engine/boot.js (graph — только для пользовательских пространств)
@@ -37,8 +37,10 @@ export async function checkSpaces(ids, load) {
     if (!KNOWN_TYPES.has(type)) errors.push(`${where}: неизвестный type "${type}"`);
     if (type === 'stack') {
       if (!Array.isArray(space.layers) || space.layers.length < 2) errors.push(`${where}: для type "stack" нужен массив layers`);
+      // Свои виды слоёв (поле kinds): проверяется их описание, а слой с таким kind считается известным
+      checkCustomKinds(space.kinds).forEach(e => errors.push(`${where}: ${e}`));
       (space.layers ?? []).forEach((L, i) => {
-        if (!KINDS[L.kind]) errors.push(`${where}: слой ${i} — неизвестный kind "${L.kind}"`);
+        if (!KINDS[L.kind] && !space.kinds?.[L.kind]) errors.push(`${where}: слой ${i} — неизвестный kind "${L.kind}" (добавьте его в kinds или используйте встроенный)`);
         if (!Array.isArray(L.shape) || !L.shape.length || L.shape.some(v => !(v > 0))) errors.push(`${where}: слой ${i} — неверная shape`);
       });
       for (const s of space.skips ?? []) {

@@ -40,7 +40,7 @@ export class StackLab extends BaseLab {
     });
 
     this.view = new StackView(this.kit.scene);
-    this.view.build(this.layers, { skips: s.skips, groups: s.groups, outputNames: s.outputNames ?? [] });
+    this.view.build(this.layers, { skips: s.skips, groups: s.groups, outputNames: s.outputNames ?? [], kinds: s.kinds });
     this.kit.onResize((w, h) => {
       this.view.setResolution(w, h);
       // Меньше ~110 px ширины сцены на слой — подписи слоёв сокращаются (полные — при наведении)
@@ -110,8 +110,11 @@ export class StackLab extends BaseLab {
     const hasMaps = this.layers.some(l => l.maps);
     return `
       <ul class="legend kinds">
-        ${kinds.map(k => `<li><span class="kind-swatch" style="--c:#${new THREE.Color(KINDS[k]?.color ?? 0x8a9ab3).getHexString()}"></span>
-          <span><b>${KINDS[k]?.title ?? k}.</b> ${KINDS[k]?.info ?? ''}</span></li>`).join('')}
+        ${kinds.map(k => {
+          const K = KINDS[k] || this.space.kinds?.[k] ? kindInfo(k, this.space.kinds) : { title: k, color: 0x8a9ab3, info: '' };
+          return `<li><span class="kind-swatch" style="--c:#${new THREE.Color(K.color).getHexString()}"></span>
+          <span><b>${escapeHtml(K.title)}.</b> ${escapeHtml(K.info)}</span></li>`;
+        }).join('')}
       </ul>
       ${hasMaps ? `<p class="small muted">Плоскости в стопке — <b>карты признаков</b>: каждая показывает, где на картинке фильтр нашёл «свой» признак.
         Тёмное — признака нет, <b class="pos">оранжевое → светло-жёлтое</b> — признак выражен сильно.</p>` : ''}
@@ -126,7 +129,7 @@ export class StackLab extends BaseLab {
     const declared = this.space.totalParams;
     const rows = this.layers.map((L, i) => `
       <tr data-layer="${i}">
-        <td><span class="kind-swatch" style="--c:#${new THREE.Color(kindInfo(L.kind).color).getHexString()}"></span></td>
+        <td><span class="kind-swatch" style="--c:#${new THREE.Color(kindInfo(L.kind, this.space.kinds).color).getHexString()}"></span></td>
         <td>${escapeHtml(L.name)}${L.repeat > 1 ? ` <span class="muted">×${L.repeat}</span>` : ''}</td>
         <td class="num">${formatShape(L.shape)}</td>
         <td class="num muted">${L._params ? formatCount(L._params) : '—'}${L.fixed ? ' <span title="заданы вручную, не обучаются">фикс.</span>' : ''}</td>
@@ -156,7 +159,7 @@ export class StackLab extends BaseLab {
   }
 
   infoFor(it, ud) {
-    const L = it.layer, K = kindInfo(L.kind);
+    const L = it.layer, K = kindInfo(L.kind, this.space.kinds);
     let extra = '', tooltip = `${L.name} · ${formatShape(L.shape)}`;
     if (ud.channel !== undefined) {
       const f = L.filters?.[ud.channel];
@@ -183,11 +186,11 @@ export class StackLab extends BaseLab {
     return {
       tooltip,
       html: `
-        <h3>${escapeHtml(L.name)} <span class="muted">· ${K.title}</span></h3>
+        <h3>${escapeHtml(L.name)} <span class="muted">· ${escapeHtml(K.title)}</span></h3>
         <p>Выход: <b class="num">${formatShape(L.shape)}</b>${L.kernel ? ` · ядро ${L.kernel}×${L.kernel}` : ''}</p>
         ${params}
         ${extra}
-        <p class="muted small">${K.info}</p>
+        <p class="muted small">${escapeHtml(K.info)}</p>
         ${L.note ? `<p class="small">${L.note}</p>` : ''}`,
     };
   }

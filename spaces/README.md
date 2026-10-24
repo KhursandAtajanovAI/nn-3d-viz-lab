@@ -20,6 +20,9 @@ node tools/check-spaces.mjs       # проверить конфиги (нуже�
 python -m http.server 8000        # открыть http://localhost:8000/
 ```
 
+Без Node та же проверка запускается в браузере: `http://localhost:8000/tools/check-spaces.html`
+(общее ядро — `tools/check-spaces-core.js`, формат и валидатор — `src/engine/spaceFormat.js`).
+
 ## Правила
 
 - Архитектура и логика сети **зашиты в конфиге** — из интерфейса их менять нельзя
@@ -40,18 +43,35 @@ python -m http.server 8000        # открыть http://localhost:8000/
 | `meta.order`, `meta.level`, `meta.tags` | нет | Порядок в категории, сложность 1–3, теги (по ним работает фильтр каталога) |
 | `meta.preview` | нет | Мини-схема карточки: `[3, 4, 2]`, `{ blocks }`, `{ tokens }`, `{ scatter }`, `{ surface }`, `{ grid }` — см. `src/hub/previews.js` |
 | `type` | нет | Визуализатор: `mlp`, `stack`, `tokens`, `scatter`, `surface`, `train`, `gridworld` (по умолчанию `mlp`) — примеры в соседних файлах |
-| `model` | да* | `{ layers, activation, outputActivation, seed }` — движок создаст `MLP` |
-| `createModel()` | да* | Своя модель вместо `model`: например, MLP с готовыми весами (см. `xor.js`) |
+| `model` | да* | `{ layers, activation, outputActivation, seed }` — движок создаст `MLP`. Готовые веса: `weights[l][j][i]` (связь от нейрона i слоя l к нейрону j следующего) и `biases[l][j]` — см. `xor.js` |
+| `createModel()` | да* | Своя модель вместо `model`, если данных недостаточно |
 | `names` | нет | `{ input: [...], output: [...] }` — подписи нейронов входного и выходного слоёв |
 | `inputs` | нет | Готовые входы: `[{ name, values }]`; появится выпадающий список |
 | `randomInput` | нет | `false` — убрать из списка «Случайный вход» |
 | `randomizable` | нет | `false` — спрятать кнопку «Новые веса» |
-| `editable` | нет | `true` — разрешить менять архитектуру и активацию (только для песочниц) |
+| `editable` | нет | `true` — разрешить менять архитектуру и активацию (только для песочниц); появляется и необязательный блок «Свои веса и вход» |
 | `intro` | нет | HTML в начале карточки «Сцена» |
 | `sections` | нет | Дополнительные карточки-пояснения: `[{ title, html, open }]` |
 | `explainResult(ctx, acts, helpers)` | нет | Свой текст в карточке «Результат» вместо стандартного |
 
 \* нужно одно из двух.
+
+### Свои виды слоёв в `stack`
+
+Встроенные виды (`conv`, `pool`, `dense`, `attention`… — `src/engine/stackKinds.js`) можно дополнить
+своими в поле `kinds`. Слой с таким `kind` рисуется своим цветом и попадает в легенду «Как читать сцену»:
+
+```js
+kinds: {
+  gate: { title: 'Гейт внимания', color: '#e04fd0', info: 'Умножает карту на маску из сигмоиды.' },
+},
+layers: [
+  { name: 'Гейт', kind: 'gate', shape: [32, 32, 16] },
+],
+```
+
+`check-spaces` принимает такой `kind`, если он описан в `kinds`: нужны id латиницей (не совпадающий со
+встроенным), `title`; `color` — `0xRRGGBB` или `'#rrggbb'`; `info` — по желанию.
 
 `explainResult` получает `ctx = { model, values, names }`, активации всех слоёв `acts`
 и помощники `{ outputBarsHtml, formatValue, escapeHtml, defaultResult }`.
