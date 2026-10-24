@@ -214,3 +214,14 @@ footer p { margin: 6px 0; }
 .dialog-buttons button { padding: 7px 14px; border-radius: 8px; font-size: 14px; cursor: pointer; }
 .dialog-buttons button:not(.primary-btn) { color: var(--text); background: var(--control); border: 1px solid var(--border); }
 #cs-error { min-height: 1.2em; margin: 8px 0 0; font-size: 13px; }
+.my-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; margin-top: 12px; }
+.my-card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: var(--field); border: 1px solid var(--border); border-radius: 10px; }
+.my-card-head { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.my-card h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.my-card p { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.my-card .my-meta { font-size: 12px; }
+.badge-type { flex: none; padding: 1px 8px; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; font-size: 11px; }
+.my-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
+.my-actions a, .my-actions button { padding: 4px 10px; font-size: 13px; text-decoration: none; }
+.my-actions [data-my-act="delete"] { color: var(--error); }
+.my-empty { margin: 10px 0 0; font-size: 13px; }

@@ -1,8 +1,9 @@
-// Блок «Мои» в каталоге: создание своих пространств (IndexedDB).
+// Блок «Мои» в каталоге: создание, список, переименование и удаление своих пространств (IndexedDB).
 // Тексты пользователя выводятся только через escapeHtml / textContent.
 import { LIMITS } from '../engine/spaceFormat.js';
-import { saveSpace } from '../engine/userStore.js';
+import { saveSpace, listSpaces, renameSpace, deleteSpace } from '../engine/userStore.js';
 import { newSpaceFile } from '../engine/userSpace.js';
+import { plural } from '../engine/format.js';
 
 const $ = id => document.getElementById(id);
 
@@ -72,4 +73,100 @@ export function initCreateDialog() {
     dlg.showModal();
     $('cs-title').focus();
   };
+}
+
+// ---------- Список «Мои» ----------
+
+const TYPE_TITLE = { mlp: 'Полносвязная сеть', graph: 'Граф блоков' };
+const dateText = t => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/** Элемент с текстом (textContent — пользовательские строки никогда не попадают в innerHTML) */
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function describe(file) {
+  if (file.type === 'graph') {
+    const n = file.graph.nodes.length, m = file.graph.edges.length;
+    return `${n} ${plural(n, ['блок', 'блока', 'блоков'])}, ${m} ${plural(m, ['связь', 'связи', 'связей'])}`;
+  }
+  return `Слои: ${file.model.layers.join(' → ')} · ${file.model.activation}`;
+}
+
+function myCard(rec, actions) {
+  const { file } = rec;
+  const card = el('article', 'my-card');
+  card.dataset.id = rec.id;
+  const head = el('div', 'my-card-head');
+  const a = el('a', 'title-link', file.meta.title);
+  a.href = spaceUrl(rec.id);
+  head.append(el('h3', '', ''), el('span', 'badge-type', TYPE_TITLE[file.type] ?? file.type));
+  head.firstChild.append(a);
+  card.append(head);
+  if (file.meta.summary) card.append(el('p', 'muted', file.meta.summary));
+  card.append(el('p', 'my-meta muted', `${describe(file)} · изменено ${dateText(rec.updatedAt)}`));
+  const row = el('div', 'my-actions');
+  const open = el('a', 'primary-btn', 'Открыть');
+  open.href = spaceUrl(rec.id);
+  row.append(open);
+  for (const [act, label] of actions) {
+    const b = el('button', 'ghost-btn', label);
+    b.type = 'button';
+    b.dataset.myAct = act;
+    row.append(b);
+  }
+  card.append(row);
+  return card;
+}
+
+/**
+ * Отрисовать блок «Мои».
+ * @param {Array<[string, string]>} [extraActions] — дополнительные кнопки карточки (например, «Скачать»)
+ * @param {(act: string, rec: object) => void} [onExtra] — обработчик дополнительных кнопок
+ */
+export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
+  const list = $('my-list');
+  let recs;
+  try {
+    recs = await listSpaces();
+  } catch (e) {
+    list.replaceChildren(el('p', 'error-text', e.message));
+    return [];
+  }
+  if (!recs.length) {
+    list.replaceChildren(el('p', 'muted my-empty', 'Пока пусто. Нажмите «Создать пространство» — оно появится здесь.'));
+    return recs;
+  }
+  const actions = [['rename', 'Переименовать'], ...extraActions, ['delete', 'Удалить']];
+  const grid = el('div', 'my-grid');
+  grid.append(...recs.map(r => myCard(r, actions)));
+  list.replaceChildren(grid);
+  grid.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-my-act]');
+    if (!b) return;
+    const rec = recs.find(r => r.id === b.closest('.my-card').dataset.id);
+    if (!rec) return;
+    const act = b.dataset.myAct;
+    try {
+      if (act === 'rename') {
+        const title = prompt('Новое название пространства', rec.file.meta.title);
+        if (title === null) return;
+        if (!title.trim()) { alert('Название не может быть пустым'); return; }
+        await renameSpace(rec.id, title.trim().slice(0, LIMITS.title));
+      } else if (act === 'delete') {
+        if (!confirm(`Удалить пространство «${rec.file.meta.title}»? Его нельзя будет восстановить (если вы его не скачали).`)) return;
+        await deleteSpace(rec.id);
+      } else {
+        await onExtra?.(act, rec);
+        return;
+      }
+      await renderMySpaces({ extraActions, onExtra });
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+  return recs;
 }
