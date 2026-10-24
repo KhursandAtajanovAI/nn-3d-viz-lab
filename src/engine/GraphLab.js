@@ -102,7 +102,7 @@ export class GraphLab {
           <button id="g-stop" disabled>■ Остановить</button>
         </div>
         <button id="g-retrain" class="g-retrain" hidden title="Не использовать сохранённые веса: обучить модель с начала">↻ Обучить заново</button>
-        <div class="g-progress" id="g-progress" hidden><div></div></div>
+        <div class="g-progress" id="g-progress" hidden title="Ход обучения: доля пройденных эпох"><div></div></div>
         <p id="status" role="status"></p>
       </section>
       <section class="card" id="g-params-card">
@@ -420,6 +420,7 @@ export class GraphLab {
     const cards = [];
     this.showResults([]);
     const bar = this.ui.progress.firstElementChild;
+    bar.style.width = '0';
     const t0 = performance.now();
     const saveIds = new Set(this.saveWeightNodes().map(n => n.id));
     let newWeights = 0;
@@ -428,6 +429,7 @@ export class GraphLab {
         onNode: (node, state, info) => {
           this.editor.setStatus(node.id, state, info.error ?? '');
           if (state === 'running') return;
+          if (state === 'ok' && this.blocks.get(node.block)?.long) bar.style.width = '100%';
           if (state === 'ok' && node.block === 'train') {
             const r = info.outputs?.trained;
             if (!saveIds.has(node.id)) this.savedModels.delete(node.id);
@@ -442,8 +444,9 @@ export class GraphLab {
             this.showResults(cards);
           }
         },
-        onProgress: (f, text) => {
-          bar.style.width = `${Math.round(f * 100)}%`;
+        // Полоса — ход текущего долгого блока (обучение: эпоха из эпох), а не всего графа
+        onProgress: (f, text, local) => {
+          if (local !== null && local !== undefined) bar.style.width = `${Math.round(local * 100)}%`;
           this.setStatus(text);
         },
         getDataset: id => this.getDataset(id),

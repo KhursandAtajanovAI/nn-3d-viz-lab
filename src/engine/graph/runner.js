@@ -36,7 +36,8 @@ export function topoOrder(nodes, edges) {
 /**
  * @param {{ nodes, edges }} graph
  * @param {Map<string, object>} blocks — реестр
- * @param {object} hooks — onNode(node, state, info), onProgress(fraction, text), getDataset(id), isCancelled(),
+ * @param {object} hooks — onNode(node, state, info), onProgress(fraction, text, blockFraction), getDataset(id), isCancelled(),
+ *   (fraction — доля всего графа; blockFraction — доля текущего долгого блока или null),
  *   savedModel(node) — сохранённые веса блока или null, retrain — не использовать сохранённые веса
  * @returns {Promise<Map<string, { state, error?, view?, outputs? }>>}
  */
@@ -68,7 +69,7 @@ export async function runGraph(graph, blocks, hooks) {
     if (missing) { report('skipped', { error: `Не подключён вход «${missing}»` }); continue; }
 
     report('running');
-    hooks.onProgress(base, block.title);
+    hooks.onProgress(base, block.title, block.long ? 0 : null);
     const ctx = {
       node,
       getDataset: hooks.getDataset,
@@ -79,7 +80,7 @@ export async function runGraph(graph, blocks, hooks) {
         if (hooks.isCancelled()) throw new Cancelled();
         const now = performance.now();
         if (now - lastYield < 30) return;
-        hooks.onProgress(base + span * Math.min(1, fraction), `${block.title}: ${text}`);
+        hooks.onProgress(base + span * Math.min(1, fraction), `${block.title}: ${text}`, Math.min(1, fraction));
         await new Promise(r => setTimeout(r));
         lastYield = performance.now();
         if (hooks.isCancelled()) throw new Cancelled();
@@ -98,6 +99,6 @@ export async function runGraph(graph, blocks, hooks) {
     await new Promise(r => setTimeout(r));
     lastYield = performance.now();
   }
-  hooks.onProgress(1, 'Готово');
+  hooks.onProgress(1, 'Готово', null);
   return results;
 }
