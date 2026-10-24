@@ -7,7 +7,7 @@ import { sceneHtml, hoverHtml, tooltipText, stageText, resultHtml, outputBarsHtm
 import { headerHtml, detailsCardHtml, FORWARD_PASS_HTML, LEGEND_HTML, HINT_HTML } from './sidebar.js';
 import { escapeHtml, formatValue } from './format.js';
 import { CustomWeightsPanel } from './customWeights.js';
-import { checkWeights } from './spaceFormat.js';
+import { checkWeights, LIMITS } from './spaceFormat.js';
 
 /**
  * Визуализатор полносвязной сети (type: 'mlp').
@@ -208,7 +208,13 @@ export class NetworkLab {
 
   buildFromInputs() {
     try {
-      this.applyArchitecture(this.parseArch(this.ui.arch.value));
+      const layers = this.parseArch(this.ui.arch.value);
+      this.applyArchitecture(layers);
+      // В своём пространстве лимит слоёв формата файла: предупреждаем сразу, а не при сохранении
+      if (this.space.user && layers.length > LIMITS.layers) {
+        this.setStatus(`Сеть построена, но слоёв ${layers.length}, а сохранить и скачать можно сеть до ${LIMITS.layers} слоёв (вместе с входным и выходным). Уберите лишние слои, чтобы сохранить`, true);
+        return;
+      }
       this.setStatus(`Сеть ${this.model.layers.join(' → ')} построена`);
     } catch (e) {
       this.setStatus(e.message, true);
