@@ -11,6 +11,7 @@
 //   "model": { "layers": [2,3,1], "activation", "outputActivation", "weights"?, "biases"? },   // type mlp
 //   "names": { "input": [], "output": [] }, "inputs": [{ "name", "values": [] }],                // type mlp
 //   "graph": { "nodes": [...], "edges": [...], "view": {...} }, "datasets": [...],              // type graph
+//   "trained": [{ "node", "sig", "weights": [[…]], "history": [{ epoch, trainLoss, … }] }],   // type graph, необязательно
 //   "text": { "intro": "обычный текст", "sections": [{ "title", "text" }] }
 // }
 // Неизвестные поля отбрасываются (о них сообщается в warnings), строки обрезаются по лимитам.
@@ -30,6 +31,7 @@ export const LIMITS = {
   graphNodes: 200, graphEdges: 600, paramString: 2000,
   datasets: 20, datasetRows: 20000, datasetColumns: 100, cell: 200,
   images: 2000, imageSide: 64,
+  trainedValues: 1000000,        // чисел во всех сохранённых обученных весах
 };
 
 export const ACTIVATIONS_HIDDEN = ['tanh', 'relu', 'sigmoid'];
@@ -281,7 +283,38 @@ export function cleanDataset(d, errors, where = 'датасет') {
   return null;
 }
 
-const KNOWN_TOP = new Set(['format', 'version', 'mode', 'type', 'meta', 'model', 'names', 'inputs', 'graph', 'datasets', 'text', 'settings', 'exportedAt']);
+/**
+ * Сохранённые обученные веса блоков «Обучение» (необязательное поле trained).
+ * Испорченная запись не мешает открыть файл: она отбрасывается с предупреждением, модель просто обучится заново.
+ */
+function cleanTrained(raw, nodes, warn) {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) { warn('trained: ожидался список — сохранённые веса пропущены'); return []; }
+  const trainNodes = new Set(nodes.filter(n => n.block === 'train').map(n => n.id));
+  const out = [];
+  let total = 0;
+  raw.slice(0, LIMITS.graphNodes).forEach((t, k) => {
+    const where = `trained[${k + 1}]`;
+    if (!isObj(t) || !trainNodes.has(t.node) || out.some(x => x.node === t.node)) { warn(`${where}: нет такого блока «Обучение» — веса пропущены`); return; }
+    if (typeof t.sig !== 'string' || !/^[0-9a-f]{1,64}$/.test(t.sig)) { warn(`${where}: неверная подпись — веса пропущены`); return; }
+    const W = t.weights;
+    if (!Array.isArray(W) || !W.length || W.length > 1000 || W.some(a => !Array.isArray(a))) { warn(`${where}: weights — нужен список списков чисел`); return; }
+    const n = W.reduce((a, w) => a + w.length, 0);
+    if (total + n > LIMITS.trainedValues) { warn(`${where}: слишком много весов (всего не больше ${LIMITS.trainedValues})`); return; }
+    if (W.some(a => a.some(v => !isNum(v) || Math.abs(v) > LIMITS.weightAbs))) { warn(`${where}: веса должны быть числами, |w| ≤ ${LIMITS.weightAbs}`); return; }
+    const num = v => (isNum(v) ? v : null);
+    const history = (Array.isArray(t.history) ? t.history.slice(0, 500) : []).filter(isObj).map((h, i) => ({
+      epoch: Number.isInteger(h.epoch) ? h.epoch : i + 1,
+      trainLoss: num(h.trainLoss), trainAcc: num(h.trainAcc), testLoss: num(h.testLoss), testAcc: num(h.testAcc),
+    }));
+    if (!history.length) { warn(`${where}: нет истории обучения — веса пропущены`); return; }
+    total += n;
+    out.push({ node: t.node, sig: t.sig, weights: W.map(a => a.slice()), history });
+  });
+  return out;
+}
+
+const KNOWN_TOP = new Set(['format', 'version', 'mode', 'type', 'meta', 'model', 'names', 'inputs', 'graph', 'datasets', 'trained', 'text', 'settings', 'exportedAt']);
 
 /**
  * Проверить и «очистить» файл пространства. Неизвестные поля отбрасываются.
@@ -318,6 +351,8 @@ export function validateSpaceFile(raw) {
       const ds = cleanDataset(d, errors, `datasets[${k + 1}]`);
       if (ds) space.datasets.push(ds);
     });
+    const trained = cleanTrained(raw.trained, space.graph?.nodes ?? [], w => warnings.push(w));
+    if (trained.length) space.trained = trained;
   }
   return { ok: errors.length === 0, space: errors.length ? null : space, errors: errors.slice(0, 20), warnings };
 }

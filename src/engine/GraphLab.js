@@ -6,6 +6,7 @@ import { FORMAT, FORMAT_VERSION, LIMITS, cleanDataset } from './spaceFormat.js';
 import { loadBlocks, GROUPS, blockParams } from './blocks/index.js';
 import { GraphEditor } from './graph/editor.js';
 import { runGraph, Cancelled } from './graph/runner.js';
+import { exportWeights } from './graph/train.js';
 import { el, note } from './graph/view.js';
 import { listDatasets, getDataset, saveDataset, deleteDataset } from './userStore.js';
 import { readTableFile, readImageFiles, UPLOAD_LIMITS } from './graph/upload.js';
@@ -56,6 +57,7 @@ export class GraphLab {
     this.container = container;
     this.datasets = []; // список из хранилища: { id, name, kind, size }
     this.embedded = new Map((space.datasets ?? []).map(d => [d.id, d])); // из файла пространства
+    this.savedModels = new Map((space.trained ?? []).map(t => [t.node, t])); // обученные веса блоков «Обучение»
     this.running = false;
     this.cancel = false;
     this.ready = this.init();
@@ -82,6 +84,8 @@ export class GraphLab {
     if (this.space.graph?.nodes?.length && !this.space.graph.view?.k) this.editor.fit();
     this.renderParams(null);
     this.setStatus(this.editor.nodes.length ? `Блоков: ${this.editor.nodes.length}. Нажмите «▶ Запустить».` : 'Граф пуст — добавьте блоки или нажмите «Пример графа»');
+    // Есть сохранённая обученная модель — сразу показываем её результаты (без переобучения)
+    if (this.updateRetrain()) this.run();
   }
 
   // ---------- Разметка ----------
@@ -96,6 +100,7 @@ export class GraphLab {
           <button id="g-run" class="primary">▶ Запустить</button>
           <button id="g-stop" disabled>■ Остановить</button>
         </div>
+        <button id="g-retrain" class="g-retrain" hidden title="Не использовать сохранённые веса: обучить модель с начала">↻ Обучить заново</button>
         <div class="g-progress" id="g-progress" hidden><div></div></div>
         <p id="status" role="status"></p>
       </section>
@@ -146,11 +151,12 @@ export class GraphLab {
 
     const $ = id => document.getElementById(id);
     this.ui = {
-      run: $('g-run'), stop: $('g-stop'), progress: $('g-progress'), status: $('status'),
+      run: $('g-run'), stop: $('g-stop'), retrain: $('g-retrain'), progress: $('g-progress'), status: $('status'),
       params: $('g-params'), palette: $('g-palette'), canvas: $('g-canvas'),
       results: $('g-results'), resultsBody: $('g-results-body'), dsList: $('g-ds-list'), dsMsg: $('g-ds-msg'),
     };
     this.ui.run.addEventListener('click', () => this.run());
+    this.ui.retrain.addEventListener('click', () => this.run({ retrain: true }));
     this.ui.stop.addEventListener('click', () => { this.cancel = true; this.setStatus('Останавливаю…'); });
     $('g-zoom-in').addEventListener('click', () => this.editor.zoomBy(1.2));
     $('g-zoom-out').addEventListener('click', () => this.editor.zoomBy(1 / 1.2));
@@ -385,13 +391,28 @@ export class GraphLab {
 
   // ---------- Запуск ----------
 
-  async run() {
+  /** Блоки «Обучение» с включённым сохранением весов */
+  saveWeightNodes() {
+    const block = this.blocks.get('train');
+    if (!block) return [];
+    return this.editor.nodes.filter(n => n.block === 'train' && blockParams(block, n.params).saveWeights);
+  }
+
+  /** Показать «Обучить заново», если есть сохранённые веса; возвращает, есть ли они */
+  updateRetrain() {
+    const has = this.saveWeightNodes().some(n => this.savedModels.has(n.id));
+    this.ui.retrain.hidden = !has;
+    return has;
+  }
+
+  async run({ retrain = false } = {}) {
     if (this.running) return;
     const graph = this.editor.toJSON();
     if (!graph.nodes.length) { this.setStatus('Граф пуст — добавьте блоки', true); return; }
     this.running = true;
     this.cancel = false;
     this.ui.run.disabled = true;
+    this.ui.retrain.disabled = true;
     this.ui.stop.disabled = false;
     this.ui.progress.hidden = false;
     this.editor.clearStatus();
@@ -399,11 +420,21 @@ export class GraphLab {
     this.showResults([]);
     const bar = this.ui.progress.firstElementChild;
     const t0 = performance.now();
+    const saveIds = new Set(this.saveWeightNodes().map(n => n.id));
+    let newWeights = 0;
     try {
       const results = await runGraph(graph, this.blocks, {
         onNode: (node, state, info) => {
           this.editor.setStatus(node.id, state, info.error ?? '');
           if (state === 'running') return;
+          if (state === 'ok' && node.block === 'train') {
+            const r = info.outputs?.trained;
+            if (!saveIds.has(node.id)) this.savedModels.delete(node.id);
+            else if (r && !r.restored) {
+              this.savedModels.set(node.id, { node: node.id, sig: r.sig, weights: exportWeights(r.net), history: r.history });
+              newWeights++;
+            }
+          }
           const block = this.blocks.get(node.block);
           if (info.view || state !== 'ok') {
             cards.push({ title: `${block?.title ?? node.block} · ${node.id.slice(1)}`, state, view: info.view, error: info.error, nodeId: node.id });
@@ -416,18 +447,23 @@ export class GraphLab {
         },
         getDataset: id => this.getDataset(id),
         isCancelled: () => this.cancel,
+        savedModel: node => this.savedModels.get(node.id) ?? null,
+        retrain,
       });
       const errs = [...results.values()].filter(r => r.state === 'error').length;
       const skipped = [...results.values()].filter(r => r.state === 'skipped').length;
       const sec = ((performance.now() - t0) / 1000).toFixed(1);
-      this.setStatus(errs || skipped ? `Готово за ${sec} с: ошибок ${errs}, пропущено ${skipped} — подробности справа и на блоках` : `Готово за ${sec} с`, errs > 0);
+      const hint = newWeights ? '. Веса обучены — нажмите «Сохранить», чтобы записать их в пространство' : '';
+      this.setStatus((errs || skipped ? `Готово за ${sec} с: ошибок ${errs}, пропущено ${skipped} — подробности справа и на блоках` : `Готово за ${sec} с`) + hint, errs > 0);
       if (!cards.length) this.showResults([{ title: 'Нет результатов', state: 'ok', view: note('Добавьте блоки из группы «Результаты», чтобы увидеть числа, таблицы и графики') }]);
     } catch (e) {
       this.setStatus(e instanceof Cancelled ? 'Остановлено' : e.message, !(e instanceof Cancelled));
     } finally {
       this.running = false;
       this.ui.run.disabled = false;
+      this.ui.retrain.disabled = false;
       this.ui.stop.disabled = true;
+      this.updateRetrain();
       setTimeout(() => { this.ui.progress.hidden = true; }, 600);
       const sel = this.editor.selected;
       if (sel?.kind === 'node') this.renderParams(this.editor.node(sel.id));
@@ -457,10 +493,16 @@ export class GraphLab {
 
   onGraphChange() {
     this.dirty = true;
+    if (this.editor) this.updateRetrain();
   }
 
-  /** Состояние → файл nn3d-space (type: 'graph'); используемые датасеты встраиваются в файл */
+  /**
+   * Состояние → файл nn3d-space (type: 'graph'); используемые датасеты встраиваются в файл,
+   * обученные веса — если у блока «Обучение» включено сохранение и файл укладывается в лимит.
+   * Предупреждения для пользователя — в this.fileNotes.
+   */
   async toFile() {
+    this.fileNotes = [];
     const graph = this.editor.toJSON();
     const ids = new Set(graph.nodes.filter(n => n.block === 'data-file' && n.params.dataset).map(n => n.params.dataset));
     const datasets = [];
@@ -471,11 +513,25 @@ export class GraphLab {
       if (clean) datasets.push(clean);
     }
     const { file } = this.space.user;
-    return {
+    const out = {
       format: FORMAT, version: FORMAT_VERSION, mode: 'standard', type: 'graph',
       meta: file.meta, text: file.text, settings: file.settings ?? {},
       graph, datasets,
     };
+    const trained = this.saveWeightNodes().map(n => this.savedModels.get(n.id)).filter(Boolean);
+    if (!trained.length) return out;
+    const values = trained.reduce((a, t) => a + t.weights.reduce((b, w) => b + w.length, 0), 0);
+    const mb = n => (n / 1048576).toFixed(1);
+    if (values > LIMITS.trainedValues) {
+      this.fileNotes.push(`Обученные веса не сохранены: в модели ${values.toLocaleString('ru-RU')} параметров, допустимо до ${LIMITS.trainedValues.toLocaleString('ru-RU')}. Уменьшите модель (меньше нейронов или фильтров)`);
+      return out;
+    }
+    const size = JSON.stringify({ ...out, trained }).length;
+    if (size > LIMITS.fileBytes) {
+      this.fileNotes.push(`Обученные веса не сохранены: вместе с ними файл занял бы ${mb(size)} МБ при лимите ${mb(LIMITS.fileBytes)} МБ. Уменьшите модель (меньше нейронов или фильтров) или выключите «Сохранять обученные веса»`);
+      return out;
+    }
+    return { ...out, trained };
   }
 }
 

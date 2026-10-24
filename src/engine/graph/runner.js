@@ -36,7 +36,8 @@ export function topoOrder(nodes, edges) {
 /**
  * @param {{ nodes, edges }} graph
  * @param {Map<string, object>} blocks — реестр
- * @param {object} hooks — onNode(node, state, info), onProgress(fraction, text), getDataset(id), isCancelled()
+ * @param {object} hooks — onNode(node, state, info), onProgress(fraction, text), getDataset(id), isCancelled(),
+ *   savedModel(node) — сохранённые веса блока или null, retrain — не использовать сохранённые веса
  * @returns {Promise<Map<string, { state, error?, view?, outputs? }>>}
  */
 export async function runGraph(graph, blocks, hooks) {
@@ -71,6 +72,8 @@ export async function runGraph(graph, blocks, hooks) {
     const ctx = {
       node,
       getDataset: hooks.getDataset,
+      saved: hooks.savedModel?.(node) ?? null,
+      retrain: !!hooks.retrain,
       /** Уступить поток (не чаще ~30 мс), обновить прогресс и проверить отмену */
       async tick(fraction = 0, text = '') {
         if (hooks.isCancelled()) throw new Cancelled();

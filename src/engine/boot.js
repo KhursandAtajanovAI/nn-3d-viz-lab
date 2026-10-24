@@ -89,7 +89,10 @@ async function start(space) {
     const { attachUserCard, mlpToFile } = await import('./userSpace.js');
     const lab = window.lab;
     if (space.type === 'graph') await lab.ready;
-    attachUserCard(lab, { toFile: () => (space.type === 'graph' ? lab.toFile() : mlpToFile(lab)) });
+    attachUserCard(lab, {
+      toFile: () => (space.type === 'graph' ? lab.toFile() : mlpToFile(lab)),
+      notes: () => lab.fileNotes ?? [],
+    });
   }
 }
 

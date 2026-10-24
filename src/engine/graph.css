@@ -160,6 +160,8 @@
 .gv-img figcaption { max-width: 72px; font-size: 10px; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
 
 /* ---------- Боковая панель конструктора ---------- */
+.g-retrain { width: 100%; margin-top: 8px; }
+.g-retrain[hidden] { display: none; }
 .g-progress { height: 6px; margin-top: 10px; background: var(--field); border-radius: 3px; overflow: hidden; }
 .g-progress div { width: 0; height: 100%; background: var(--accent); transition: width .15s; }
 .g-pal-title { margin: 10px 0 4px !important; font-size: 12px !important; color: var(--muted); }

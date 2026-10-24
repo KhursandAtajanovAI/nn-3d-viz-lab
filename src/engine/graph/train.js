@@ -23,6 +23,35 @@ export function evaluate(net, set, task, loss) {
   return { loss: sum / n, acc: task === 'class' ? correct / n : null, preds };
 }
 
+/** FNV-1a: подпись настроек и данных обучения — по ней сохранённые веса узнают «свою» модель */
+function fnv(h, u32) {
+  for (let i = 0; i < u32.length; i++) { h ^= u32[i]; h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
+function signature(spec, train, p) {
+  const { epochs, lr, batch, optimizer, loss, autoOutput, seed } = p;
+  const head = JSON.stringify({ spec, shape: train.inputShape, classes: train.classes, epochs, lr, batch, optimizer, loss, autoOutput, seed });
+  let h = fnv(2166136261, Uint32Array.from(head, c => c.charCodeAt(0)));
+  for (let i = 0; i < train.X.length; i++) {
+    const x = train.X[i], y = train.y[i];
+    h = fnv(h, new Uint32Array(x.buffer, x.byteOffset, x.length));
+    h = typeof y === 'number' ? fnv(h, [y]) : fnv(h, new Uint32Array(y.buffer, y.byteOffset, y.length));
+  }
+  return h.toString(16) + train.X.length.toString(16);
+}
+
+/** Веса сети → списки чисел для файла (7 значащих цифр — точность float32) */
+export function exportWeights(net) {
+  return net.params.map(p => Array.from(p.w, v => Number(v.toPrecision(7))));
+}
+
+/** Почему сохранённые веса не подходят к сети (null — подходят) */
+function savedMismatch(net, saved, sig) {
+  if (saved.sig !== sig) return 'изменились слои, данные или настройки обучения';
+  if (saved.weights.length !== net.params.length || saved.weights.some((w, i) => w.length !== net.params[i].w.length)) return 'не совпадают размеры слоёв';
+  return null;
+}
+
 const mse = (y, t) => { let s = 0; for (let i = 0; i < y.length; i++) s += (y[i] - t[i]) ** 2; return s / y.length; };
 const oneHot = (k, n) => { const v = new Float32Array(n); v[k] = 1; return v; };
 
@@ -32,8 +61,9 @@ const oneHot = (k, n) => { const v = new Float32Array(n); v[k] = 1; return v; };
  * @param {{ train: object, test: object }} split — таблицы данных
  * @param {object} p — epochs, lr, batch, optimizer, loss ('auto'|'ce'|'mse'), autoOutput, seed
  * @param {object} ctx — progress(f, text), tick() (уступает поток и проверяет отмену)
+ * @param {{ sig, weights, history }|null} saved — сохранённые веса: если подходят, модель не обучается заново
  */
-export async function trainModel(model, split, p, ctx) {
+export async function trainModel(model, split, p, ctx, saved = null) {
   const train = toXY(split.train);
   const test = toXY(split.test, { classes: train.classes });
   const warnings = [...train.warnings, ...test.warnings.map(w => `тест: ${w}`)];
@@ -50,6 +80,17 @@ export async function trainModel(model, split, p, ctx) {
   }
   const loss = p.loss === 'auto' ? (task === 'class' ? 'ce' : 'mse') : p.loss;
   if (loss === 'ce' && task !== 'class') throw new Error('Кросс-энтропия — только для классификации; для чисел выберите MSE');
+
+  const sig = signature(spec, train, p);
+  const base = { net, task, loss, classes: train.classes, featureNames: train.featureNames, inputShape: train.inputShape, train, test, testData: split.test, warnings, params: p, sig };
+  let staleReason = null;
+  if (saved) {
+    staleReason = savedMismatch(net, saved, sig);
+    if (!staleReason) {
+      saved.weights.forEach((w, i) => net.params[i].w.set(w));
+      return { ...base, history: saved.history, final: evaluate(net, test, task, loss), restored: true };
+    }
+  }
 
   const target = i => (loss === 'ce' ? train.y[i] : task === 'class' ? oneHot(train.y[i], nOut) : train.y[i]);
   const r = rng(p.seed + 7);
@@ -87,5 +128,5 @@ export async function trainModel(model, split, p, ctx) {
     });
   }
   const final = evaluate(net, test, task, loss);
-  return { net, task, loss, classes: train.classes, featureNames: train.featureNames, inputShape: train.inputShape, history, train, test, testData: split.test, final, warnings, params: p };
+  return { ...base, history, final, restored: false, staleReason };
 }

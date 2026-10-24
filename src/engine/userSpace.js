@@ -31,7 +31,7 @@ export function toRuntimeConfig(id, file) {
     settings: file.settings,
     user: { id, file },
   };
-  if (file.type === 'graph') return { ...common, type: 'graph', graph: file.graph, datasets: file.datasets };
+  if (file.type === 'graph') return { ...common, type: 'graph', graph: file.graph, datasets: file.datasets, trained: file.trained ?? [] };
   const names = {};
   if (file.names.input?.some(Boolean)) names.input = file.names.input;
   if (file.names.output?.some(Boolean)) names.output = file.names.output;
@@ -70,7 +70,7 @@ export function mlpToFile(lab) {
  * Карточка «Моё пространство» в боковой панели: сохранение в браузере и (блок D) скачивание.
  * Вставляется после шапки; работает с любым визуализатором, у которого есть toFile().
  */
-export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
+export function attachUserCard(lab, { toFile, notes = () => [], extraButtons = '' } = {}) {
   const { id } = lab.space.user;
   const speed = lab.space.settings?.speed;
   if (speed && lab.ui?.speed) {
@@ -100,7 +100,8 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
       const file = await toFile();
       await saveSpace(file, id);
       lab.space.user.file = file;
-      say(`Сохранено ${new Date().toLocaleTimeString('ru-RU')}`);
+      const extra = notes();
+      say([`Сохранено ${new Date().toLocaleTimeString('ru-RU')}`, ...extra].join('. '), extra.length > 0);
     } catch (e) {
       say(`Не сохранено: ${e.message}`, true);
     }
@@ -108,7 +109,8 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
   card.querySelector('[data-act="download"]').addEventListener('click', async () => {
     try {
       downloadSpaceFile(await toFile()); // текущее состояние, даже если оно ещё не сохранено
-      say('Файл скачан');
+      const extra = notes();
+      say(['Файл скачан', ...extra].join('. '), extra.length > 0);
     } catch (e) {
       say(e.message, true);
     }
