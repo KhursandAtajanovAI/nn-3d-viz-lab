@@ -7,8 +7,11 @@ import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../eng
 import { escapeHtml, plural } from '../engine/format.js';
 import { previewSvg } from './previews.js';
 import { themeSwitchHtml } from '../engine/theme.js';
+import { initCreateDialog } from './userHub.js';
 
 document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
+const openCreate = initCreateDialog();
+document.getElementById('create-space').addEventListener('click', openCreate);
 
 const $ = id => document.getElementById(id);
 const root = $('catalog');
@@ -156,7 +159,7 @@ function syncUrl() {
 
 function readUrl() {
   const p = new URLSearchParams(location.search);
-  state.cat = categoryById(p.get('cat')) ? p.get('cat') : 'all';
+  state.cat = categoryById(p.get('cat')) && !categoryById(p.get('cat')).user ? p.get('cat') : 'all';
   state.tag = p.get('tag');
   state.level = LEVELS[p.get('level')] ? p.get('level') : null;
   state.fid = FIDELITY[p.get('fid')] ? p.get('fid') : null;

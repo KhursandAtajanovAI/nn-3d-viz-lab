@@ -41,12 +41,12 @@ export class CustomWeightsPanel {
     this.dirty = false;
     this.gap = 0;
     this.draft = clone(lab.model.snapshot());
+    if (initial.given) { this.given = clone(initial.given); this.applied = true; } // createModel() уже применил их
     this.render();
     if (initial.customInput) {
       this.$('input').value = initial.customInput.join(', ');
       this.$('use-input').checked = true;
     }
-    if (initial.given) this.given = clone(initial.given);
     this.bind();
   }
 

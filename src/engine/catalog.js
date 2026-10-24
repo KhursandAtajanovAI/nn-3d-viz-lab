@@ -8,6 +8,8 @@ export const CATEGORIES = [
   { id: 'tasks', title: 'Другие задачи', icon: '◇', description: 'Регрессия, автоэнкодеры, рекомендации и кластеризация.' },
   { id: 'training', title: 'Обучение', icon: '↘', description: 'Градиентный спуск, обратное распространение ошибки, кривые loss.' },
   { id: 'library', title: 'Библиотека моделей', icon: '▤', description: 'Известные архитектуры и датасеты: от LeNet до Transformer.' },
+  // Пространства пользователя (IndexedDB): отдельный блок «Мои» в каталоге, в фильтрах встроенных не участвует
+  { id: 'user', title: 'Мои', icon: '✎', description: 'Пространства, созданные или загруженные вами. Хранятся только в этом браузере.', user: true },
 ];
 
 export const categoryById = id => CATEGORIES.find(c => c.id === id);

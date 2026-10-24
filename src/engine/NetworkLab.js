@@ -202,7 +202,7 @@ export class NetworkLab {
     this.ui.run.disabled = false;
     this.hover = null;
     this.refreshHover();
-    this.ui.sceneInfo.innerHTML = sceneHtml(this.ctx, { editable: !!this.space.editable });
+    this.ui.sceneInfo.innerHTML = sceneHtml(this.ctx, { editable: !!this.space.editable && !this.custom?.applied });
     this.updateStage();
   }
 

@@ -206,3 +206,6 @@ a.badge:hover { border-color: var(--muted); }
 .theme-dot:hover { transform: scale(1.12); border-color: var(--muted); background: var(--swatch); }
 .theme-dot[aria-pressed="true"] { border-color: var(--pos); box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45), 0 0 0 2px color-mix(in srgb, var(--pos) 35%, transparent); }
 .theme-dot:focus-visible { outline: 2px solid var(--neg); outline-offset: 2px; }
+
+/* Сообщение об ошибке (тексты проверок, хранилище) */
+.error-text { color: var(--error); }

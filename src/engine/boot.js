@@ -1,6 +1,7 @@
 // Точка входа space.html: загружает конфиг spaces/<id>.js и запускает нужный визуализатор.
 import { isValidSpaceId } from './catalog.js';
 import { escapeHtml } from './format.js';
+import { isValidUserId } from './spaceFormat.js';
 
 // Визуализаторы по полю `type` конфига. Новый тип визуализации = новая строка здесь;
 // сами пространства при этом остаются просто файлами с данными.
@@ -25,8 +26,39 @@ function fail(title, details) {
   container.innerHTML = '';
 }
 
+/** Пользовательское пространство из IndexedDB: space.html?user=<id> */
+async function loadUserSpace(id) {
+  if (!isValidUserId(id)) {
+    fail('Пространство не найдено', 'Неверная ссылка на пользовательское пространство. Откройте его из блока «Мои» в <a href="./">каталоге</a>.');
+    return null;
+  }
+  const [{ getSpace }, { toRuntimeConfig }] = await Promise.all([import('./userStore.js'), import('./userSpace.js')]);
+  let rec;
+  try {
+    rec = await getSpace(id);
+  } catch (e) {
+    fail('Хранилище недоступно', escapeHtml(e.message));
+    return null;
+  }
+  if (!rec) {
+    fail('Пространство не найдено', 'В этом браузере нет такого пространства — возможно, оно удалено или создано в другом браузере. Вернитесь в <a href="./#my-spaces">каталог</a>.');
+    return null;
+  }
+  if (!rec.check.ok) {
+    fail('Пространство повреждено', `Сохранённые данные не прошли проверку:<br />${rec.check.errors.map(escapeHtml).join('<br />')}`);
+    return null;
+  }
+  return toRuntimeConfig(id, rec.check.space);
+}
+
 async function boot() {
-  const id = new URLSearchParams(location.search).get('id');
+  const params = new URLSearchParams(location.search);
+  if (params.has('user')) {
+    const space = await loadUserSpace(params.get('user'));
+    if (space) await start(space);
+    return;
+  }
+  const id = params.get('id');
   if (!isValidSpaceId(id)) {
     return fail('Пространство не выбрано', 'Откройте пространство из <a href="./">каталога</a>.');
   }
@@ -39,14 +71,23 @@ async function boot() {
     return fail('Пространство не найдено', `Не удалось загрузить <code>spaces/${escapeHtml(id)}.js</code>. Вернитесь в <a href="./">каталог</a>.`);
   }
 
+  await start(space);
+}
+
+async function start(space) {
   const load = VISUALIZERS[space.type ?? 'mlp'];
   if (!load) {
-    return fail(space.meta?.title ?? id, `Тип визуализации «${escapeHtml(space.type)}» пока не поддерживается.`);
+    return fail(space.meta?.title ?? 'Пространство', `Тип визуализации «${escapeHtml(space.type)}» пока не поддерживается.`);
   }
 
   document.title = `${space.meta.title} — NN 3D Viz Lab`;
   const Visualizer = await load();
   window.lab = new Visualizer(space, { sidebar, container }); // для отладки из консоли
+  // Пользовательская полносвязная сеть: карточка «Моё пространство» (сохранение и скачивание)
+  if (space.user && space.type === 'mlp') {
+    const { attachUserCard, mlpToFile } = await import('./userSpace.js');
+    attachUserCard(window.lab, { toFile: () => mlpToFile(window.lab) });
+  }
 }
 
 boot();

@@ -41,6 +41,15 @@
       <p class="stats">Всего пространств: <b id="total">…</b> · категорий: <b id="total-categories">…</b></p>
     </header>
 
+    <section id="my-spaces" class="my-spaces" aria-labelledby="my-title">
+      <div class="my-head">
+        <h2 id="my-title"><span class="icon">✎</span> Мои пространства</h2>
+        <button type="button" id="create-space" class="primary-btn">+ Создать пространство</button>
+      </div>
+      <p class="muted">Свои сети и графы блоков. Хранятся только в этом браузере; встроенные пространства ниже не меняются.</p>
+      <div id="my-list"></div>
+    </section>
+
     <div class="toolbar" id="toolbar">
       <div class="search-wrap">
         <input id="search" type="search" placeholder="Поиск: MNIST, свёртки, внимание, регрессия…" aria-label="Поиск по названию, описанию и тегам" autocomplete="off" />

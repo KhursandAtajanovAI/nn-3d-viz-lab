@@ -11,7 +11,7 @@ export function headerHtml(meta) {
     <header class="brand">
       <div class="brand-top"><a class="back" href="./">← Каталог</a>${themeSwitchHtml()}</div>
       <div class="badges">
-        ${cat ? `<a class="badge" href="./?cat=${cat.id}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
+        ${cat ? `<a class="badge" href="${cat.user ? './#my-spaces' : `./?cat=${cat.id}`}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
         ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}
         ${fid ? `<span class="badge fidelity ${meta.fidelity}" title="${escapeHtml(fid.hint)}">${fid.title}</span>` : ''}
       </div>
