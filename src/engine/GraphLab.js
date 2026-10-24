@@ -11,6 +11,7 @@ import { el, note } from './graph/view.js';
 import { listDatasets, getDataset, saveDataset, deleteDataset } from './userStore.js';
 import { readTableFile, readImageFiles, UPLOAD_LIMITS } from './graph/upload.js';
 import { datasetToData } from './graph/data.js';
+import { confirmDialog } from './dialogs.js';
 
 const HELP_HTML = `
   <ul class="steps">
@@ -161,16 +162,16 @@ export class GraphLab {
     $('g-zoom-in').addEventListener('click', () => this.editor.zoomBy(1.2));
     $('g-zoom-out').addEventListener('click', () => this.editor.zoomBy(1 / 1.2));
     $('g-fit').addEventListener('click', () => this.editor.fit());
-    $('g-template').addEventListener('click', () => {
-      if (this.editor.nodes.length && !confirm('Заменить текущий граф примером?')) return;
+    $('g-template').addEventListener('click', async () => {
+      if (this.editor.nodes.length && !await confirmDialog({ title: 'Заменить граф примером?', text: 'Текущие блоки и связи будут удалены.', okText: 'Заменить', danger: true })) return;
       this.editor.load(TEMPLATE);
       this.editor.fit();
       this.editor.clearStatus();
       this.onGraphChange();
       this.setStatus('Пример загружен: нажмите «▶ Запустить»');
     });
-    $('g-clear').addEventListener('click', () => {
-      if (!this.editor.nodes.length || !confirm('Удалить все блоки?')) return;
+    $('g-clear').addEventListener('click', async () => {
+      if (!this.editor.nodes.length || !await confirmDialog({ title: 'Удалить все блоки?', text: 'Граф станет пустым. Датасеты в браузере останутся.', okText: 'Удалить', danger: true })) return;
       this.editor.load({ nodes: [], edges: [], view: this.editor.view });
       this.onGraphChange();
     });
@@ -319,7 +320,7 @@ export class GraphLab {
       const del = el('button', 'danger', '✕');
       del.title = 'Удалить датасет';
       del.addEventListener('click', async () => {
-        if (!confirm(`Удалить датасет «${d.name}» из браузера?`)) return;
+        if (!await confirmDialog({ title: 'Удалить датасет?', text: `«${d.name}» будет удалён из этого браузера.`, okText: 'Удалить', danger: true })) return;
         await deleteDataset(d.id);
         await this.refreshDatasets();
       });

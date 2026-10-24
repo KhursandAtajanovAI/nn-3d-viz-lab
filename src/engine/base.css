@@ -209,3 +209,44 @@ a.badge:hover { border-color: var(--muted); }
 
 /* Сообщение об ошибке (тексты проверок, хранилище) */
 .error-text { color: var(--error); }
+
+/* ---------- Диалоги подтверждения и ввода (dialogs.js): вне панели, поэтому масштаб — свой ---------- */
+.ui-dialog {
+  zoom: var(--ui-scale);
+  width: min(440px, 92vw);
+  padding: 18px 20px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+}
+.ui-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.ui-dialog h2 { margin: 0 0 8px; font-size: 18px; color: var(--text); text-transform: none; letter-spacing: 0; }
+.ui-dialog-text { margin: 0 0 6px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.ui-dialog label { display: block; margin: 10px 0 4px; font-size: 13px; color: var(--muted); }
+.ui-dialog input[type="text"] {
+  width: 100%;
+  padding: 7px 9px;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+.ui-dialog-error { min-height: 1.2em; margin: 6px 0 0; font-size: 13px; }
+.ui-dialog-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.ui-dialog-btn {
+  padding: 7px 14px;
+  color: var(--text);
+  background: var(--control);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.ui-dialog-btn.primary { color: #fff; background: var(--btn); border-color: var(--btn); font-weight: 600; }
+.ui-dialog-btn.primary:hover { background: var(--btn-hover); }
+.ui-dialog-btn.danger { color: var(--error); background: transparent; border: 2px solid var(--error); font-weight: 600; }
+.ui-dialog-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

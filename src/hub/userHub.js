@@ -5,6 +5,7 @@ import { saveSpace, listSpaces, renameSpace, deleteSpace } from '../engine/userS
 import { newSpaceFile } from '../engine/userSpace.js';
 import { plural } from '../engine/format.js';
 import { downloadSpaceFile, importSpaceFile, pickFile } from '../engine/spaceFile.js';
+import { confirmDialog, promptDialog, alertDialog } from '../engine/dialogs.js';
 
 const $ = id => document.getElementById(id);
 
@@ -153,12 +154,24 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
     const act = b.dataset.myAct;
     try {
       if (act === 'rename') {
-        const title = prompt('Новое название пространства', rec.file.meta.title);
-        if (title === null) return;
-        if (!title.trim()) { alert('Название не может быть пустым'); return; }
-        await renameSpace(rec.id, title.trim().slice(0, LIMITS.title));
+        const title = await promptDialog({
+          title: 'Переименовать пространство',
+          label: 'Новое название',
+          value: rec.file.meta.title,
+          maxLength: LIMITS.title,
+          validate: v => (v ? '' : 'Название не может быть пустым'),
+        });
+        if (title === null || title === rec.file.meta.title) return;
+        await renameSpace(rec.id, title.slice(0, LIMITS.title));
       } else if (act === 'delete') {
-        if (!confirm(`Удалить пространство «${rec.file.meta.title}»? Его нельзя будет восстановить (если вы его не скачали).`)) return;
+        const yes = await confirmDialog({
+          title: 'Удалить пространство?',
+          text: `«${rec.file.meta.title}» будет удалено из этого браузера.
+Восстановить его можно будет только из скачанного файла.`,
+          okText: 'Удалить',
+          danger: true,
+        });
+        if (!yes) return;
         await deleteSpace(rec.id);
       } else if (act === 'download') {
         downloadSpaceFile(rec.file);
@@ -169,7 +182,7 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
       }
       await renderMySpaces({ extraActions, onExtra });
     } catch (err) {
-      alert(err.message);
+      alertDialog({ title: 'Не получилось', text: err.message });
     }
   });
   return recs;
