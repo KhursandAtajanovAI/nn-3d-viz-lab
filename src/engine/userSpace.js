@@ -97,7 +97,7 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
   const say = (text, isError = false) => { msg.textContent = text; msg.classList.toggle('error-text', isError); };
   card.querySelector('[data-act="save"]').addEventListener('click', async () => {
     try {
-      const file = toFile();
+      const file = await toFile();
       await saveSpace(file, id);
       lab.space.user.file = file;
       say(`Сохранено ${new Date().toLocaleTimeString('ru-RU')}`);
@@ -105,9 +105,9 @@ export function attachUserCard(lab, { toFile, extraButtons = '' } = {}) {
       say(`Не сохранено: ${e.message}`, true);
     }
   });
-  card.querySelector('[data-act="download"]').addEventListener('click', () => {
+  card.querySelector('[data-act="download"]').addEventListener('click', async () => {
     try {
-      downloadSpaceFile(toFile()); // текущее состояние, даже если оно ещё не сохранено
+      downloadSpaceFile(await toFile()); // текущее состояние, даже если оно ещё не сохранено
       say('Файл скачан');
     } catch (e) {
       say(e.message, true);

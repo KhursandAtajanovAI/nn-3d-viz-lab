@@ -13,6 +13,7 @@ const VISUALIZERS = {
   surface: () => import('./SurfaceLab.js').then(m => m.SurfaceLab),
   train: () => import('./TrainLab.js').then(m => m.TrainLab),
   gridworld: () => import('./GridLab.js').then(m => m.GridLab),
+  graph: () => import('./GraphLab.js').then(m => m.GraphLab), // только пользовательские пространства
 };
 
 const sidebar = document.getElementById('sidebar');
@@ -83,10 +84,12 @@ async function start(space) {
   document.title = `${space.meta.title} — NN 3D Viz Lab`;
   const Visualizer = await load();
   window.lab = new Visualizer(space, { sidebar, container }); // для отладки из консоли
-  // Пользовательская полносвязная сеть: карточка «Моё пространство» (сохранение и скачивание)
-  if (space.user && space.type === 'mlp') {
+  // Пользовательское пространство: карточка «Моё пространство» (сохранение и скачивание)
+  if (space.user) {
     const { attachUserCard, mlpToFile } = await import('./userSpace.js');
-    attachUserCard(window.lab, { toFile: () => mlpToFile(window.lab) });
+    const lab = window.lab;
+    if (space.type === 'graph') await lab.ready;
+    attachUserCard(lab, { toFile: () => (space.type === 'graph' ? lab.toFile() : mlpToFile(lab)) });
   }
 }
 

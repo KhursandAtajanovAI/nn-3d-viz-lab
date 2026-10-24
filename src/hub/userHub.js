@@ -34,8 +34,8 @@ function dialogHtml() {
           <legend>Тип</legend>
           <label class="choice"><input type="radio" name="cs-type" value="mlp" checked />
             <span><b>Полносвязная сеть</b><br /><span class="muted">3D-сцена, своя архитектура, свои веса и входы.</span></span></label>
-          <label class="choice disabled" id="cs-type-graph"><input type="radio" name="cs-type" value="graph" disabled />
-            <span><b>Граф блоков</b> <span class="soon">скоро</span><br /><span class="muted">Визуальный конструктор: данные → подготовка → модель → обучение → результаты.</span></span></label>
+          <label class="choice" id="cs-type-graph"><input type="radio" name="cs-type" value="graph" />
+            <span><b>Граф блоков</b><br /><span class="muted">Визуальный конструктор: данные → подготовка → модель → обучение → результаты.</span></span></label>
         </fieldset>
 
         <p id="cs-error" class="error-text" role="alert"></p>

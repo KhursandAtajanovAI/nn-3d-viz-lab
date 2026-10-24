@@ -1,4 +1,5 @@
 @import url("base.css");
+@import url("graph.css");
 
 html, body { height: 100%; }
 body { display: flex; overflow: hidden; }

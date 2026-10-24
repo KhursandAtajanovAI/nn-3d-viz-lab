@@ -1,0 +1,200 @@
+/* Визуальный конструктор блоков (GraphLab): холст, блоки, связи, палитра, панель результатов.
+   Цвета — только токены тем из base.css, поэтому работает на всех четырёх темах. */
+
+:root {
+  --t-data: var(--neg);
+  --t-split: #2bb3a3;
+  --t-model: var(--pos);
+  --t-trained: var(--ok);
+}
+
+.g-area { display: flex; width: 100%; height: 100%; }
+.g-canvas-wrap { position: relative; flex: 1; min-width: 0; height: 100%; }
+
+/* ---------- Холст ---------- */
+.ge-root {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, rgba(var(--line), .22) 1px, transparent 1.2px);
+  background-size: var(--ge-grid, 24px) var(--ge-grid, 24px);
+}
+.ge-root.panning { cursor: grabbing; }
+.ge-root:focus-visible { box-shadow: inset 0 0 0 2px var(--neg); }
+.ge-world { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.ge-edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.ge-edge { pointer-events: auto; cursor: pointer; }
+.ge-edge .hit { fill: none; stroke: transparent; stroke-width: 14; }
+.ge-edge .line { fill: none; stroke-width: 2.5; stroke: var(--muted); }
+.ge-edge .line[data-type="data"] { stroke: var(--t-data); }
+.ge-edge .line[data-type="split"] { stroke: var(--t-split); }
+.ge-edge .line[data-type="model"] { stroke: var(--t-model); }
+.ge-edge .line[data-type="trained"] { stroke: var(--t-trained); }
+.ge-edge:hover .line { stroke-width: 4; }
+.ge-edge.selected .line { stroke-width: 4.5; stroke-dasharray: 8 5; }
+.ge-temp { fill: none; stroke: var(--text); stroke-width: 2; stroke-dasharray: 6 4; }
+
+.ge-hint {
+  position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%);
+  max-width: 80%;
+  padding: 14px 18px;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: calc(14px * var(--ui-scale));
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ---------- Блок ---------- */
+.ge-node {
+  position: absolute; left: 0; top: 0;
+  width: 190px;
+  color: var(--text);
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-top: 4px solid var(--g-color, var(--muted));
+  border-radius: 9px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .18);
+  font-size: 12px;
+  user-select: none;
+  cursor: move;
+}
+.ge-node[data-group="data"] { --g-color: var(--t-data); }
+.ge-node[data-group="prep"] { --g-color: var(--t-split); }
+.ge-node[data-group="model"] { --g-color: var(--t-model); }
+.ge-node[data-group="train"] { --g-color: var(--t-trained); }
+.ge-node[data-group="result"] { --g-color: var(--demo); }
+.ge-node[data-group="unknown"] { --g-color: var(--error); }
+.ge-node.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--g-color, var(--text)), 0 4px 16px rgba(0, 0, 0, .25); }
+.ge-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px 2px; font-weight: 600; font-size: 13px; }
+.ge-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ge-num { color: var(--muted); font-weight: 400; font-size: 10px; }
+.ge-state { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+.ge-node[data-state="ok"] .ge-state { background: var(--ok); }
+.ge-node[data-state="error"] .ge-state { background: var(--error); }
+.ge-node[data-state="skipped"] .ge-state { background: var(--demo); }
+.ge-node[data-state="running"] .ge-state { background: var(--accent); animation: ge-pulse .8s infinite alternate; }
+.ge-node[data-state="error"] { border-color: var(--error); }
+@keyframes ge-pulse { to { opacity: .3; } }
+.ge-sum { min-height: 1.2em; padding: 0 8px 4px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ge-ports { display: flex; justify-content: space-between; gap: 6px; padding: 2px 0 7px; }
+.ge-ins, .ge-outs { display: flex; flex-direction: column; gap: 4px; }
+.ge-outs { align-items: flex-end; }
+.ge-port { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: crosshair; }
+.ge-port.in { margin-left: -7px; }
+.ge-port.out { margin-right: -7px; }
+.ge-dot {
+  flex: none;
+  width: 13px; height: 13px;
+  background: var(--card);
+  border: 3px solid var(--muted);
+  border-radius: 50%;
+}
+.ge-dot[data-type="data"] { border-color: var(--t-data); }
+.ge-dot[data-type="split"] { border-color: var(--t-split); }
+.ge-dot[data-type="model"] { border-color: var(--t-model); }
+.ge-dot[data-type="trained"] { border-color: var(--t-trained); }
+.ge-port:hover .ge-dot { background: currentColor; }
+.ge-root.wiring .ge-port.in:not(.can) { opacity: .35; }
+.ge-root.wiring .ge-port.in.can .ge-dot { transform: scale(1.35); background: var(--accent); }
+
+/* ---------- Панель инструментов холста ---------- */
+.g-toolbar {
+  zoom: var(--ui-scale);
+  position: absolute; left: 8px; top: 8px;
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.g-toolbar button { padding: 4px 9px; font-size: 12px; background: var(--card); }
+
+/* ---------- Панель результатов ---------- */
+.g-results {
+  zoom: var(--ui-scale);
+  flex: none;
+  width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 10px 12px;
+  background: var(--sidebar);
+  border-left: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.g-results.collapsed { width: 44px; overflow: hidden; padding: 10px 6px; }
+.g-results.collapsed #g-results-body, .g-results.collapsed h2 { display: none; }
+.g-results-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.g-results-head h2 { margin: 0; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+.g-results-head button { padding: 2px 8px; }
+.g-res { margin-bottom: 10px; padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 9px; }
+.g-res h3 { margin: 0 0 6px; font-size: 13px; cursor: pointer; }
+.g-res-error { border-color: var(--error); }
+.g-res-skipped { opacity: .75; }
+
+.gv-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gv-number { display: flex; flex-direction: column; padding: 6px 8px; background: var(--field); border-radius: 7px; }
+.gv-number b { font-size: 20px; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.gv-number span { font-size: 11px; color: var(--muted); }
+.gv-text { margin: 0; padding: 8px; max-height: 320px; overflow: auto; background: var(--field); border-radius: 6px; font: 11px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; white-space: pre; }
+.gv-note { margin: 4px 0; font-size: 12px; color: var(--muted); }
+.gv-note.warn { color: var(--accent-text); }
+.gv-table-wrap { max-height: 340px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.gv-table { border-collapse: collapse; width: 100%; font-size: 11px; font-variant-numeric: tabular-nums; }
+.gv-table th { position: sticky; top: 0; padding: 4px 6px; background: var(--card); color: var(--muted); text-align: left; white-space: nowrap; }
+.gv-table td { padding: 3px 6px; border-top: 1px solid var(--border); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.gv-table td.num { text-align: right; }
+.gv-table td.head { color: var(--muted); font-weight: 600; }
+.gv-table td.ok { color: var(--ok); font-weight: 600; }
+.gv-table td.bad { color: var(--error); font-weight: 600; }
+.gv-chart { margin: 4px 0 8px; }
+.gv-canvas { display: block; background: var(--field); border-radius: 6px; }
+.gv-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+.gv-legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; background: var(--c); vertical-align: -1px; }
+.gv-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.gv-img { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gv-img canvas { border: 2px solid var(--border); border-radius: 3px; background: #000; }
+.gv-img.ok canvas { border-color: var(--ok); }
+.gv-img.bad canvas { border-color: var(--error); }
+.gv-img figcaption { max-width: 72px; font-size: 10px; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+
+/* ---------- Боковая панель конструктора ---------- */
+.g-progress { height: 6px; margin-top: 10px; background: var(--field); border-radius: 3px; overflow: hidden; }
+.g-progress div { width: 0; height: 100%; background: var(--accent); transition: width .15s; }
+.g-pal-title { margin: 10px 0 4px !important; font-size: 12px !important; color: var(--muted); }
+.g-pal { display: flex; flex-wrap: wrap; gap: 4px; }
+.g-pal-item { padding: 4px 8px; font-size: 12px; border-left: 3px solid var(--g-color, var(--border)); cursor: grab; }
+.g-pal-item[data-group="data"] { --g-color: var(--t-data); }
+.g-pal-item[data-group="prep"] { --g-color: var(--t-split); }
+.g-pal-item[data-group="model"] { --g-color: var(--t-model); }
+.g-pal-item[data-group="train"] { --g-color: var(--t-trained); }
+.g-pal-item[data-group="result"] { --g-color: var(--demo); }
+#g-params h3 { margin: 4px 0 2px; }
+.g-param label.check { margin-top: 10px; }
+.g-param input.invalid { border-color: var(--error); }
+button.danger { color: var(--error); }
+.g-ds-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.g-ds-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 5px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.g-ds-name { font-weight: 600; overflow-wrap: anywhere; }
+.g-ds-list li button { padding: 2px 8px; font-size: 12px; }
+.g-ds-list li button:first-of-type { margin-left: auto; }
+.ge-type { padding: 0 6px; border-radius: 6px; border: 2px solid var(--muted); }
+.ge-type[data-type="data"] { border-color: var(--t-data); }
+.ge-type[data-type="split"] { border-color: var(--t-split); }
+.ge-type[data-type="model"] { border-color: var(--t-model); }
+.ge-type[data-type="trained"] { border-color: var(--t-trained); }
+
+/* Мало места по ширине (класс ставит GraphLab по ширине сцены): результаты под холстом */
+.g-area.stacked { flex-direction: column; }
+.g-area.stacked .g-canvas-wrap { flex: 1 1 auto; height: auto; min-height: 0; }
+.g-area.stacked .g-results { width: auto; height: 42%; border-left: 0; border-top: 1px solid var(--border); }
+.g-area.stacked .g-results.collapsed { height: auto; }
+.g-area.stacked #g-results-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0 10px; align-items: start; }
+/* Узкие экраны (панель под сценой): сцена растёт по содержимому */
+@media (max-width: 800px) {
+  #scene:has(.g-area) { height: auto; overflow: visible; }
+  .g-area, .g-area.stacked { height: auto; }
+  .g-area .g-canvas-wrap, .g-area.stacked .g-canvas-wrap { flex: none; height: 60vh; }
+  .g-area .g-results, .g-area.stacked .g-results { height: auto; max-height: none; }
+}
