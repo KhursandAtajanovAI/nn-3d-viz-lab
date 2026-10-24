@@ -330,3 +330,47 @@ svg.chart .chart-empty { fill: var(--muted); font-size: 12px; }
 
 /* Цветные образцы в легендах: тонкая обводка, чтобы светлые цвета не сливались с панелью (особенно в неоновой теме) */
 .swatch, .dot, .kind-swatch, .token-swatch { outline: 1px solid rgba(var(--line), .45); outline-offset: 0; }
+
+/* Свои веса и вход (customWeights.js) */
+#custom-card .cw-title { margin: 14px 0 4px; font-size: 13px; color: var(--text); }
+#custom-card textarea {
+  width: 100%;
+  padding: 7px 9px;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: 12px ui-monospace, "Cascadia Code", Consolas, monospace;
+  resize: vertical;
+}
+#custom-card input.invalid, #custom-card textarea.invalid { border-color: var(--error); outline-color: var(--error); }
+.cw-table-wrap { max-height: 320px; overflow: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 6px; }
+.cw-table { border-collapse: collapse; font-size: 12px; }
+.cw-table th {
+  position: sticky; top: 0;
+  padding: 3px 5px;
+  color: var(--muted);
+  background: var(--card);
+  font-weight: 600;
+}
+.cw-table tbody th { position: sticky; left: 0; top: auto; text-align: right; }
+.cw-table th.cw-corner { left: 0; z-index: 1; font-weight: 400; white-space: nowrap; }
+.cw-table td { padding: 1px; }
+.cw-table input {
+  width: 64px;
+  padding: 3px 4px;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: 12px ui-monospace, "Cascadia Code", Consolas, monospace;
+  text-align: right;
+}
+.cw-table input.empty { border-style: dashed; }
+.cw-table .cw-bias input { background: var(--control); }
+.cw-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.cw-buttons button.primary { grid-column: span 2; margin-top: 0; }
+.cw-json summary { margin-top: 12px; cursor: pointer; color: var(--muted); font-size: 13px; }
+#cw-state.warn { color: var(--accent-text); font-weight: 600; }
+#cw-error { white-space: pre-line; min-height: 0; margin: 6px 0 0; }
+#cw-error.error-text { color: var(--error); }

@@ -1,6 +1,5 @@
 // XOR: сеть с вручную подобранными весами, которая действительно решает задачу.
-// Пример пространства со своей моделью (createModel), готовыми входами и своим объяснением результата.
-import { MLP } from '../src/engine/models/mlp.js';
+// Пример пространства с готовыми весами в конфиге (model.weights / model.biases), готовыми входами и своим объяснением результата.
 
 // Скрытый нейрон 1 ≈ ИЛИ, скрытый нейрон 2 ≈ И-НЕ, выход ≈ И от них → вместе это XOR
 const WEIGHTS = [
@@ -26,12 +25,7 @@ export default {
   type: 'mlp',
   randomizable: false, // веса подобраны вручную — перегенерировать их нельзя
   randomInput: false,
-  createModel() {
-    const net = new MLP([2, 2, 1], { activation: 'sigmoid', outputActivation: 'sigmoid' });
-    net.weights = WEIGHTS.map(layer => layer.map(row => [...row]));
-    net.biases = BIASES.map(b => [...b]);
-    return net;
-  },
+  model: { layers: [2, 2, 1], activation: 'sigmoid', outputActivation: 'sigmoid', weights: WEIGHTS, biases: BIASES },
 
   names: { input: ['A', 'B'], output: ['A XOR B'] },
   inputs: [

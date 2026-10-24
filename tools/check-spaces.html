@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Проверка пространств — NN 3D Viz Lab</title>
+  <style>
+    body { margin: 24px; font: 16px/1.5 system-ui, sans-serif; background: #0a0e17; color: #e8eef8; }
+    pre { white-space: pre-wrap; background: #141b29; padding: 12px; border-radius: 8px; }
+    .ok { color: #7ee081; } .err { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>Проверка пространств</h1>
+  <p>Та же проверка, что <code>node tools/check-spaces.mjs</code> при деплое, но в браузере.</p>
+  <pre id="out">Проверяю…</pre>
+  <script type="module">
+    import { checkSpaces } from './check-spaces-core.js';
+    const out = document.getElementById('out');
+    try {
+      const ids = await (await fetch('../spaces/manifest.json', { cache: 'no-cache' })).json();
+      const errors = await checkSpaces(ids, async id => (await import(`../spaces/${id}.js`)).default);
+      out.className = errors.length ? 'err' : 'ok';
+      out.textContent = errors.length
+        ? `Ошибки в пространствах (${errors.length}):\n- ${errors.join('\n- ')}`
+        : `Пространства в порядке: ${ids.length} (${ids.join(', ')})`;
+      window.checkResult = { ok: !errors.length, errors, count: ids.length };
+    } catch (e) {
+      out.className = 'err';
+      out.textContent = `Проверка не запустилась: ${e.message}`;
+      window.checkResult = { ok: false, errors: [e.message] };
+    }
+  </script>
+</body>
+</html>

@@ -6,6 +6,8 @@ import { MLP } from './models/mlp.js';
 import { sceneHtml, hoverHtml, tooltipText, stageText, resultHtml, outputBarsHtml } from './panels.js';
 import { headerHtml, detailsCardHtml, FORWARD_PASS_HTML, LEGEND_HTML, HINT_HTML } from './sidebar.js';
 import { escapeHtml, formatValue } from './format.js';
+import { CustomWeightsPanel } from './customWeights.js';
+import { checkWeights } from './spaceFormat.js';
 
 /**
  * Визуализатор полносвязной сети (type: 'mlp').
@@ -32,6 +34,7 @@ export class NetworkLab {
     this.bindHover();
 
     this.model = this.createModel();
+    this.initCustomWeights();
     this.rebuildView();
     this.frameCamera();
     setTimeout(() => this.setStatus(`Сеть ${this.model.layers.join(' → ')} готова`), 0);
@@ -56,10 +59,28 @@ export class NetworkLab {
   createModel(layers) {
     if (this.space.createModel) return this.space.createModel();
     const spec = this.space.model;
-    return new MLP(layers ?? spec.layers, {
+    const net = new MLP(layers ?? spec.layers, {
       activation: this.ui.activation?.value ?? spec.activation,
       outputActivation: spec.outputActivation,
       seed: spec.seed,
+    });
+    // Веса, заданные в конфиге (model.weights / model.biases), — только для исходной архитектуры
+    if (spec.weights && !layers) {
+      const errors = checkWeights(net.layers, spec.weights, spec.biases);
+      if (errors.length) throw new Error(`model.weights: ${errors[0]}`);
+      net.restore({ weights: spec.weights, biases: spec.biases });
+    }
+    return net;
+  }
+
+  /** Блок «Свои веса и вход» — только у редактируемых сетей (конструктор и пользовательские пространства) */
+  initCustomWeights() {
+    const root = this.sidebar.querySelector('#custom-card');
+    if (!root) return;
+    const spec = this.space.model ?? {};
+    this.custom = new CustomWeightsPanel(this, root, {
+      customInput: this.space.settings?.customInput,
+      given: spec.weights ? { weights: spec.weights, biases: spec.biases } : null,
     });
   }
 
@@ -113,6 +134,8 @@ export class NetworkLab {
         </div>
         <p id="status" role="status"></p>
       </section>
+
+      ${editable || s.customWeights ? CustomWeightsPanel.html() : ''}
 
       <section class="card" id="hover-card">
         <h2>Под курсором</h2>
@@ -185,17 +208,27 @@ export class NetworkLab {
 
   buildFromInputs() {
     try {
-      this.model = this.createModel(this.parseArch(this.ui.arch.value));
-      this.rebuildView();
-      this.frameCamera();
+      this.applyArchitecture(this.parseArch(this.ui.arch.value));
       this.setStatus(`Сеть ${this.model.layers.join(' → ')} построена`);
     } catch (e) {
       this.setStatus(e.message, true);
     }
   }
 
+  /** Новая сеть с указанной архитектурой (случайные веса; свои веса переносит блок «Свои веса») */
+  applyArchitecture(layers, { keepCustom = true } = {}) {
+    this.model = this.createModel(layers);
+    if (this.ui.arch) this.ui.arch.value = layers.join(', ');
+    this.rebuildView();
+    this.frameCamera();
+    if (keepCustom) this.custom?.onArchitectureChange();
+    else this.custom?.syncFromModel();
+  }
+
   /** Вход для очередного прогона: выбранный пресет или случайные числа */
   nextInput() {
+    const own = this.custom?.customInput(); // бросает ошибку, если свой вход введён неверно
+    if (own) return { values: own, caption: 'свой вход' };
     const presets = this.space.inputs ?? [];
     const v = this.ui.inputPreset?.value;
     if (presets.length && v !== 'random') {
@@ -207,7 +240,8 @@ export class NetworkLab {
 
   runForward() {
     if (this.anim.running) return;
-    const input = this.nextInput();
+    let input;
+    try { input = this.nextInput(); } catch (e) { this.setStatus(e.message, true); return; }
     const acts = this.model.forward(input.values);
     this.ui.run.disabled = true;
     this.ui.resultCard.hidden = true;
@@ -348,6 +382,7 @@ export class NetworkLab {
     ui.randomize?.addEventListener('click', () => {
       this.model.randomize();
       this.rebuildView();
+      this.custom?.syncFromModel();
       this.setStatus('Веса перегенерированы');
     });
     ui.run.addEventListener('click', () => this.runForward());
