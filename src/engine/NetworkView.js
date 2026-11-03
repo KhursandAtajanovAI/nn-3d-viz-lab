@@ -16,9 +16,19 @@ const LINE_WIDTH = { rest: 1, active: 3.5 };
 
 const GRAD_COLOR = new THREE.Color(0xc77dff);
 
+// Подписи соразмерны шарикам: каждый кадр считаем экранный радиус нейрона (px) и передаём его
+// в CSS-переменную --nv-r слоя меток; размеры шрифтов — в lab.css (.nv). Шарик при активации
+// растёт до ×1.3, поэтому отступы подписей берём с запасом.
+const LABEL_GAP = { value: RADIUS * 1.35, name: RADIUS * 1.45, layer: RADIUS * 1.7 };
+// Числа, которые на экране налезли бы на уже показанные (плотные слои, сетка нейронов в глубину,
+// мелкий масштаб), скрываются и видны только у нейрона под курсором. Ширина числа оценивается
+// по моноширинному шрифту: 0,6 em на символ плюс поля.
+const CHAR_EM = 0.6, PAD_EM = 0.7, LINE_EM = 1.3;
+const _v = new THREE.Vector3();
+
 function makeLabel(className, text = '') {
   const el = document.createElement('div');
-  el.className = className;
+  el.className = `${className} nv`;
   el.textContent = text;
   return new CSS2DObject(el);
 }
@@ -71,7 +81,8 @@ export class NetworkView {
       this.group.add(mesh);
 
       const label = makeLabel('value-label');
-      label.position.copy(p).add(new THREE.Vector3(0, -RADIUS - 0.32, 0));
+      label.center.set(0.5, 0); // верхний край подписи — под шариком, по центру
+      label.position.copy(p).add(new THREE.Vector3(0, -LABEL_GAP.value, 0));
       this.valueLabels.add(label);
       mesh.userData.label = label;
       return mesh;
@@ -81,7 +92,8 @@ export class NetworkView {
     this.positions.forEach((layer, l) => {
       const top = Math.max(...layer.map(p => p.y));
       const label = makeLabel('layer-label', `${layerShortName(l, layers.length)} · ${layers[l]}`);
-      label.position.set(layer[0].x, top + 0.9, 0);
+      label.center.set(0.5, 1); // нижний край — над верхним шариком
+      label.position.set(layer[0].x, top + LABEL_GAP.layer, 0);
       this.group.add(label);
     });
 
@@ -94,7 +106,7 @@ export class NetworkView {
       this.positions[l].forEach((p, i) => {
         if (!list[i]) return;
         const label = makeLabel(`name-label ${side < 0 ? 'left' : 'right'}`, list[i]);
-        label.position.copy(p).add(new THREE.Vector3(side * (RADIUS + 0.2), 0, 0));
+        label.position.copy(p).add(new THREE.Vector3(side * LABEL_GAP.name, 0, 0));
         // Выравниваем по краю, обращённому к нейрону
         label.center.set(side < 0 ? 1 : 0, 0.5);
         this.group.add(label);
@@ -159,8 +171,69 @@ export class NetworkView {
     this.highlight?.traverse(o => o.material?.resolution?.set(w, h));
   }
 
+  /**
+   * Размер подписей под текущую камеру и отсев налезающих чисел (вызывается каждый кадр).
+   * @param {THREE.PerspectiveCamera} camera
+   * @param {number} width — ширина сцены в px
+   * @param {number} height — высота сцены в px
+   * @param {HTMLElement} root — слой CSS2D-меток
+   */
+  updateLabelScale(camera, width, height, root) {
+    if (!this.positions || !root) return;
+    const dist = Math.max(0.1, camera.position.distanceTo(this.group.position));
+    const r = (RADIUS * height) / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+    if (Math.abs(r - (this.labelRadius ?? 0)) >= 0.3) {
+      this.labelRadius = r;
+      root.style.setProperty('--nv-r', `${r.toFixed(1)}px`);
+      this.labelFont = null; // размер шрифта пересчитает CSS (clamp) — прочитаем его заново
+    }
+    if (!this.showNumbers) return;
+    // Раскладку пересчитываем, когда сдвинулась камера, и раз в ~полсекунды (меняется длина чисел, δ)
+    const key = `${camera.matrixWorld.elements.map(v => v.toFixed(3)).join()}|${width}|${height}`;
+    this.layoutTick = (this.layoutTick ?? 0) + 1;
+    if (key === this.layoutKey && this.layoutTick % 30) return;
+    this.layoutKey = key;
+    this.layoutLabels(camera, width, height);
+  }
+
+  /** Жадно показываем числа от ближних к дальним; число, перекрывающее показанное, прячем (видно при наведении) */
+  layoutLabels(camera, width, height) {
+    const labels = this.neurons.flat().map(m => m.userData.label);
+    if (!labels.length) return;
+    if (!this.labelFont) this.labelFont = parseFloat(getComputedStyle(labels[0].element).fontSize) || 12;
+    const font = this.labelFont, lh = font * LINE_EM;
+    const items = [];
+    for (const label of labels) {
+      _v.copy(label.position).applyMatrix4(this.valueLabels.matrixWorld).project(camera);
+      if (_v.z > 1 || _v.z < -1) continue;
+      const x = (_v.x + 1) / 2 * width, y = (1 - _v.y) / 2 * height;
+      const w = (label.element.textContent.length * CHAR_EM + PAD_EM) * font;
+      items.push({ label, x0: x - w / 2, x1: x + w / 2, y0: y, y1: y + lh, z: _v.z });
+    }
+    items.sort((a, b) => a.z - b.z);
+    const cell = Math.max(lh, 1) * 2, grid = new Map();
+    const keyOf = (i, j) => `${i},${j}`;
+    for (const it of items) {
+      const i0 = Math.floor(it.x0 / cell), i1 = Math.floor(it.x1 / cell);
+      const j0 = Math.floor(it.y0 / cell), j1 = Math.floor(it.y1 / cell);
+      let hit = false;
+      for (let i = i0; i <= i1 && !hit; i++) for (let j = j0; j <= j1 && !hit; j++) {
+        for (const o of grid.get(keyOf(i, j)) ?? []) {
+          if (it.x0 < o.x1 && o.x0 < it.x1 && it.y0 < o.y1 && o.y0 < it.y1) { hit = true; break; }
+        }
+      }
+      if (!hit) for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+        const k = keyOf(i, j);
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(it);
+      }
+      if (it.label.element.classList.contains('nv-hidden') !== hit) it.label.element.classList.toggle('nv-hidden', hit);
+    }
+  }
+
   setShowNumbers(on) {
     this.showNumbers = on;
+    this.layoutKey = null;
     if (this.valueLabels) this.valueLabels.visible = on;
     if (this.hover) this.setHover(this.hover);
   }
@@ -230,6 +303,10 @@ export class NetworkView {
    */
   setHover(hover) {
     this.hover = hover;
+    // Скрытое (налезающее) число видно у нейрона под курсором
+    this.hoveredLabel?.classList.remove('hovered');
+    this.hoveredLabel = hover?.type === 'neuron' ? this.neurons[hover.layer][hover.index].userData.label.element : null;
+    this.hoveredLabel?.classList.add('hovered');
     this.highlight.traverse(o => {
       if (o.isCSS2DObject) o.element.remove();
       o.geometry?.dispose();

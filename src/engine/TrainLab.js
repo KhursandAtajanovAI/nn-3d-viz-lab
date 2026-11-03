@@ -42,6 +42,7 @@ export class TrainLab extends BaseLab {
     this.kit.setAutoFrame(() => this.kit.fitBox(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(0, 0.3, 0), this.view.size.clone().add(new THREE.Vector3(2.5, 2, 0))), { dir: new THREE.Vector3(0.3, 0.2, 1) }));
     this.timeline = new Timeline();
     this.kit.onFrame(dt => this.frame(dt));
+    this.kit.onFrame(() => this.view.updateLabelScale(this.kit.camera, this.kit.width, this.kit.height, this.kit.labelRenderer.domElement));
     this.decorate();
     this.enablePicking(() => [...this.view.neurons.flat(), ...this.view.connections]);
     this.onHoverChange = (_, obj) => this.view.setHover(obj ? this.hoverTarget(obj) : null);

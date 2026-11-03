@@ -30,6 +30,7 @@ export class NetworkLab {
 
     this.kit.onResize((w, h) => this.view.setResolution(w, h));
     this.kit.onFrame(dt => this.frame(dt));
+    this.kit.onFrame(() => this.view.updateLabelScale(this.kit.camera, this.kit.width, this.kit.height, this.kit.labelRenderer.domElement));
     this.bindControls();
     this.bindHover();
 

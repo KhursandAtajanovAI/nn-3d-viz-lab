@@ -194,6 +194,20 @@ ul.legend li > .dot { flex: 0 0 14px; height: 14px; margin: 3px 6px 0; border-ra
 .value-label.neg, .weight-label.neg { color: var(--neg-text); }
 .weight-label { border: 1px solid currentColor; }
 
+/* Подписи полносвязной сети (NetworkView, класс .nv) соразмерны шарикам: --nv-r — радиус нейрона на экране.
+   Высота чисел ≈ 0,3–0,4 диаметра (шарик при активации растёт до ×1.3); снизу — минимум, чтобы число читалось, сверху — предел, чтобы не налезали */
+.labels { --nv-r: 20px; }
+.value-label.nv {
+  padding: 0 .3em;
+  border-radius: .3em;
+  font-size: clamp(calc(10px * var(--num-scale)), calc(var(--nv-r) * .8), 96px);
+}
+.name-label.nv { padding: .05em .45em; border-radius: .3em; font-size: clamp(calc(11px * var(--label-scale)), calc(var(--nv-r) * .55), 56px); }
+.layer-label.nv { padding: .15em .65em; border-radius: .9em; font-size: clamp(calc(11px * var(--label-scale)), calc(var(--nv-r) * .5), 44px); }
+/* Число, которое налезло бы на соседнее (плотная сеть, мелкий масштаб), — только у нейрона под курсором */
+.value-label.nv.nv-hidden:not(.hovered) { display: none; }
+.value-label.nv.hovered { z-index: 3; }
+
 #tooltip {
   position: absolute;
   z-index: 5;
