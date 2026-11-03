@@ -15,6 +15,8 @@
 // Чтобы добавить блок, создайте файл и допишите его в список ниже — ядро (редактор и исполнитель) менять не нужно.
 // Типы портов: data — таблица, split — train/test, model — описание слоёв, trained — обученная модель.
 
+import { localizedBlock } from './locale.js';
+
 const FILES = [
   'data-example', 'data-file',
   'normalize', 'split', 'onehot',
@@ -43,7 +45,7 @@ export async function loadBlocks() {
   const res = await Promise.allSettled(FILES.map(f => import(`./${f}.js`)));
   const blocks = new Map();
   res.forEach((r, i) => {
-    const b = r.status === 'fulfilled' ? r.value.default : null;
+    const b = r.status === 'fulfilled' ? localizedBlock(r.value.default) : null;
     if (!b?.id || typeof b.run !== 'function') { console.warn(`Блок ${FILES[i]} не загрузился`, r.reason); return; }
     blocks.set(b.id, b);
   });

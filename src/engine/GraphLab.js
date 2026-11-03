@@ -4,6 +4,7 @@
 import { headerHtml, detailsCardHtml } from './sidebar.js';
 import { FORMAT, FORMAT_VERSION, LIMITS, cleanDataset } from './spaceFormat.js';
 import { loadBlocks, GROUPS, blockParams } from './blocks/index.js';
+import { localizedGroups } from './blocks/locale.js';
 import { GraphEditor } from './graph/editor.js';
 import { runGraph, Cancelled } from './graph/runner.js';
 import { exportWeights } from './graph/train.js';
@@ -202,7 +203,7 @@ export class GraphLab {
   renderPalette() {
     const box = this.ui.palette;
     box.replaceChildren();
-    for (const [g, title] of GROUPS) {
+    for (const [g, title] of localizedGroups(GROUPS)) {
       const list = [...this.blocks.values()].filter(b => b.group === g);
       if (!list.length) continue;
       box.append(el('h3', 'g-pal-title', title));
@@ -538,4 +539,3 @@ export class GraphLab {
     return { ...out, trained };
   }
 }
-

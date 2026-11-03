@@ -5,6 +5,7 @@ import { PALETTE } from './palette.js';
 import { makeLabel, makeLines, curveSegments, setLineResolution, valueMaterial, paintValue, disposeTree } from './three-utils.js';
 import { escapeHtml, formatValue } from './format.js';
 import { MAX_TOKENS, countWords } from './models/text.js';
+import { t } from './i18n.js';
 
 const SX = 1.5;       // шаг между словами
 const CUBE = 0.28;    // кубик одного числа эмбеддинга
@@ -26,26 +27,26 @@ export class TokensLab extends BaseLab {
     this.mode = s.mode ?? 'pool';
     this.mount({
       controls: `
-        <label for="text">Текст</label>
+        <label for="text">${t('text')}</label>
         <input id="text" type="text" value="${escapeHtml(s.presets?.[0] ?? '')}" spellcheck="false" autocomplete="off" />
         <p id="trunc-note" class="notice" hidden></p>
-        ${s.presets?.length ? `<label for="preset">Примеры</label>
+        ${s.presets?.length ? `        <label for="preset">${t('examples')}</label>
           <select id="preset">${s.presets.map((p, i) => `<option value="${i}">${escapeHtml(p)}</option>`).join('')}</select>` : ''}
         ${SPEED_HTML}
-        <button id="run" class="primary">▶ ${s.runLabel ?? 'Обработать текст'}</button>
+        <button id="run" class="primary">▶ ${s.runLabel ?? t('processText')}</button>
         ${this.mode === 'attention' ? `
           <div class="row">
-            <button id="append">+ Добавить предсказанное слово</button>
+            <button id="append">${t('addPredicted')}</button>
           </div>
-          <label class="check"><input type="checkbox" id="all-attention" /> Показать внимание всех слов</label>` : ''}
+          <label class="check"><input type="checkbox" id="all-attention" /> ${t('showAllAttention')}</label>` : ''}
         ${MODE_TOGGLE_HTML}`,
-      resultTitle: s.resultTitle ?? 'Результат',
-      hoverHint: 'Наведите курсор на слово, число эмбеддинга, ячейку или дугу внимания.',
+      resultTitle: s.resultTitle ?? t('result'),
+      hoverHint: t('underCursorHint'),
       cards: [
-        ...(s.vocabularyHtml ? [{ title: 'Словарь модели', open: false, html: s.vocabularyHtml }] : []),
-        { title: 'Как читать сцену', open: !(s.sections?.length), html: this.legendHtml() },
+        ...(s.vocabularyHtml ? [{ title: t('modelDictionary'), open: false, html: s.vocabularyHtml }] : []),
+        { title: t('sceneGuide'), open: !(s.sections?.length), html: this.legendHtml() },
       ],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг.<br />Enter в поле текста — обработать, N — числа.',
+      hint: `${t('mouseHint')}<br />Enter — ${t('processText').toLowerCase()}, N — ${t('detailNumbers').toLowerCase()}.`,
     });
 
     this.group = new THREE.Group();

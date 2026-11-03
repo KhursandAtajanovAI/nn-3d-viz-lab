@@ -8,6 +8,7 @@ import {
   formatValue, formatPercent, plural, layerKind, layerShortName, escapeHtml,
   NEURONS, LAYERS, WEIGHTS, LINKS,
 } from './format.js';
+import { t } from './i18n.js';
 
 const MAX_LIST = 6;
 
@@ -17,7 +18,7 @@ const num = (v, digits = 2) => `<b class="num ${signClass(v)}">${formatValue(v, 
 /** Короткое имя нейрона: имя из конфига пространства или «Н3» */
 function short(ctx, l, i) {
   const name = ctx.names?.[l]?.[i];
-  return name ? `«${escapeHtml(name)}»` : `Н${i + 1}`;
+  return name ? `«${escapeHtml(name)}»` : t('neuronShort', i + 1);
 }
 const full = (ctx, l, i) => `${short(ctx, l, i)} слоя ${l + 1}`;
 
@@ -51,7 +52,7 @@ export function sceneHtml(ctx, { editable = false } = {}) {
 /** Карточка «Под курсором» */
 export function hoverHtml(hover, ctx) {
   if (!hover) {
-    return `<p class="muted">Наведите курсор на нейрон (шар) или связь (линию), чтобы увидеть подробности.</p>`;
+    return `<p class="muted">${t('hoverEmpty')}</p>`;
   }
   return hover.type === 'neuron' ? neuronHtml(hover, ctx) : weightHtml(hover, ctx);
 }
@@ -64,12 +65,12 @@ function neuronHtml({ layer: l, index: n }, ctx) {
   const act = model.activationName(l);
   const name = ctx.names?.[l]?.[n];
 
-  let html = `<h3>Нейрон ${n + 1} · слой ${l + 1} <span class="muted">(${layerShortName(l, layers.length).toLowerCase()})</span></h3>`;
+  let html = `<h3>${t('neuron', n + 1)} · ${t('layer', l + 1)} <span class="muted">(${layerShortName(l, layers.length).toLowerCase()})</span></h3>`;
   if (name) html += `<p>Означает: <b>${escapeHtml(name)}</b></p>`;
 
   html += a === null
-    ? `<p>Активация: <span class="muted">ещё не вычислена — запустите forward pass</span></p>`
-    : `<p>Активация: ${num(a, 3)}</p>`;
+    ? `<p>${t('activationLabel')}: <span class="muted">ещё не вычислена — запустите forward pass</span></p>`
+    : `<p>${t('activationLabel')}: ${num(a, 3)}</p>`;
   // Пространство может перевести значение в понятные единицы (например, нормированную цену → млн ₸)
   const unit = a !== null ? ctx.valueText?.(l, n, a) : null;
   if (unit) html += `<p>${unit}</p>`;
@@ -123,7 +124,7 @@ function weightHtml({ gap, from, to }, ctx) {
     : `Отрицательный вес <b class="neg">подавляет</b> сигнал: активность ${a} уменьшает сумму на входе ${b}.`;
   return `
     <h3>Связь ${full(ctx, gap, from)} → ${full(ctx, gap + 1, to)}</h3>
-    <p>Вес: ${num(w, 4)}</p>
+    <p>${t('weightLabel')}: ${num(w, 4)}</p>
     <p class="muted">${effect}</p>
     ${x !== null ? `<p>Вклад сейчас: w × x = ${formatValue(w)} × ${formatValue(x)} = ${num(w * x, 3)}</p>` : ''}`;
 }

@@ -8,6 +8,7 @@ import { headerHtml, detailsCardHtml, FORWARD_PASS_HTML, LEGEND_HTML, HINT_HTML 
 import { escapeHtml, formatValue } from './format.js';
 import { CustomWeightsPanel } from './customWeights.js';
 import { checkWeights, LIMITS } from './spaceFormat.js';
+import { t } from './i18n.js';
 
 /**
  * Визуализатор полносвязной сети (type: 'mlp').
@@ -38,7 +39,7 @@ export class NetworkLab {
     this.initCustomWeights();
     this.rebuildView();
     this.frameCamera();
-    setTimeout(() => this.setStatus(`Сеть ${this.model.layers.join(' → ')} готова`), 0);
+    setTimeout(() => this.setStatus(t('networkReady', this.model.layers.join(' → '))), 0);
   }
 
   // ---------- Конфиг ----------
@@ -97,41 +98,41 @@ export class NetworkLab {
       ${headerHtml(s.meta)}
 
       <section class="card">
-        <h2>Управление</h2>
+        <h2>${t('controls')}</h2>
         ${editable ? `
-          <label for="arch">Архитектура (нейронов в каждом слое)</label>
+          <label for="arch">${t('architecture')}</label>
           <input id="arch" type="text" value="${spec.layers.join(', ')}" spellcheck="false" />` : ''}
         ${inputs.length ? `
-          <label for="input-preset">Входные данные</label>
+          <label for="input-preset">${t('input')}</label>
           <select id="input-preset">
             ${inputs.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join('')}
-            ${s.randomInput !== false ? `<option value="random" title="${escapeHtml(s.randomInputNote ?? 'Случайные числа в диапазоне [−1, 1]')}">Случайный вход</option>` : ''}
+            ${s.randomInput !== false ? `<option value="random" title="${escapeHtml(s.randomInputNote ?? t('randomInputNote'))}">${t('randomInputOption')}</option>` : ''}
           </select>
           ${s.randomInputNote ? `<p id="random-note" class="small muted" hidden>${s.randomInputNote}</p>` : ''}` : ''}
         <div class="grid2">
           ${editable ? `
             <div>
-              <label for="activation">Активация скрытых слоёв</label>
+              <label for="activation">${t('activationLabel')} скрытых слоёв</label>
               <select id="activation">
                 ${['tanh', 'relu', 'sigmoid'].map(a => `<option value="${a}"${a === spec.activation ? ' selected' : ''}>${a === 'relu' ? 'ReLU' : a}</option>`).join('')}
               </select>
             </div>` : ''}
           <div${editable ? '' : ' class="span2"'}>
-            <label for="speed">Скорость анимации</label>
+            <label for="speed">${t('animationSpeed')}</label>
             <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />
           </div>
         </div>
         ${editable || s.randomizable !== false ? `
           <div class="row">
-            ${editable ? '<button id="build">Построить</button>' : ''}
-            ${s.randomizable !== false ? '<button id="randomize">Новые веса</button>' : ''}
+            ${editable ? `<button id="build">${t('build')}</button>` : ''}
+            ${s.randomizable !== false ? `<button id="randomize">${t('newWeights')}</button>` : ''}
           </div>` : ''}
-        <button id="run" class="primary">▶ Запустить forward pass</button>
+        <button id="run" class="primary">${t('runForward')}</button>
 
-        <label>Режим отображения</label>
-        <div class="segmented" role="group" aria-label="Режим отображения">
-          <button id="mode-visual" aria-pressed="true">Визуальный</button>
-          <button id="mode-detail" aria-pressed="false">Детальный · числа</button>
+        <label>${t('displayMode')}</label>
+        <div class="segmented" role="group" aria-label="${t('displayModeAria')}">
+          <button id="mode-visual" aria-pressed="true">${t('visualMode')}</button>
+          <button id="mode-detail" aria-pressed="false">${t('detailMode')}</button>
         </div>
         <p id="status" role="status"></p>
       </section>
@@ -139,17 +140,17 @@ export class NetworkLab {
       ${editable || s.customWeights ? CustomWeightsPanel.html() : ''}
 
       <section class="card" id="hover-card">
-        <h2>Под курсором</h2>
+        <h2>${t('underCursorCard')}</h2>
         <div id="hover-info"></div>
       </section>
 
       <section class="card" id="result-card" hidden>
-        <h2>Результат на выходе</h2>
+        <h2>${t('outputResult')}</h2>
         <div id="result"></div>
       </section>
 
       <section class="card">
-        <h2>Сцена</h2>
+        <h2>${t('sceneCard')}</h2>
         ${s.intro ?? ''}
         <div id="scene-info"></div>
       </section>
@@ -216,7 +217,7 @@ export class NetworkLab {
         this.setStatus(`Сеть построена, но слоёв ${layers.length}, а сохранить и скачать можно сеть до ${LIMITS.layers} слоёв (вместе с входным и выходным). Уберите лишние слои, чтобы сохранить`, true);
         return;
       }
-      this.setStatus(`Сеть ${this.model.layers.join(' → ')} построена`);
+      this.setStatus(t('networkBuilt', this.model.layers.join(' → ')));
     } catch (e) {
       this.setStatus(e.message, true);
     }
@@ -260,7 +261,7 @@ export class NetworkLab {
         ? this.space.explainResult(this.ctx, result, helpers)
         : helpers.defaultResult();
       this.ui.resultCard.hidden = false;
-      this.setStatus('Forward pass завершён — результат ниже');
+      this.setStatus(t('forwardDone'));
       this.updateStage();
       this.refreshHover();
     });
@@ -291,8 +292,8 @@ export class NetworkLab {
         li.classList.toggle('done', !!this.lastResult);
       });
       ui.stage.textContent = this.lastResult
-        ? 'Готово: сигнал дошёл до выходного слоя. Запустите ещё раз с другим входом.'
-        : 'Нажмите «Запустить forward pass» или пробел.';
+        ? t('forwardReady')
+        : t('forwardHint');
       ui.stage.classList.remove('live');
     }
   }
@@ -384,13 +385,13 @@ export class NetworkLab {
     ui.activation?.addEventListener('change', () => {
       this.model.activation = ui.activation.value;
       this.rebuildView();
-      this.setStatus(`Активация скрытых слоёв: ${ui.activation.value}`);
+      this.setStatus(t('activationChanged', ui.activation.value));
     });
     ui.randomize?.addEventListener('click', () => {
       this.model.randomize();
       this.rebuildView();
       this.custom?.syncFromModel();
-      this.setStatus('Веса перегенерированы');
+      this.setStatus(t('weightsRegenerated'));
     });
     ui.run.addEventListener('click', () => this.runForward());
     ui.speed.addEventListener('input', () => { this.anim.stageDuration = 1.2 / Number(ui.speed.value); });

@@ -34,7 +34,7 @@ export class BaseLab {
    * @param {string} [o.hint] — подсказка внизу панели
    * @param {string} [o.hoverHint] — текст «Под курсором», пока ничего не выбрано
    */
-  mount({ controls, resultTitle = 'Результат', cards = [], hint = '', hoverHint = 'Наведите курсор на объект в сцене, чтобы увидеть подробности.' }) {
+  mount({ controls, resultTitle = t('result'), cards = [], hint = '', hoverHint = t('underCursorHint') }) {
     const s = this.space;
     this.hoverHint = hoverHint;
     this.sidebar.innerHTML = `
@@ -166,10 +166,10 @@ export class BaseLab {
 
 /** Переключатель «Визуальный / Детальный · числа» — общий HTML */
 export const MODE_TOGGLE_HTML = `
-  <label>Режим отображения</label>
-  <div class="segmented" role="group" aria-label="Режим отображения">
-    <button id="mode-visual" aria-pressed="true">Визуальный</button>
-    <button id="mode-detail" aria-pressed="false">Детальный · числа</button>
+  <label>${t('displayMode')}</label>
+  <div class="segmented" role="group" aria-label="${t('displayMode')}">
+    <button id="mode-visual" aria-pressed="true">${t('visual')}</button>
+    <button id="mode-detail" aria-pressed="false">${t('detailNumbers')}</button>
   </div>`;
 
 export function bindModeToggle(lab, apply) {
@@ -188,5 +188,5 @@ export function bindModeToggle(lab, apply) {
 }
 
 export const SPEED_HTML = `
-  <label for="speed">Скорость анимации</label>
+  <label for="speed">${t('animationSpeed')}</label>
   <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />`;

@@ -6,6 +6,7 @@
 //   клик по связи — выбрать; Delete — удалить выбранное; Ctrl+D — копия блока.
 import { blockParams, PORT_TYPES } from '../blocks/index.js';
 import { el } from './view.js';
+import { localizedPorts } from '../blocks/locale.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const NODE_ID = /^n[0-9a-z]{1,16}$/;
@@ -145,7 +146,10 @@ export class GraphEditor {
     const types = this.outTypes(from[0], from[1]);
     if (!types.length) return 'нет такого выхода';
     if (!types.some(t => inPort.types.includes(t))) {
-      return `тип не подходит: выход даёт «${types.map(t => PORT_TYPES[t] ?? t).join(' / ')}», а вход «${inPort.title}» ждёт «${inPort.types.map(t => PORT_TYPES[t] ?? t).join(' / ')}»`;
+      const ports = localizedPorts() ?? PORT_TYPES;
+      return localizedPorts()
+        ? `Type mismatch: output gives “${types.map(t => ports[t] ?? t).join(' / ')}”, input “${inPort.title}” expects “${inPort.types.map(t => ports[t] ?? t).join(' or ')}”`
+        : `тип не подходит: выход даёт «${types.map(t => ports[t] ?? t).join(' / ')}», а вход «${inPort.title}» ждёт «${inPort.types.map(t => ports[t] ?? t).join(' или ')}»`;
     }
     if (!ignoreExisting && this.reaches(to[0], from[0])) return 'получился бы цикл';
     return null;
@@ -236,7 +240,10 @@ export class GraphEditor {
       const row = el('div', 'ge-port in');
       row.dataset.port = p.id;
       row.dataset.types = p.types.join(' ');
-      row.title = `Вход «${p.title}»: ${p.types.map(t => PORT_TYPES[t] ?? t).join(' или ')}${p.optional ? ' (необязательный)' : ''}`;
+      const ports = localizedPorts() ?? PORT_TYPES;
+      row.title = localizedPorts()
+        ? `Input “${p.title}”: ${p.types.map(t => ports[t] ?? t).join(' or ')}${p.optional ? ' (optional)' : ''}`
+        : `Вход «${p.title}»: ${p.types.map(t => ports[t] ?? t).join(' или ')}${p.optional ? ' (необязательный)' : ''}`;
       const dot = el('span', 'ge-dot');
       dot.dataset.type = p.types[0];
       row.append(dot, el('span', '', p.title + (p.optional ? ' ?' : '')));
@@ -246,7 +253,10 @@ export class GraphEditor {
       const row = el('div', 'ge-port out');
       row.dataset.port = p.id;
       const t = p.type.startsWith('same:') ? (block.inputs.find(i => i.id === p.type.slice(5))?.types[0] ?? 'data') : p.type;
-      row.title = `Выход «${p.title}»: ${PORT_TYPES[t] ?? t}${p.type.startsWith('same:') ? ' (как на входе)' : ''}`;
+      const ports = localizedPorts() ?? PORT_TYPES;
+      row.title = localizedPorts()
+        ? `Output “${p.title}”: ${ports[t] ?? t}${p.type.startsWith('same:') ? ' (same as input)' : ''}`
+        : `Выход «${p.title}»: ${ports[t] ?? t}${p.type.startsWith('same:') ? ' (как на входе)' : ''}`;
       const dot = el('span', 'ge-dot');
       dot.dataset.type = t;
       row.append(el('span', '', p.title), dot);
