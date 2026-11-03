@@ -4,6 +4,7 @@ import { makeLabel, makeLines, setLineResolution, disposeTree } from './three-ut
 import { lineChartSvg } from './chart.js';
 import { OPTIMIZERS, numGrad } from './models/optimizers.js';
 import { escapeHtml, formatValue } from './format.js';
+import { t } from './i18n.js';
 
 const SIZE = 8;      // сторона поверхности в мировых единицах
 const HEIGHT = 3.2;  // высота рельефа
@@ -19,18 +20,18 @@ export class SurfaceLab extends BaseLab {
     const s = space;
     this.mount({
       controls: `
-        <label for="surface">Поверхность ошибки</label>
+        <label for="surface">${t('surface')}</label>
         <select id="surface">${s.surfaces.map(f => `<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('')}</select>
-        <label>Оптимизаторы</label>
+        <label>${t('optimizers')}</label>
         <div class="opt-list">${Object.entries(OPTIMIZERS).map(([id, o], i) => `
           <label class="check"><input type="checkbox" data-opt="${id}" ${i === 0 ? 'checked' : ''} />
             <span class="swatch" style="background:${o.color}"></span>${o.name}</label>`).join('')}</div>
-        <label for="lr">Скорость обучения η: <b id="lr-v"></b></label>
+        <label for="lr">${t('trainingSpeed')} η: <b id="lr-v"></b></label>
         <input id="lr" type="range" min="-3" max="0" step="0.05" />
         <div class="row">
-          <button id="play" class="primary">▶ Старт</button>
-          <button id="step">Шаг</button>
-          <button id="reset">Сброс</button>
+          <button id="play" class="primary">▶ ${t('auto')}</button>
+          <button id="step">${t('step')}</button>
+          <button id="reset">${t('reset')}</button>
         </div>
         <p class="small muted">Кликните по поверхности, чтобы поставить шарики в новую точку.</p>`,
       resultTitle: 'Ошибка (loss) по шагам',

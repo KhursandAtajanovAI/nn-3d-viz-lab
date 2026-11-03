@@ -5,6 +5,7 @@ import { lineChartSvg } from './chart.js';
 import { seededRandom } from './models/mlp.js';
 import { PALETTE } from './palette.js';
 import { formatValue } from './format.js';
+import { t } from './i18n.js';
 
 const ACTIONS = [
   { name: 'вверх', dr: -1, dc: 0, arrow: '↑' },
@@ -27,17 +28,17 @@ export class GridLab extends BaseLab {
     this.mount({
       controls: `
         <div class="row">
-          <button id="step">Шаг агента</button>
-          <button id="play" class="primary">▶ Авто</button>
+          <button id="step">${t('agentStep')}</button>
+          <button id="play" class="primary">▶ ${t('auto')}</button>
         </div>
         <div class="row">
-          <button id="fast">+100 эпизодов быстро</button>
-          <button id="best">Показать лучший путь</button>
+          <button id="fast">${t('fastEpisodes')}</button>
+          <button id="best">${t('bestPath')}</button>
         </div>
         ${slider('epsilon', 'ε — доля случайных ходов (исследование)', P.epsilon ?? 0.2, 0, 1, 0.05)}
         ${slider('alpha', 'α — скорость обучения', P.alpha ?? 0.5, 0.05, 1, 0.05)}
         ${slider('gamma', 'γ — важность будущих наград', P.gamma ?? 0.9, 0, 0.99, 0.01)}
-        <button id="reset" style="width:100%;margin-top:8px">Сбросить знания агента</button>
+        <button id="reset" style="width:100%;margin-top:8px">${t('resetAgent')}</button>
         ${MODE_TOGGLE_HTML}`,
       resultTitle: 'Обучение агента',
       hoverHint: 'Наведите курсор на клетку, чтобы увидеть Q-значения её действий.',

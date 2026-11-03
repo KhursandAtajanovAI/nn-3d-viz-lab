@@ -7,6 +7,7 @@ import { DATASETS_2D } from './models/datasets2d.js';
 import { lineChartSvg } from './chart.js';
 import { PALETTE } from './palette.js';
 import { escapeHtml, formatValue } from './format.js';
+import { t } from './i18n.js';
 
 const GRAD = '#c77dff';
 
@@ -23,9 +24,9 @@ export class TrainLab extends BaseLab {
     this.mode = s.mode ?? 'loop';
     this.mount({
       controls: this.mode === 'backprop' ? this.backpropControls() : this.loopControls(),
-      resultTitle: this.mode === 'backprop' ? 'Что изменил этот шаг' : 'Ход обучения',
+      resultTitle: this.mode === 'backprop' ? (t('language') === 'en' ? 'What this step changed' : 'Что изменил этот шаг') : (t('language') === 'en' ? 'Training progress' : 'Ход обучения'),
       hoverHint: 'Наведите курсор на нейрон или связь.',
-      cards: [{ title: 'Как читать сцену', open: !(s.sections?.length), html: `
+      cards: [{ title: t('sceneGuide'), open: !(s.sections?.length), html: `
         <ul class="legend">
           <li><span class="dot glow-pos"></span><span><b>Тёплое/холодное свечение нейрона</b> — его активация при прямом проходе.</span></li>
           <li><span class="dot" style="background:${GRAD};box-shadow:0 0 8px 3px ${GRAD}"></span><span><b>Фиолетовое свечение</b> — градиент ошибки δ: насколько этот нейрон «виноват» в ошибке. Он бежит от выхода ко входу.</span></li>
@@ -58,7 +59,7 @@ export class TrainLab extends BaseLab {
   get lr() { return Number(this.$('lr').value); }
 
   lrHtml(value, max = 1) {
-    return `<label for="lr">Скорость обучения η: <b id="lr-v"></b></label>
+    return `<label for="lr">${t('trainingSpeed')} η: <b id="lr-v"></b></label>
       <input id="lr" type="range" min="0.01" max="${max}" step="0.01" value="${value}" />`;
   }
 
@@ -112,16 +113,16 @@ export class TrainLab extends BaseLab {
   backpropControls() {
     const s = this.space;
     return `
-      <label for="sample">Обучающий пример</label>
+      <label for="sample">${t('trainExample')}</label>
       <select id="sample">${s.samples.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join('')}</select>
       ${this.lrHtml(s.lr ?? 0.5, 2)}
       ${SPEED_HTML}
-      <button id="step" class="primary">▶ Один шаг обучения</button>
+      <button id="step" class="primary">${t('trainOneStep')}</button>
       <div class="row">
-        <button id="next">Следующий пример</button>
-        <button id="epochs">+100 эпох быстро</button>
+        <button id="next">${t('nextExample')}</button>
+        <button id="epochs">${t('fastEpochs')}</button>
       </div>
-      <button id="reset" style="width:100%;margin-top:8px">Сбросить веса</button>
+      <button id="reset" style="width:100%;margin-top:8px">${t('resetWeights')}</button>
       ${MODE_TOGGLE_HTML}`;
   }
 
