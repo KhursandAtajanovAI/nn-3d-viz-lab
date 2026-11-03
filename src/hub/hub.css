@@ -9,6 +9,19 @@ button { font: inherit; }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .hero-top .theme-switch { margin-top: 8px; flex: none; }
 .hero-top .header-switches { margin-top: 8px; flex: none; }
+.header-switches { display: inline-flex; align-items: center; gap: 10px; }
+.language-switch { display: inline-flex; gap: 2px; align-items: center; }
+.language-switch button {
+  padding: 3px 6px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.language-switch button:hover,
+.language-switch button[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .hero h1 { margin: 0; font-size: 30px; letter-spacing: .2px; }
 .hero h1 .accent { color: var(--pos); }
 .hero p { max-width: 760px; margin: 8px 0 0; font-size: 15px; color: var(--muted); }

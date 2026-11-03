@@ -3,11 +3,12 @@
 //
 // Фильтры: категория, тег, уровень, тип вычислений и поиск. Они сочетаются друг с другом
 // и сохраняются в адресе страницы (?cat=…&tag=…&level=…&fid=…&q=…), поэтому ссылку можно отправить.
-import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../engine/catalog.js';
+import { CATEGORIES, LEVELS, FIDELITY, localizedCategories, localizedLevels, localizedFidelity, categoryById, loadManifest } from '../engine/catalog.js';
 import { escapeHtml } from '../engine/format.js';
 import { previewSvg } from './previews.js';
 import { themeSwitchHtml } from '../engine/theme.js';
-import { languageSwitchHtml, onLanguageChange, t } from '../engine/i18n.js';
+import { languageSwitchHtml, onLanguageChange, t, localize } from '../engine/i18n.js';
+import { localizedSpace } from '../engine/spaceLocale.js';
 import { initCreateDialog, renderMySpaces, initImport } from './userHub.js';
 
 document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
@@ -30,9 +31,12 @@ const norm = s => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
 
 function searchText(s) {
   const m = s.meta;
+  const categories = localizedCategories();
+  const levels = localizedLevels();
+  const fidelity = localizedFidelity();
   return norm([
     m.title, m.summary, m.uses, ...(m.tags ?? []),
-    categoryById(m.category)?.title, LEVELS[m.level], FIDELITY[m.fidelity]?.title,
+    categories.find(c => c.id === m.category)?.title, levels[m.level], fidelity[m.fidelity]?.title,
   ].join(' '));
 }
 
@@ -68,8 +72,8 @@ function cardHtml(s) {
         <p>${escapeHtml(m.summary ?? '')}</p>
         ${m.uses ? `<p class="uses"><span class="muted">${t('whereUsed')}</span> ${escapeHtml(m.uses)}</p>` : ''}
         <div class="tags">
-          ${m.fidelity ? tagBtn('fid', m.fidelity, FIDELITY[m.fidelity].title, `fidelity ${m.fidelity}`) : ''}
-          ${m.level ? tagBtn('level', m.level, LEVELS[m.level], 'level') : ''}
+          ${m.fidelity ? tagBtn('fid', m.fidelity, localizedFidelity()[m.fidelity].title, `fidelity ${m.fidelity}`) : ''}
+          ${m.level ? tagBtn('level', m.level, localizedLevels()[m.level], 'level') : ''}
           ${(m.tags ?? []).map(t => tagBtn('tag', t, t)).join('')}
         </div>
         <a class="open" href="${href}">${t('openSpace')}</a>
@@ -78,8 +82,9 @@ function cardHtml(s) {
 }
 
 function renderCatalog() {
+  const categories = localizedCategories();
   const visible = spaces.filter(s => passes(s));
-  const sections = CATEGORIES.map(cat => {
+  const sections = categories.map(cat => {
     const list = visible.filter(s => s.meta.category === cat.id)
       .sort((a, b) => (a.meta.order ?? 999) - (b.meta.order ?? 999));
     if (!list.length) return '';
@@ -105,7 +110,7 @@ function renderCatalog() {
 function renderCategoryFilters() {
   // Счётчик у категории учитывает все остальные фильтры (тег, поиск…), но не саму категорию
   const base = spaces.filter(s => passes(s, 'cat'));
-  const chips = [{ id: 'all', title: t('all'), icon: '' }, ...CATEGORIES];
+  const chips = [{ id: 'all', title: t('all'), icon: '' }, ...localizedCategories()];
   $('filters').innerHTML = chips.map(c => {
     const n = c.id === 'all' ? base.length : base.filter(s => s.meta.category === c.id).length;
     const total = c.id === 'all' ? spaces.length : spaces.filter(s => s.meta.category === c.id).length;
@@ -209,7 +214,10 @@ async function init() {
     const ids = await loadManifest();
     const results = await Promise.allSettled(ids.map(id => import(`../../spaces/${id}.js`)));
     spaces = results.flatMap((r, i) => {
-      if (r.status === 'fulfilled' && r.value.default?.meta) return [r.value.default];
+      if (r.status === 'fulfilled' && r.value.default?.meta) {
+        const space = localizedSpace(r.value.default);
+        return [{ ...space, meta: localize(space.meta) }];
+      }
       console.warn(`Пространство ${ids[i]} не загрузилось`, r.reason);
       return [];
     });
@@ -227,6 +235,8 @@ async function init() {
 
 init();
 function applyLanguage() {
+  spaces = spaces.map(space => ({ ...space, meta: localize(space.meta) }));
+  for (const space of spaces) space.searchText = searchText(space);
   document.title = `NN 3D Viz Lab — ${t('catalog')}`;
   document.getElementById('my-title').lastChild.textContent = ` ${t('mySpaces')}`;
   document.getElementById('import-space').textContent = t('uploadFile');

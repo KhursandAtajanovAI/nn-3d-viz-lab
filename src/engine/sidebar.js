@@ -1,5 +1,5 @@
 // Общие блоки боковой панели, которые повторяются во всех пространствах.
-import { categoryById, LEVELS, FIDELITY } from './catalog.js';
+import { categoryById, localizedLevels, localizedFidelity } from './catalog.js';
 import { escapeHtml } from './format.js';
 import { themeSwitchHtml } from './theme.js';
 import { languageSwitchHtml, t } from './i18n.js';
@@ -7,13 +7,13 @@ import { languageSwitchHtml, t } from './i18n.js';
 /** Шапка: ссылка в каталог, категория, название, описание и «где применяется» */
 export function headerHtml(meta) {
   const cat = categoryById(meta.category);
-  const fid = FIDELITY[meta.fidelity];
+  const fid = localizedFidelity()[meta.fidelity];
   return `
     <header class="brand">
       <div class="brand-top"><a class="back" href="./">${t('backToCatalog')}</a><span class="header-switches">${languageSwitchHtml()}${themeSwitchHtml()}</span></div>
       <div class="badges">
         ${cat ? `<a class="badge" href="${cat.user ? './#my-spaces' : `./?cat=${cat.id}`}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
-        ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}
+        ${meta.level ? `<span class="badge muted">${localizedLevels()[meta.level]}</span>` : ''}
         ${fid ? `<span class="badge fidelity ${meta.fidelity}" title="${escapeHtml(fid.hint)}">${fid.title}</span>` : ''}
       </div>
       <h1>${escapeHtml(meta.title)}</h1>

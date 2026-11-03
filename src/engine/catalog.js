@@ -1,5 +1,6 @@
 // Категории каталога. Модуль без зависимостей — используется и хабом, и страницей пространства.
 // Чтобы добавить категорию, достаточно дописать её сюда; пространства ссылаются на неё по id.
+import { language } from './i18n.js';
 
 export const CATEGORIES = [
   { id: 'basics', title: 'Основы', icon: '◉', description: 'Как устроен нейрон, слой и прямой проход сигнала.' },
@@ -12,6 +13,22 @@ export const CATEGORIES = [
   { id: 'user', title: 'Мои', icon: '✎', description: 'Пространства, созданные или загруженные вами. Хранятся только в этом браузере.', user: true },
 ];
 
+const CATEGORY_EN = {
+  basics: ['Basics', 'How neurons, layers, and forward passes work.'],
+  vision: ['Images', 'Image classification: convolutions, feature maps, and class probabilities.'],
+  nlp: ['Text (NLP)', 'How words become numbers: embeddings, recurrent networks, and attention.'],
+  tasks: ['Other tasks', 'Regression, autoencoders, recommendations, and clustering.'],
+  training: ['Training', 'Gradient descent, backpropagation, and loss curves.'],
+  library: ['Model library', 'Known architectures and datasets, from LeNet to Transformer.'],
+  user: ['My spaces', 'Spaces created or imported in this browser.'],
+};
+
+export function localizedCategories() {
+  return language() === 'en'
+    ? CATEGORIES.map(c => ({ ...c, title: CATEGORY_EN[c.id]?.[0] ?? c.title, description: CATEGORY_EN[c.id]?.[1] ?? c.description }))
+    : CATEGORIES;
+}
+
 export const categoryById = id => CATEGORIES.find(c => c.id === id);
 
 /** Уровень сложности для бейджа карточки */
@@ -20,6 +37,9 @@ export const LEVELS = {
   2: 'Средний',
   3: 'Продвинутый',
 };
+export const localizedLevels = () => language() === 'en'
+  ? { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' }
+  : LEVELS;
 
 /**
  * Насколько «настоящие» вычисления в пространстве — честная пометка на карточке и в шапке.
@@ -32,6 +52,13 @@ export const FIDELITY = {
   trained: { title: 'Обучается в браузере', hint: 'Сеть обучается прямо на этой странице на синтетических данных — результат настоящий, но данные упрощены.' },
   demo: { title: 'Упрощённая иллюстрация', hint: 'Идея и структура показаны верно, но данные или выходы демонстрационные — подробности в описании пространства.' },
 };
+export const localizedFidelity = () => language() === 'en'
+  ? {
+      real: { title: 'Real calculations', hint: 'Every number is computed from the displayed weights and formulas.' },
+      trained: { title: 'Trains in the browser', hint: 'The network trains on this page using synthetic data.' },
+      demo: { title: 'Simplified illustration', hint: 'The architecture is accurate, but data or outputs are illustrative.' },
+    }
+  : FIDELITY;
 
 /** Разрешённый id пространства (он же имя файла spaces/<id>.js) */
 export const isValidSpaceId = id => /^[a-z0-9][a-z0-9-]*$/.test(id ?? '');

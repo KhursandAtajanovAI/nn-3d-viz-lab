@@ -2,7 +2,8 @@
 import { isValidSpaceId } from './catalog.js';
 import { escapeHtml } from './format.js';
 import { isValidUserId } from './spaceFormat.js';
-import { onLanguageChange } from './i18n.js';
+import { onLanguageChange, localize } from './i18n.js';
+import { localizedSpace } from './spaceLocale.js';
 
 // Визуализаторы по полю `type` конфига. Новый тип визуализации = новая строка здесь;
 // сами пространства при этом остаются просто файлами с данными.
@@ -81,6 +82,8 @@ async function boot() {
 }
 
 async function start(space) {
+  space = localizedSpace(space);
+  space = { ...space, meta: localize(space.meta) };
   const load = VISUALIZERS[space.type ?? 'mlp'];
   if (!load) {
     return fail(space.meta?.title ?? 'Пространство', `Тип визуализации «${escapeHtml(space.type)}» пока не поддерживается.`);

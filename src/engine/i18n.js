@@ -72,6 +72,10 @@ let current = readLanguage();
 const listeners = new Set();
 
 export function language() { return current; }
+export function localize(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  return value[current] ?? value.ru ?? value.en;
+}
 export function t(key, ...args) {
   const value = STRINGS[current][key] ?? STRINGS.ru[key] ?? key;
   return typeof value === 'function' ? value(...args) : value;
@@ -84,12 +88,13 @@ export function setLanguage(next) {
   if (!LANGUAGES[next] || next === current) return;
   current = next;
   try { localStorage.setItem(STORAGE_KEY, current); } catch { /* continue without persistence */ }
-  document.documentElement.lang = current;
+  if (typeof document !== 'undefined') document.documentElement.lang = current;
   for (const fn of listeners) fn(current);
   syncLanguageSwitches();
 }
 
 function syncLanguageSwitches() {
+  if (typeof document === 'undefined') return;
   for (const button of document.querySelectorAll('[data-language-set]')) {
     button.setAttribute('aria-pressed', String(button.dataset.languageSet === current));
   }
@@ -102,8 +107,10 @@ export function languageSwitchHtml() {
   </div>`;
 }
 
-document.documentElement.lang = current;
-document.addEventListener('click', event => {
-  const button = event.target.closest('[data-language-set]');
-  if (button) setLanguage(button.dataset.languageSet);
-});
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = current;
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-language-set]');
+    if (button) setLanguage(button.dataset.languageSet);
+  });
+}
