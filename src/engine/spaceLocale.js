@@ -39,5 +39,12 @@ export function localizedSpace(space) {
   const translation = EN[space.meta?.id];
   if (!translation) return space;
   const [title, summary, uses] = translation;
-  return { ...space, meta: { ...space.meta, en: { ...space.meta, title, summary, uses } } };
+  return {
+    ...space,
+    meta: {
+      ...space.meta,
+      ru: { ...space.meta },
+      en: { ...space.meta, title, summary, uses },
+    },
+  };
 }

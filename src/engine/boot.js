@@ -20,10 +20,20 @@ const VISUALIZERS = {
 
 const sidebar = document.getElementById('sidebar');
 const container = document.getElementById('scene');
+let baseSpace = null;
+let rebuilding = false;
 
-// Space configs contain their own explanatory copy. Rebooting the visualizer keeps
-// all controls and generated explanations consistent after a language change.
-onLanguageChange(() => location.reload());
+onLanguageChange(async () => {
+  if (!baseSpace || rebuilding) return;
+  rebuilding = true;
+  container.replaceChildren();
+  sidebar.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    await start(baseSpace);
+  } finally {
+    rebuilding = false;
+  }
+});
 
 function fail(title, details) {
   document.title = `${title} — NN 3D Viz Lab`;
@@ -82,6 +92,7 @@ async function boot() {
 }
 
 async function start(space) {
+  baseSpace = space;
   space = localizedSpace(space);
   space = { ...space, meta: localize(space.meta) };
   const load = VISUALIZERS[space.type ?? 'mlp'];

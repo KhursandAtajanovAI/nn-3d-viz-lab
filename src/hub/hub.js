@@ -23,6 +23,7 @@ const root = $('catalog');
 const search = $('search');
 
 let spaces = [];
+let rawSpaces = [];
 const state = { cat: 'all', tag: null, level: null, fid: null, q: '' };
 
 // ---------- Фильтрация ----------
@@ -215,13 +216,13 @@ async function init() {
     const results = await Promise.allSettled(ids.map(id => import(`../../spaces/${id}.js`)));
     spaces = results.flatMap((r, i) => {
       if (r.status === 'fulfilled' && r.value.default?.meta) {
-        const space = localizedSpace(r.value.default);
-        return [{ ...space, meta: localize(space.meta) }];
+        return [localizedSpace(r.value.default)];
       }
       console.warn(`Пространство ${ids[i]} не загрузилось`, r.reason);
       return [];
     });
-    for (const s of spaces) s.searchText = searchText(s);
+    rawSpaces = spaces;
+    applyLanguage();
     $('total').textContent = spaces.length;
     $('total-categories').textContent = new Set(spaces.map(s => s.meta.category)).size;
     readUrl();
@@ -235,7 +236,7 @@ async function init() {
 
 init();
 function applyLanguage() {
-  spaces = spaces.map(space => ({ ...space, meta: localize(space.meta) }));
+  spaces = rawSpaces.map(space => ({ ...space, meta: localize(space.meta) }));
   for (const space of spaces) space.searchText = searchText(space);
   document.title = `NN 3D Viz Lab — ${t('catalog')}`;
   document.getElementById('my-title').lastChild.textContent = ` ${t('mySpaces')}`;
