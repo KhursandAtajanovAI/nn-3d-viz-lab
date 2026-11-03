@@ -4,12 +4,14 @@
 // Фильтры: категория, тег, уровень, тип вычислений и поиск. Они сочетаются друг с другом
 // и сохраняются в адресе страницы (?cat=…&tag=…&level=…&fid=…&q=…), поэтому ссылку можно отправить.
 import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../engine/catalog.js';
-import { escapeHtml, plural } from '../engine/format.js';
+import { escapeHtml } from '../engine/format.js';
 import { previewSvg } from './previews.js';
 import { themeSwitchHtml } from '../engine/theme.js';
+import { languageSwitchHtml, onLanguageChange, t } from '../engine/i18n.js';
 import { initCreateDialog, renderMySpaces, initImport } from './userHub.js';
 
 document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
+document.getElementById('language-switch').outerHTML = languageSwitchHtml();
 const openCreate = initCreateDialog();
 document.getElementById('create-space').addEventListener('click', openCreate);
 initImport(document.getElementById('import-space'), document.getElementById('my-msg'), () => renderMySpaces());
@@ -64,13 +66,13 @@ function cardHtml(s) {
       <div class="body">
         <h3><a class="title-link" href="${href}">${escapeHtml(m.title)}</a></h3>
         <p>${escapeHtml(m.summary ?? '')}</p>
-        ${m.uses ? `<p class="uses"><span class="muted">Где применяется:</span> ${escapeHtml(m.uses)}</p>` : ''}
+        ${m.uses ? `<p class="uses"><span class="muted">${t('whereUsed')}</span> ${escapeHtml(m.uses)}</p>` : ''}
         <div class="tags">
           ${m.fidelity ? tagBtn('fid', m.fidelity, FIDELITY[m.fidelity].title, `fidelity ${m.fidelity}`) : ''}
           ${m.level ? tagBtn('level', m.level, LEVELS[m.level], 'level') : ''}
           ${(m.tags ?? []).map(t => tagBtn('tag', t, t)).join('')}
         </div>
-        <a class="open" href="${href}">Открыть пространство →</a>
+        <a class="open" href="${href}">${t('openSpace')}</a>
       </div>
     </article>`;
 }
@@ -91,19 +93,19 @@ function renderCatalog() {
 
   root.innerHTML = sections || `
     <div class="empty">
-      <p>Ничего не найдено по текущим фильтрам.</p>
-      <button type="button" class="reset" data-reset>Сбросить фильтры</button>
+      <p>${t('nothingFound')}</p>
+      <button type="button" class="reset" data-reset>${t('resetFilters')}</button>
     </div>`;
 
   $('result-count').textContent = visible.length === spaces.length
-    ? `Показаны все ${spaces.length} ${plural(spaces.length, ['пространство', 'пространства', 'пространств'])}`
-    : `Найдено: ${visible.length} из ${spaces.length}`;
+    ? t('shownAll', spaces.length)
+    : t('found', visible.length, spaces.length);
 }
 
 function renderCategoryFilters() {
   // Счётчик у категории учитывает все остальные фильтры (тег, поиск…), но не саму категорию
   const base = spaces.filter(s => passes(s, 'cat'));
-  const chips = [{ id: 'all', title: 'Все', icon: '' }, ...CATEGORIES];
+  const chips = [{ id: 'all', title: t('all'), icon: '' }, ...CATEGORIES];
   $('filters').innerHTML = chips.map(c => {
     const n = c.id === 'all' ? base.length : base.filter(s => s.meta.category === c.id).length;
     const total = c.id === 'all' ? spaces.length : spaces.filter(s => s.meta.category === c.id).length;
@@ -132,8 +134,8 @@ function renderActiveFilters() {
   if (state.fid) chips.push(['fid', FIDELITY[state.fid]?.title]);
   if (state.q) chips.push(['q', `Поиск: «${state.q}»`]);
   $('active-filters').innerHTML = chips.length ? `
-    ${chips.map(([k, label]) => `<button type="button" class="active-chip" data-clear="${k}" title="Убрать фильтр">${escapeHtml(label)} <span aria-hidden="true">✕</span></button>`).join('')}
-    <button type="button" class="reset" data-reset>Сбросить всё</button>` : '';
+    ${chips.map(([k, label]) => `<button type="button" class="active-chip" data-clear="${k}" title="${t('resetFilters')}">${escapeHtml(label)} <span aria-hidden="true">✕</span></button>`).join('')}
+    <button type="button" class="reset" data-reset>${t('resetAll')}</button>` : '';
 }
 
 function render() {
@@ -224,3 +226,16 @@ async function init() {
 }
 
 init();
+function applyLanguage() {
+  document.title = `NN 3D Viz Lab — ${t('catalog')}`;
+  document.getElementById('my-title').lastChild.textContent = ` ${t('mySpaces')}`;
+  document.getElementById('import-space').textContent = t('uploadFile');
+  document.getElementById('create-space').textContent = t('createSpace');
+  document.querySelector('#my-spaces > .muted').textContent = t('localOnly');
+  document.querySelector('.tag-panel summary').textContent = t('tagFilter');
+  search.placeholder = t('searchPlaceholder');
+  search.setAttribute('aria-label', t('searchAria'));
+  render();
+}
+onLanguageChange(applyLanguage);
+applyLanguage();

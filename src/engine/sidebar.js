@@ -2,6 +2,7 @@
 import { categoryById, LEVELS, FIDELITY } from './catalog.js';
 import { escapeHtml } from './format.js';
 import { themeSwitchHtml } from './theme.js';
+import { languageSwitchHtml, t } from './i18n.js';
 
 /** Шапка: ссылка в каталог, категория, название, описание и «где применяется» */
 export function headerHtml(meta) {
@@ -9,7 +10,7 @@ export function headerHtml(meta) {
   const fid = FIDELITY[meta.fidelity];
   return `
     <header class="brand">
-      <div class="brand-top"><a class="back" href="./">← Каталог</a>${themeSwitchHtml()}</div>
+      <div class="brand-top"><a class="back" href="./">${t('backToCatalog')}</a><span class="header-switches">${languageSwitchHtml()}${themeSwitchHtml()}</span></div>
       <div class="badges">
         ${cat ? `<a class="badge" href="${cat.user ? './#my-spaces' : `./?cat=${cat.id}`}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
         ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}
@@ -17,7 +18,7 @@ export function headerHtml(meta) {
       </div>
       <h1>${escapeHtml(meta.title)}</h1>
       ${meta.summary ? `<p class="muted">${escapeHtml(meta.summary)}</p>` : ''}
-      ${meta.uses ? `<p class="uses"><b>Где применяется:</b> ${escapeHtml(meta.uses)}</p>` : ''}
+      ${meta.uses ? `<p class="uses"><b>${t('whereUsed')}</b> ${escapeHtml(meta.uses)}</p>` : ''}
       ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${escapeHtml(meta.fidelityNote ?? fid.hint)}</p>` : ''}
     </header>`;
 }

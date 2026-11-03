@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SceneKit } from './SceneKit.js';
 import { headerHtml, detailsCardHtml } from './sidebar.js';
+import { t } from './i18n.js';
 
 /**
  * Общая основа визуализаторов: боковая панель (шапка, «Управление», «Под курсором», «Результат»,
@@ -39,12 +40,12 @@ export class BaseLab {
     this.sidebar.innerHTML = `
       ${headerHtml(s.meta)}
       <section class="card">
-        <h2>Управление</h2>
+        <h2>${t('controls')}</h2>
         ${controls}
         <p id="status" role="status"></p>
       </section>
       <section class="card" id="hover-card">
-        <h2>Под курсором</h2>
+        <h2>${t('hover')}</h2>
         <div id="hover-info"><p class="muted">${hoverHint}</p></div>
       </section>
       <section class="card" id="result-card" hidden>
@@ -52,7 +53,7 @@ export class BaseLab {
         <div id="result"></div>
       </section>
       <section class="card">
-        <h2>Сцена</h2>
+        <h2>${t('scene')}</h2>
         ${s.intro ?? ''}
         <div id="scene-info"></div>
       </section>

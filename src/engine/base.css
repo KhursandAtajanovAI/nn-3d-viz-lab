@@ -192,6 +192,10 @@ a.badge:hover { border-color: var(--muted); }
 
 /* Переключатель фона: 4 цветных кружка */
 .theme-switch { display: inline-flex; gap: 6px; align-items: center; }
+.header-switches { display: inline-flex; align-items: center; gap: 10px; }
+.language-switch { display: inline-flex; gap: 2px; align-items: center; }
+.language-switch button { border: 1px solid var(--border, #536078); background: transparent; color: inherit; padding: 3px 6px; font: inherit; font-size: .75em; cursor: pointer; }
+.language-switch button[aria-pressed="true"] { background: var(--accent, #ffd166); color: #10131d; }
 .theme-dot {
   width: 20px;
   height: 20px;

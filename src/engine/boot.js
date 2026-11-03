@@ -2,6 +2,7 @@
 import { isValidSpaceId } from './catalog.js';
 import { escapeHtml } from './format.js';
 import { isValidUserId } from './spaceFormat.js';
+import { onLanguageChange } from './i18n.js';
 
 // Визуализаторы по полю `type` конфига. Новый тип визуализации = новая строка здесь;
 // сами пространства при этом остаются просто файлами с данными.
@@ -18,6 +19,10 @@ const VISUALIZERS = {
 
 const sidebar = document.getElementById('sidebar');
 const container = document.getElementById('scene');
+
+// Space configs contain their own explanatory copy. Rebooting the visualizer keeps
+// all controls and generated explanations consistent after a language change.
+onLanguageChange(() => location.reload());
 
 function fail(title, details) {
   document.title = `${title} — NN 3D Viz Lab`;
