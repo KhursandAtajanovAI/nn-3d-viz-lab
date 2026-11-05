@@ -1,7 +1,11 @@
 // LeNet-5 (1998): первая успешная свёрточная сеть — читала цифры на банковских чеках.
+// Тексты — в словарях src/i18n/<язык>/spaces/lenet5.js.
 import { generateDigit, DIGIT_CLASSES } from '../src/engine/models/generators.js';
 import { padImage, firstLayerMaps, demoDistribution, demoActivations } from '../src/engine/models/libraryHelpers.js';
 import { CONV1_FILTERS } from '../src/engine/models/cnn.js';
+import { scope } from '../src/i18n/i18n.js';
+
+const S = scope('sp.lenet5');
 
 // Похожие цифры — чаще всего путаются
 const SIMILAR = { 0: [6, 8], 1: [7], 2: [7, 3], 3: [8, 5], 4: [9], 5: [3, 6], 6: [5, 0], 7: [1, 2], 8: [3, 0], 9: [4, 7] };
@@ -14,23 +18,23 @@ export default {
     order: 10,
     level: 1,
     fidelity: 'demo',
-    fidelityNote: 'Архитектура LeNet-5 точная. Карты первых двух слоёв реально вычислены на вашей картинке (фильтры-детекторы краёв), дальнейшие слои и ответ — демонстрационные.',
-    summary: 'Сеть Яна Лекуна: две свёртки с пулингом и три полносвязных слоя — всего 61 тысяча весов. Прародитель всех современных CNN.',
-    uses: 'В 1990-х читала рукописные суммы на миллионах банковских чеков в США; сегодня — учебный эталон свёрточной сети.',
-    tags: ['CNN', 'LeNet', 'история', 'свёртки', 'MNIST'],
+    fidelityNote: S('fidelityNote'),
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['CNN', 'LeNet', 'history', 'convolutions', 'MNIST'],
     preview: { blocks: [[1, 0.1], [0.85, 0.35], [0.45, 0.35], [0.32, 0.55], [0.16, 0.55], [0.5, 0.12], [0.4, 0.12], [0.25, 0.12]] },
   },
 
   type: 'stack',
   layers: [
-    { name: 'Вход 32×32', kind: 'input', shape: [32, 32, 1], maps: true, slices: 1, note: 'Цифра 28×28, дополненная нулями до 32×32 — так делали в оригинале.' },
-    { name: 'C1: свёртка 5×5', kind: 'conv', kernel: 5, shape: [28, 28, 6], maps: true, filters: CONV1_FILTERS, note: '6 фильтров. Здесь показаны карты от фильтров-детекторов краёв; в LeNet фильтры выучивались.' },
-    { name: 'S2: пулинг', kind: 'pool', shape: [14, 14, 6], maps: true, note: 'В оригинале — усредняющий пулинг с обучаемым множителем.' },
-    { name: 'C3: свёртка 5×5', kind: 'conv', kernel: 5, shape: [10, 10, 16], params: 2416, note: 'Здесь C3 полносвязный, как в современных реализациях: 6 × 16 × 25 весов + 16 смещений = 2 416. В оригинальной работе 1998 года C3 был разреженным — каждая карта смотрела только на часть карт S2 (хитрость для экономии вычислений), и параметров было 1 516.' },
-    { name: 'S4: пулинг', kind: 'pool', shape: [5, 5, 16] },
-    { name: 'C5: 120 нейронов', kind: 'dense', shape: [120], params: 48120 },
-    { name: 'F6: 84 нейрона', kind: 'dense', shape: [84], params: 10164 },
-    { name: 'Выход: 10 цифр', kind: 'output', shape: [10], params: 850 },
+    { name: S('l.input'), kind: 'input', shape: [32, 32, 1], maps: true, slices: 1, note: S('n.input') },
+    { name: S('l.c1'), kind: 'conv', kernel: 5, shape: [28, 28, 6], maps: true, filters: CONV1_FILTERS, note: S('n.c1') },
+    { name: S('l.s2'), kind: 'pool', shape: [14, 14, 6], maps: true, note: S('n.s2') },
+    { name: S('l.c3'), kind: 'conv', kernel: 5, shape: [10, 10, 16], params: 2416, note: S('n.c3') },
+    { name: S('l.s4'), kind: 'pool', shape: [5, 5, 16] },
+    { name: S('l.c5'), kind: 'dense', shape: [120], params: 48120 },
+    { name: S('l.f6'), kind: 'dense', shape: [84], params: 10164 },
+    { name: S('l.out'), kind: 'output', shape: [10], params: 850 },
   ],
   totalParams: 61706,
   outputNames: DIGIT_CLASSES,
@@ -43,14 +47,7 @@ export default {
     return { maps: { 1: conv, 2: pool }, vectors: { 5: demoActivations(rnd), 6: demoActivations(rnd), 7: probs }, probs };
   },
 
-  intro: `<p>LeNet-5 — сеть, с которой началась эпоха свёрточных сетей. Идея, сохранившаяся до сих пор:
-    <b>свёртка → пулинг → свёртка → пулинг → полносвязные слои</b>. Сравните с пространством
-    <a href="space.html?id=mnist">MNIST</a> — там сеть почти такой же формы обучается прямо в браузере.</p>`,
+  intro: S('introHtml'),
 
-  sections: [{
-    title: 'Историческая справка',
-    open: false,
-    html: `<p>Ян Лекун с коллегами из AT&T Bell Labs опубликовали LeNet-5 в 1998 году. Сеть обучали на базе рукописных цифр,
-      из которой позже сделали MNIST. Тогда обучение занимало дни на лучших компьютерах, а сейчас — секунды на телефоне.</p>`,
-  }],
+  sections: [{ title: S('historyTitle'), open: false, html: S('historyHtml') }],
 };

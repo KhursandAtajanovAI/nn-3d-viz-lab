@@ -1,6 +1,10 @@
 // GPT (на примере GPT-2 small): только декодер трансформера, предсказывает следующий токен.
+// Тексты — в словарях src/i18n/<язык>/spaces/gpt.js (там же начала текстов и варианты продолжения).
 import { tokensIn, embedding, positions, block } from '../src/engine/models/transformerLayers.js';
 import { demoActivations } from '../src/engine/models/libraryHelpers.js';
+import { scope, str } from '../src/i18n/i18n.js';
+
+const S = scope('sp.gpt');
 
 const N = 10, D = 768;
 const blocks = block({ n: N, d: D, heads: 12, repeat: 12, masked: true });
@@ -9,36 +13,34 @@ const layers = [
   embedding(N, D, 50257),
   positions(N, D),
   ...blocks,
-  { name: 'Норма', kind: 'norm', shape: [N, D], params: 2 * D },
-  { name: 'Следующий токен', kind: 'output', shape: [50257], params: 0, note: 'Softmax по всему словарю. Веса выходного слоя общие с таблицей эмбеддингов.' },
+  { name: S('l.norm'), kind: 'norm', shape: [N, D], params: 2 * D },
+  { name: S('l.out'), kind: 'output', shape: [50257], params: 0, note: S('n.out') },
 ];
 
-const EXAMPLES = [
-  { name: '«Весной в казахской степи расцветают…»', cands: [['тюльпаны', 0.74], ['маки', 0.09], ['подснежники', 0.05], ['цветы', 0.04], ['ирисы', 0.03]] },
-  { name: '«Столица Казахстана — город…»', cands: [['Астана', 0.86], ['Алматы', 0.06], ['Нур-Султан', 0.03], ['с', 0.02], ['который', 0.01]] },
-  { name: '«def add(a, b): return…»', cands: [['a + b', 0.82], ['a', 0.05], ['sum', 0.04], ['(a', 0.03], ['b + a', 0.02]] },
-];
+// Вероятности вариантов; сами тексты и слова — ex.<i>.name и ex.<i>.c.<k> в словаре
+const PROBS = [[0.74, 0.09, 0.05, 0.04, 0.03], [0.86, 0.06, 0.03, 0.02, 0.01], [0.82, 0.05, 0.04, 0.03, 0.02]];
+const EXAMPLES = PROBS.map((ps, i) => ({ name: S(`ex.${i}.name`), cands: ps.map((p, k) => [S(`ex.${i}.c.${k}`), p]) }));
 
 export default {
   meta: {
     id: 'gpt',
-    title: 'GPT: языковая модель',
+    title: S('title'),
     category: 'library',
     order: 110,
     level: 3,
     fidelity: 'demo',
-    fidelityNote: 'Архитектура GPT-2 small (12 блоков, 124 млн весов) точная; варианты продолжения — демонстрационные.',
-    summary: 'Стопка из 12 блоков маскированного self-attention: каждый токен видит только предыдущие. На выходе — вероятность каждого из 50 257 возможных следующих токенов.',
-    uses: 'Чат-боты и ассистенты, написание и редактирование текстов, программирование (автодополнение кода), перевод, ответы на вопросы.',
-    tags: ['NLP', 'GPT', 'Transformer', 'генерация текста', 'LLM'],
-    preview: { tokens: ['Весной', 'в', 'степи', '?'] },
+    fidelityNote: S('fidelityNote'),
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['NLP', 'GPT', 'Transformer', 'text-generation', 'LLM'],
+    preview: { tokens: S.list('preview', 4) },
   },
 
   type: 'stack',
   layers,
   totalParams: 124439808,
-  paramsNote: 'в таблице не учтены позиционные эмбеддинги (1024 × 768 = 786 432) и вторая нормализация в каждом из 12 блоков (12 × 1 536 = 18 432) — вместе ровно 804 864, вся разница',
-  groups: [{ from: 3, to: 3 + blocks.length - 1, label: 'Декодер ×12 (маскированное внимание)', color: 0xff6fa3 }],
+  paramsNote: S('paramsNote'),
+  groups: [{ from: 3, to: 3 + blocks.length - 1, label: S('group'), color: 0xff6fa3 }],
   inputs: EXAMPLES.map(e => ({ name: e.name })),
   resultClasses: EXAMPLES[0].cands.map(c => c[0]),
 
@@ -48,22 +50,10 @@ export default {
   },
 
   explainResult(r) {
-    return `<p>Самое вероятное продолжение — <b>«${r.example.cands[0][0]}»</b> (${Math.round(r.example.cands[0][1] * 100)}%).
-      Модель выбирает токен (не обязательно самый вероятный — для разнообразия есть «температура»), дописывает его к тексту и повторяет всё снова.
-      Так пишется весь ответ чат-бота — по одному токену.</p>`;
+    return S.h('explainHtml', { word: str(r.example.cands[0][0]), p: Math.round(r.example.cands[0][1] * 100) });
   },
 
-  intro: `<p>GPT (Generative Pre-trained Transformer) — это только <b>декодер</b> трансформера. Его учат одной задаче: по началу текста угадать следующий токен.
-    На миллиардах страниц эта простая задача учит модель грамматике, фактам и даже программированию.
-    GPT-2 small — 124 млн весов; GPT-3 — 175 млрд, у современных моделей ещё больше.</p>`,
+  intro: S('introHtml'),
 
-  sections: [{
-    title: 'Как из «угадай слово» получается чат-бот',
-    open: false,
-    html: `<ol class="steps">
-        <li><b>Предобучение</b>: предсказание следующего токена на огромном корпусе текстов.</li>
-        <li><b>Дообучение на диалогах</b>: модель учится отвечать в формате «вопрос — ответ».</li>
-        <li><b>RLHF</b>: люди оценивают ответы, и модель дообучается с подкреплением давать более полезные.</li>
-      </ol>`,
-  }],
+  sections: [{ title: S('chatTitle'), open: false, html: S('chatHtml') }],
 };

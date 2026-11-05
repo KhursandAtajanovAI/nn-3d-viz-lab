@@ -3,7 +3,7 @@
 import { LIMITS } from '../engine/spaceFormat.js';
 import { saveSpace, listSpaces, renameSpace, deleteSpace } from '../engine/userStore.js';
 import { newSpaceFile } from '../engine/userSpace.js';
-import { plural } from '../engine/format.js';
+import { t, H, T, At, L, setT, locale } from '../i18n/i18n.js';
 import { downloadSpaceFile, importSpaceFile, pickFile } from '../engine/spaceFile.js';
 import { confirmDialog, promptDialog, alertDialog } from '../engine/dialogs.js';
 
@@ -15,34 +15,34 @@ function dialogHtml() {
   return `
     <dialog id="create-dialog" class="dialog" aria-labelledby="create-title">
       <form method="dialog" id="create-form">
-        <h2 id="create-title">Новое пространство</h2>
-        <label for="cs-title">Название</label>
-        <input id="cs-title" type="text" required maxlength="${LIMITS.title}" placeholder="Например: Моя первая сеть" />
-        <label for="cs-summary">Краткое описание <span class="muted">(необязательно)</span></label>
+        <h2 id="create-title">${T('my.newTitle')}</h2>
+        <label for="cs-title">${T('my.fieldTitle')}</label>
+        <input id="cs-title" type="text" required maxlength="${LIMITS.title}" ${At('placeholder', 'my.fieldTitlePlaceholder')} />
+        <label for="cs-summary">${T('my.fieldSummary')} <span class="muted">${T('my.optional')}</span></label>
         <textarea id="cs-summary" rows="2" maxlength="${LIMITS.summary}"></textarea>
-        <p class="field-note muted">Категория: <b>Мои</b></p>
+        <p class="field-note muted">${T('my.categoryNoteHtml')}</p>
 
         <fieldset>
-          <legend>Режим</legend>
+          <legend>${T('my.mode')}</legend>
           <label class="choice"><input type="radio" name="cs-mode" value="standard" checked />
-            <span><b>Обычное пространство</b><br /><span class="muted">Сеть из готовых частей движка — работает сразу.</span></span></label>
+            <span><b>${T('my.modeStandard')}</b><br /><span class="muted">${T('my.modeStandardHint')}</span></span></label>
           <label class="choice disabled"><input type="radio" name="cs-mode" value="code" disabled />
-            <span><b>Пространство с кодом</b> <span class="soon">в доработке</span><br />
-              <span class="muted">Свой JavaScript. Пока недоступно: чужой код на сайте не исполняется.</span></span></label>
+            <span><b>${T('my.modeCode')}</b> <span class="soon">${T('my.soon')}</span><br />
+              <span class="muted">${T('my.modeCodeHint')}</span></span></label>
         </fieldset>
 
         <fieldset>
-          <legend>Тип</legend>
+          <legend>${T('my.type')}</legend>
           <label class="choice"><input type="radio" name="cs-type" value="mlp" checked />
-            <span><b>Полносвязная сеть</b><br /><span class="muted">3D-сцена, своя архитектура, свои веса и входы.</span></span></label>
+            <span><b>${T('my.typeMlp')}</b><br /><span class="muted">${T('my.typeMlpHint')}</span></span></label>
           <label class="choice" id="cs-type-graph"><input type="radio" name="cs-type" value="graph" />
-            <span><b>Граф блоков</b><br /><span class="muted">Визуальный конструктор: данные → подготовка → модель → обучение → результаты.</span></span></label>
+            <span><b>${T('my.typeGraph')}</b><br /><span class="muted">${T('my.typeGraphHint')}</span></span></label>
         </fieldset>
 
         <p id="cs-error" class="error-text" role="alert"></p>
         <div class="dialog-buttons">
-          <button type="button" id="cs-cancel">Отмена</button>
-          <button type="submit" id="cs-ok" class="primary-btn">Создать и открыть</button>
+          <button type="button" id="cs-cancel">${T('common.cancel')}</button>
+          <button type="submit" id="cs-ok" class="primary-btn">${T('my.createOpen')}</button>
         </div>
       </form>
     </dialog>`;
@@ -55,9 +55,9 @@ export function initCreateDialog() {
   $('create-form').addEventListener('submit', async e => {
     e.preventDefault();
     const title = $('cs-title').value.trim();
-    if (!title) { $('cs-error').textContent = 'Введите название'; return; }
+    if (!title) { setT($('cs-error'), 'my.errNoTitle'); return; }
     const mode = dlg.querySelector('input[name="cs-mode"]:checked')?.value;
-    if (mode !== 'standard') { $('cs-error').textContent = 'Пространства с кодом пока в доработке'; return; }
+    if (mode !== 'standard') { setT($('cs-error'), 'my.errCodeMode'); return; }
     const type = dlg.querySelector('input[name="cs-type"]:checked')?.value ?? 'mlp';
     $('cs-ok').disabled = true;
     try {
@@ -79,8 +79,8 @@ export function initCreateDialog() {
 
 // ---------- Список «Мои» ----------
 
-const TYPE_TITLE = { mlp: 'Полносвязная сеть', graph: 'Граф блоков' };
-const dateText = t => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const TYPE_KEY = { mlp: 'my.typeMlp', graph: 'my.typeGraph' };
+const dateText = ms => new Date(ms).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** Элемент с текстом (textContent — пользовательские строки никогда не попадают в innerHTML) */
 function el(tag, cls, text) {
@@ -92,10 +92,9 @@ function el(tag, cls, text) {
 
 function describe(file) {
   if (file.type === 'graph') {
-    const n = file.graph.nodes.length, m = file.graph.edges.length;
-    return `${n} ${plural(n, ['блок', 'блока', 'блоков'])}, ${m} ${plural(m, ['связь', 'связи', 'связей'])}`;
+    return t('my.describeGraph', { blocks: L('my.blocks', { n: file.graph.nodes.length }), links: L('my.links', { n: file.graph.edges.length }) });
   }
-  return `Слои: ${file.model.layers.join(' → ')} · ${file.model.activation}`;
+  return t('my.describeMlp', { layers: file.model.layers.join(' → '), act: file.model.activation });
 }
 
 function myCard(rec, actions) {
@@ -105,17 +104,17 @@ function myCard(rec, actions) {
   const head = el('div', 'my-card-head');
   const a = el('a', 'title-link', file.meta.title);
   a.href = spaceUrl(rec.id);
-  head.append(el('h3', '', ''), el('span', 'badge-type', TYPE_TITLE[file.type] ?? file.type));
+  head.append(el('h3', '', ''), el('span', 'badge-type', TYPE_KEY[file.type] ? t(TYPE_KEY[file.type]) : file.type));
   head.firstChild.append(a);
   card.append(head);
   if (file.meta.summary) card.append(el('p', 'muted', file.meta.summary));
-  card.append(el('p', 'my-meta muted', `${describe(file)} · изменено ${dateText(rec.updatedAt)}`));
+  card.append(el('p', 'my-meta muted', t('my.meta', { what: describe(file), date: dateText(rec.updatedAt) })));
   const row = el('div', 'my-actions');
-  const open = el('a', 'primary-btn', 'Открыть');
+  const open = el('a', 'primary-btn', t('my.open'));
   open.href = spaceUrl(rec.id);
   row.append(open);
-  for (const [act, label] of actions) {
-    const b = el('button', 'ghost-btn', label);
+  for (const [act, key] of actions) {
+    const b = el('button', 'ghost-btn', t(key));
     b.type = 'button';
     b.dataset.myAct = act;
     row.append(b);
@@ -139,10 +138,10 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
     return [];
   }
   if (!recs.length) {
-    list.replaceChildren(el('p', 'muted my-empty', 'Пока пусто. Нажмите «Создать пространство» — оно появится здесь.'));
+    list.replaceChildren(el('p', 'muted my-empty', t('my.empty')));
     return recs;
   }
-  const actions = [['rename', 'Переименовать'], ['download', 'Скачать'], ...extraActions, ['delete', 'Удалить']];
+  const actions = [['rename', 'my.rename'], ['download', 'my.download'], ...extraActions, ['delete', 'my.delete']];
   const grid = el('div', 'my-grid');
   grid.append(...recs.map(r => myCard(r, actions)));
   list.replaceChildren(grid);
@@ -155,20 +154,19 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
     try {
       if (act === 'rename') {
         const title = await promptDialog({
-          title: 'Переименовать пространство',
-          label: 'Новое название',
+          title: t('my.renameTitle'),
+          label: t('my.renameLabel'),
           value: rec.file.meta.title,
           maxLength: LIMITS.title,
-          validate: v => (v ? '' : 'Название не может быть пустым'),
+          validate: v => (v ? '' : t('my.errEmptyTitle')),
         });
         if (title === null || title === rec.file.meta.title) return;
         await renameSpace(rec.id, title.slice(0, LIMITS.title));
       } else if (act === 'delete') {
         const yes = await confirmDialog({
-          title: 'Удалить пространство?',
-          text: `«${rec.file.meta.title}» будет удалено из этого браузера.
-Восстановить его можно будет только из скачанного файла.`,
-          okText: 'Удалить',
+          title: t('my.deleteTitle'),
+          text: t('my.deleteText', { title: rec.file.meta.title }),
+          okText: t('my.delete'),
           danger: true,
         });
         if (!yes) return;
@@ -182,7 +180,7 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
       }
       await renderMySpaces({ extraActions, onExtra });
     } catch (err) {
-      alertDialog({ title: 'Не получилось', text: err.message });
+      alertDialog({ title: t('common.failed'), text: err.message });
     }
   });
   return recs;
@@ -192,10 +190,10 @@ export async function renderMySpaces({ extraActions = [], onExtra } = {}) {
 export function initImport(button, msg, onDone) {
   const say = (text, kind = '') => { msg.textContent = text; msg.className = `my-msg ${kind}`; };
   button.addEventListener('click', () => pickFile(async f => {
-    say(`Читаю «${f.name}»…`);
+    say(t('my.reading', { name: f.name }));
     try {
       const { title, warnings } = await importSpaceFile(f);
-      say(`Загружено: «${title}» — пространство добавлено в «Мои».${warnings.length ? `\n${warnings.join('\n')}` : ''}`, 'ok-text');
+      say(`${t('my.imported', { title })}${warnings.length ? `\n${warnings.join('\n')}` : ''}`, 'ok-text');
       await onDone?.();
     } catch (e) {
       say(e.message, 'error-text');

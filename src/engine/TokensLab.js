@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { BaseLab, MODE_TOGGLE_HTML, SPEED_HTML, bindModeToggle } from './BaseLab.js';
+import { BaseLab, modeToggleHtml, speedHtml, bindModeToggle } from './BaseLab.js';
 import { Timeline } from './Timeline.js';
 import { PALETTE } from './palette.js';
 import { makeLabel, makeLines, curveSegments, setLineResolution, valueMaterial, paintValue, disposeTree } from './three-utils.js';
-import { escapeHtml, formatValue } from './format.js';
+import { escapeHtml, formatValue, fmtSigned } from './format.js';
 import { MAX_TOKENS, countWords } from './models/text.js';
+import { L, T, TA, Tx, H, str, isText, fmtNum, t as tl } from '../i18n/i18n.js';
 
 const SX = 1.5;       // шаг между словами
 const CUBE = 0.28;    // кубик одного числа эмбеддинга
@@ -24,28 +25,29 @@ export class TokensLab extends BaseLab {
     super(space, dom);
     const s = space;
     this.mode = s.mode ?? 'pool';
+    this.presetIdx = s.presets?.length ? 0 : null; // номер примера, пока в поле лежит именно он (для смены языка)
     this.mount({
       controls: `
-        <label for="text">Текст</label>
-        <input id="text" type="text" value="${escapeHtml(s.presets?.[0] ?? '')}" spellcheck="false" autocomplete="off" />
+        <label for="text">${T('tokens.text')}</label>
+        <input id="text" type="text" value="${escapeHtml(str(s.presets?.[0] ?? ''))}" spellcheck="false" autocomplete="off" />
         <p id="trunc-note" class="notice" hidden></p>
-        ${s.presets?.length ? `<label for="preset">Примеры</label>
-          <select id="preset">${s.presets.map((p, i) => `<option value="${i}">${escapeHtml(p)}</option>`).join('')}</select>` : ''}
-        ${SPEED_HTML}
-        <button id="run" class="primary">▶ ${s.runLabel ?? 'Обработать текст'}</button>
+        ${s.presets?.length ? `<label for="preset">${T('tokens.examples')}</label>
+          <select id="preset">${s.presets.map((p, i) => `<option value="${i}" ${isText(p) ? TA(p) : ''}>${escapeHtml(str(p))}</option>`).join('')}</select>` : ''}
+        ${speedHtml()}
+        <button id="run" class="primary">▶ ${Tx(s.runLabel ?? L('tokens.run'))}</button>
         ${this.mode === 'attention' ? `
           <div class="row">
-            <button id="append">+ Добавить предсказанное слово</button>
+            <button id="append">${T('tokens.append')}</button>
           </div>
-          <label class="check"><input type="checkbox" id="all-attention" /> Показать внимание всех слов</label>` : ''}
-        ${MODE_TOGGLE_HTML}`,
-      resultTitle: s.resultTitle ?? 'Результат',
-      hoverHint: 'Наведите курсор на слово, число эмбеддинга, ячейку или дугу внимания.',
+          <label class="check"><input type="checkbox" id="all-attention" /> ${T('tokens.allAttention')}</label>` : ''}
+        ${modeToggleHtml()}`,
+      resultTitle: s.resultTitle ?? L('tokens.result'),
+      hoverHint: L('tokens.hoverHint'),
       cards: [
-        ...(s.vocabularyHtml ? [{ title: 'Словарь модели', open: false, html: s.vocabularyHtml }] : []),
-        { title: 'Как читать сцену', open: !(s.sections?.length), html: this.legendHtml() },
+        ...(s.vocabularyHtml ? [{ title: L('tokens.vocabulary'), open: false, html: s.vocabularyHtml }] : []),
+        { title: L('tl.howToRead'), open: !(s.sections?.length), html: this.legendHtml() },
       ],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг.<br />Enter в поле текста — обработать, N — числа.',
+      hint: L('tokens.hintHtml'),
     });
 
     this.group = new THREE.Group();
@@ -66,27 +68,27 @@ export class TokensLab extends BaseLab {
 
   legendHtml() {
     const common = `
-      <li><span class="token-swatch"></span><span><b>Прямоугольник — слово (токен).</b> Синий — слово есть в словаре модели, серый — незнакомое.</span></li>
-      <li><span class="dot idle"></span><span><b>Столбик кубиков — эмбеддинг</b>: слово, превращённое в числа. Каждый кубик — одно измерение смысла.
-        <b class="pos">Тёплый</b> — положительное число, <b class="neg">холодный</b> — отрицательное, яркость — величина.</span></li>`;
+      <li><span class="token-swatch"></span>${T('tokens.legTokenHtml')}</li>
+      <li><span class="dot idle"></span>${T('tokens.legEmbedHtml')}</li>`;
     const extra = {
-      pool: `<li><span class="line pos"></span><span>Линии сходятся в <b>средний вектор</b> всего текста — порядок слов при этом теряется.</span></li>`,
-      rnn: `<li><span class="line thick"></span><span><b>Ячейки памяти</b> обрабатывают слова по очереди и передают состояние вправо. Под ячейкой — её память после этого слова.</span></li>`,
-      attention: `<li><span class="line thick"></span><span><b>Дуги внимания</b>: чем толще и ярче дуга, тем больше последнее слово «смотрит» на это слово при предсказании.</span></li>`,
+      pool: `<li><span class="line pos"></span>${T('tokens.legPoolHtml')}</li>`,
+      rnn: `<li><span class="line thick"></span>${T('tokens.legRnnHtml')}</li>`,
+      attention: `<li><span class="line thick"></span>${T('tokens.legAttnHtml')}</li>`,
     }[this.mode];
     return `<ul class="legend">${common}${extra}</ul>`;
   }
 
   // ---------- Запуск ----------
 
-  run() {
+  /** instant — без анимации (после смены языка: сцена пересобирается сразу в конечном состоянии) */
+  run({ instant = false } = {}) {
     const text = this.$('text').value.trim();
-    if (!text) { this.setStatus('Введите текст', true); return; }
+    if (!text) { this.setStatus(L('tokens.enterText'), true); return; }
     // Длинный текст обрезается до MAX_TOKENS слов — говорим об этом явно
     const total = countWords(text);
     const note = this.$('trunc-note');
     note.hidden = total <= MAX_TOKENS;
-    note.textContent = `⚠ Показаны первые ${MAX_TOKENS} слов из ${total}: больше в сцену не помещается, остальные слова не учитываются.`;
+    note.textContent = tl('tokens.truncated', { max: MAX_TOKENS, total });
     let trace;
     try {
       trace = this.space.process(text);
@@ -95,10 +97,22 @@ export class TokensLab extends BaseLab {
       this.setStatus(e.message, true);
       return;
     }
-    if (!trace.tokens.length) { this.setStatus('В тексте нет слов', true); return; }
+    if (!trace.tokens.length) { this.setStatus(L('tokens.noWords'), true); return; }
     this.trace = trace;
     this.build(trace);
     this.animate(trace);
+    if (instant) this.timeline.finish();
+  }
+
+  /** Язык сменился: слова и пояснения модели зависят от словаря, поэтому прогоняем текст заново */
+  onLang() {
+    const presets = this.space.presets;
+    if (presets?.length && this.presetIdx != null) {
+      // в поле лежал пример — подставляем тот же пример на новом языке; свой текст пользователя не трогаем
+      this.$('text').value = str(presets[this.presetIdx]);
+      this.$('preset').value = String(this.presetIdx);
+    }
+    this.run({ instant: true });
   }
 
   // ---------- Построение сцены ----------
@@ -134,10 +148,10 @@ export class TokensLab extends BaseLab {
         const m = new THREE.Mesh(this.cubeGeo, valueMaterial());
         m.position.set(xs[i], 1.55 - k * ROW, 0);
         m.userData.info = () => ({
-          tooltip: `«${tr.tokens[i].text}» · ${tr.dims[k]} = ${formatValue(v)}`,
-          html: `<h3>Эмбеддинг слова «${escapeHtml(tr.tokens[i].text)}»</h3>
-            <p>Измерение <b>${escapeHtml(tr.dims[k])}</b>: <b class="num">${formatValue(v, 3)}</b></p>
-            <p class="muted small">Эмбеддинг — это строка таблицы: слову сопоставляется вектор из ${d} чисел. В настоящих моделях таких чисел сотни, и их смысл не подписан — здесь измерения названы, чтобы было понятно.</p>`,
+          tooltip: tl('tokens.embedTip', { w: tr.tokens[i].text, dim: tr.dims[k], v: fmtSigned(v) }),
+          html: `<h3>${H('tokens.embedTitle', { w: tr.tokens[i].text })}</h3>
+            <p>${H('tokens.embedDimHtml', { dim: tr.dims[k], v: fmtSigned(v, 3) })}</p>
+            <p class="muted small">${H('tokens.embedNote', { d })}</p>`,
         });
         const lab = makeLabel('value-label', formatValue(v), { center: [0, 0.5] });
         lab.position.set(0.22, 0, 0);
@@ -230,8 +244,8 @@ export class TokensLab extends BaseLab {
       v.position.set(0, -0.42, 0);
       m.add(v);
       m.userData.info = () => ({
-        tooltip: `${o.label}: ${(o.value * 100).toFixed(1)}%`,
-        html: `<h3>Выход «${escapeHtml(o.label)}»</h3><p>Вероятность: <b class="num">${(o.value * 100).toFixed(1)}%</b></p>${o.note ? `<p class="muted small">${o.note}</p>` : ''}`,
+        tooltip: `${o.label}: ${fmtNum(o.value * 100, 1)}%`,
+        html: `<h3>${H('tokens.outTitle', { label: o.label })}</h3><p>${H('tokens.probHtml', { p: fmtNum(o.value * 100, 1) })}</p>${o.note ? `<p class="muted small">${o.note}</p>` : ''}`,
       });
       this.group.add(m);
       this.pickables.push(m);
@@ -245,9 +259,9 @@ export class TokensLab extends BaseLab {
     const segs = this.xs.map(x => [new THREE.Vector3(x, this.embedBottom, 0), new THREE.Vector3(0, yP + 0.2, 0)]);
     this.anim.flows.push(this.addFlow(segs));
     this.anim.pooled = this.column(tr.pooled, 0, yP, (k, v) => ({
-      tooltip: `Среднее · ${tr.dims[k]} = ${formatValue(v)}`,
-      html: `<h3>Средний вектор текста</h3><p>${escapeHtml(tr.dims[k])}: <b class="num">${formatValue(v, 3)}</b></p>
-        <p class="muted small">Среднее этого измерения по всем словам. Порядок слов здесь уже потерян: «не плохо, а хорошо» и «не хорошо, а плохо» дают одинаковое среднее.</p>`,
+      tooltip: tl('tokens.poolTip', { dim: tr.dims[k], v: fmtSigned(v) }),
+      html: `<h3>${H('tokens.poolTitle')}</h3><p>${escapeHtml(tr.dims[k])}: <b class="num">${fmtSigned(v, 3)}</b></p>
+        <p class="muted small">${H('tokens.poolNote')}</p>`,
     }), tr.dims);
     const yH = yP - (d - 1) * ROW - 1.3;
     const hx = tr.hidden.map((_, k) => (k - (tr.hidden.length - 1) / 2) * 1.2);
@@ -259,8 +273,8 @@ export class TokensLab extends BaseLab {
       l.position.set(0, -0.32, 0);
       m.add(l);
       m.userData.info = () => ({
-        tooltip: `${h.label} = ${formatValue(h.value)}`,
-        html: `<h3>Скрытый нейрон «${escapeHtml(h.label)}»</h3><p>Активация (ReLU): <b class="num">${formatValue(h.value, 3)}</b></p>${h.note ? `<p class="muted small">${h.note}</p>` : ''}`,
+        tooltip: `${h.label} = ${fmtSigned(h.value)}`,
+        html: `<h3>${H('tokens.hiddenTitle', { label: h.label })}</h3><p>${H('tokens.hiddenActHtml', { v: fmtSigned(h.value, 3) })}</p>${h.note ? `<p class="muted small">${h.note}</p>` : ''}`,
       });
       this.group.add(m);
       this.pickables.push(m);
@@ -293,10 +307,10 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
         this.anim.recurrent.push(this.addFlow([[new THREE.Vector3(this.xs[i - 1] + 0.5, yC, 0), new THREE.Vector3(x - 0.5, yC, 0)]], { width: 2, color: 0x5ad1b3 }));
       }
       this.anim.states.push(this.column(st.h, x, yC - 0.75, (k, v) => ({
-        tooltip: `После «${tr.tokens[i].text}»: ${tr.stateDims[k]} = ${formatValue(v)}`,
-        html: `<h3>Память после слова «${escapeHtml(tr.tokens[i].text)}»</h3>
-          <p>${escapeHtml(tr.stateDims[k])}: <b class="num">${formatValue(v, 3)}</b></p>
-          <p class="muted small">Это скрытое состояние h — всё, что сеть «помнит» о тексте к этому моменту. Оно передаётся следующей ячейке.</p>`,
+        tooltip: tl('tokens.stateTip', { w: tr.tokens[i].text, dim: tr.stateDims[k], v: fmtSigned(v) }),
+        html: `<h3>${H('tokens.stateTitle', { w: tr.tokens[i].text })}</h3>
+          <p>${escapeHtml(tr.stateDims[k])}: <b class="num">${fmtSigned(v, 3)}</b></p>
+          <p class="muted small">${H('tokens.stateNote')}</p>`,
       }), i === 0 ? tr.stateDims : null));
     });
     const last = this.xs.at(-1);
@@ -329,10 +343,10 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
       const line = makeLines(segs, { width: 1 + w * 10, color: from === q ? PALETTE.positive : PALETTE.negative, opacity: 0 });
       line.userData.weight = w;
       line.userData.info = () => ({
-        tooltip: `«${tr.tokens[from].text}» → «${tr.tokens[j].text}»: ${(w * 100).toFixed(1)}%`,
-        html: `<h3>Внимание «${escapeHtml(tr.tokens[from].text)}» → «${escapeHtml(tr.tokens[j].text)}»</h3>
-          <p>Вес внимания: <b class="num">${(w * 100).toFixed(1)}%</b></p>
-          <p class="muted small">Вес = softmax от сходства векторов (скалярного произведения запроса и ключа). Сумма весов всех дуг одного слова — 100%.</p>`,
+        tooltip: tl('tokens.attnTip', { from: tr.tokens[from].text, to: tr.tokens[j].text, p: fmtNum(w * 100, 1) }),
+        html: `<h3>${H('tokens.attnTitle', { from: tr.tokens[from].text, to: tr.tokens[j].text })}</h3>
+          <p>${H('tokens.attnWeightHtml', { p: fmtNum(w * 100, 1) })}</p>
+          <p class="muted small">${H('tokens.attnNote')}</p>`,
       });
       this.group.add(line);
       this.pickables.push(line);
@@ -353,8 +367,8 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
       cl.position.set(-w / 2 + 0.05, 0, 0.1);
       m.add(cl);
       m.userData.info = () => ({
-        tooltip: `«${c.word}»: ${(c.p * 100).toFixed(1)}%`,
-        html: `<h3>Кандидат «${escapeHtml(c.word)}»</h3><p>Вероятность: <b class="num">${(c.p * 100).toFixed(1)}%</b></p>${c.why ? `<p class="small">${c.why}</p>` : ''}`,
+        tooltip: tl('tokens.candTip', { w: c.word, p: fmtNum(c.p * 100, 1) }),
+        html: `<h3>${H('tokens.candTitle', { w: c.word })}</h3><p>${H('tokens.probHtml', { p: fmtNum(c.p * 100, 1) })}</p>${c.why ? `<p class="small">${c.why}</p>` : ''}`,
       });
       this.group.add(m);
       this.pickables.push(m);
@@ -383,25 +397,32 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
     (A.candidates ?? []).forEach(m => m.scale.set(0.001, 1, 1));
 
     const stages = [];
-    const status = t => { this.$('status').textContent = t; };
+    // Подпись этапа обновляем только при смене (update вызывается каждый кадр)
+    let shown = '';
+    const status = (key, p) => {
+      const sig = key + JSON.stringify(p ?? {});
+      if (sig === shown) return;
+      shown = sig;
+      this.setStatus(L(key, p));
+    };
     stages.push({ duration: dur(0.25) * Math.min(A.tokens.length, 6), update: t => {
-      status('1. Текст делится на слова (токены)');
+      status('tokens.s1');
       A.tokens.forEach((b, i) => b.scale.setScalar(Math.max(0.001, Math.min(1, t * A.tokens.length - i))));
     } });
     stages.push({ duration: dur(0.9), update: t => {
-      status('2. Каждое слово заменяется вектором чисел — эмбеддингом');
+      status('tokens.s2');
       A.columns.forEach(col => col.forEach(c => paintValue(c.mesh, c.value, t, c.maxAbs)));
     } });
 
     if (this.mode === 'pool') {
-      stages.push({ duration: dur(0.8), update: t => { status('3. Векторы усредняются в один вектор текста'); this.setFlow(A.flows[0], t, 1); A.pooled.forEach(c => paintValue(c.mesh, c.value, t, c.maxAbs)); } });
-      stages.push({ duration: dur(0.8), update: t => { status('4. Скрытый слой ищет «позитивные» и «негативные» сигналы'); this.setFlow(A.flows[0], 1, 1 - t); this.setFlow(A.flows[1], t, 1); A.hidden.forEach(c => paintValue(c.mesh, c.value, t, c.maxAbs)); } });
-      stages.push({ duration: dur(0.8), update: t => { status('5. Выход: вероятности тональности'); this.setFlow(A.flows[1], 1, 1 - t); this.setFlow(A.flows[2], t, 1); A.outputs.forEach(c => paintValue(c.mesh, c.value, t, 1)); } });
+      stages.push({ duration: dur(0.8), update: t => { status('tokens.pool3'); this.setFlow(A.flows[0], t, 1); A.pooled.forEach(c => paintValue(c.mesh, c.value, t, c.maxAbs)); } });
+      stages.push({ duration: dur(0.8), update: t => { status('tokens.pool4'); this.setFlow(A.flows[0], 1, 1 - t); this.setFlow(A.flows[1], t, 1); A.hidden.forEach(c => paintValue(c.mesh, c.value, t, c.maxAbs)); } });
+      stages.push({ duration: dur(0.8), update: t => { status('tokens.pool5'); this.setFlow(A.flows[1], 1, 1 - t); this.setFlow(A.flows[2], t, 1); A.outputs.forEach(c => paintValue(c.mesh, c.value, t, 1)); } });
       stages.push({ duration: dur(0.3), update: t => this.setFlow(A.flows[2], 1, 1 - t) });
     } else if (this.mode === 'rnn') {
       tr.steps.forEach((st, i) => {
         stages.push({ duration: dur(0.9), update: t => {
-          status(`3. Шаг ${i + 1} из ${tr.steps.length}: ячейка читает «${tr.tokens[i].text}» и обновляет память`);
+          status('tokens.rnn3', { i: i + 1, n: tr.steps.length, w: tr.tokens[i].text });
           this.setFlow(A.flows[i], t, 1 - Math.max(0, t - 0.8) * 5);
           if (i > 0) this.setFlow(A.recurrent[i - 1], t, 1);
           A.cells[i].material.emissiveIntensity = 0.08 + 0.9 * t;
@@ -411,7 +432,7 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
       });
       const outFlow = A.flows.at(-1);
       stages.push({ duration: dur(0.8), update: t => {
-        status('4. Итоговая память превращается в ответ');
+        status('tokens.rnn4');
         this.setFlow(outFlow, t, 1);
         A.cells.at(-1).material.emissiveIntensity = 0.98 - 0.6 * t;
         A.outputs.forEach(c => paintValue(c.mesh, c.value, t, 1));
@@ -419,11 +440,11 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
       stages.push({ duration: dur(0.3), update: t => this.setFlow(outFlow, 1, 1 - t) });
     } else {
       stages.push({ duration: dur(1.2), update: t => {
-        status('3. Последнее слово «смотрит» на все предыдущие (self-attention)');
+        status('tokens.attn3');
         A.arcs.forEach(l => { l.material.opacity = t * (0.25 + 0.75 * Math.min(1, l.userData.weight * 3)); });
       } });
       stages.push({ duration: dur(0.9), update: t => {
-        status('4. Из собранного контекста считаются вероятности следующего слова');
+        status('tokens.attn4');
         this.setFlow(A.flows[0], t, 1);
         A.candidates.forEach(m => m.scale.set(Math.max(0.001, t), 1, 1));
         A.ghost.material.opacity = 0.25 + 0.5 * t;
@@ -434,7 +455,7 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
     this.$('run').disabled = true;
     this.timeline.start(stages, () => {
       this.$('run').disabled = false;
-      this.setStatus('Готово — наведите курсор на любой элемент');
+      this.setStatus(L('tokens.done'));
       this.setResult(this.resultHtml(tr));
     });
   }
@@ -445,13 +466,13 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
       html += `<ul class="bars">${tr.outputs.map(o => `
         <li class="${o.value === Math.max(...tr.outputs.map(q => q.value)) ? 'best' : ''}">
           <span class="name">${escapeHtml(o.label)}</span><span class="bar"><span style="width:${(o.value * 100).toFixed(1)}%"></span></span>
-          <span class="num">${(o.value * 100).toFixed(1)}%</span><span></span></li>`).join('')}</ul>`;
+          <span class="num">${fmtNum(o.value * 100, 1)}%</span><span></span></li>`).join('')}</ul>`;
     }
     if (tr.candidates?.length) {
       html += `<ul class="bars">${tr.candidates.map((c, k) => `
         <li class="${k === 0 ? 'best' : ''}"><span class="name">${escapeHtml(c.word)}</span>
           <span class="bar"><span style="width:${(c.p * 100).toFixed(1)}%"></span></span>
-          <span class="num">${(c.p * 100).toFixed(1)}%</span><span></span></li>`).join('')}</ul>`;
+          <span class="num">${fmtNum(c.p * 100, 1)}%</span><span></span></li>`).join('')}</ul>`;
     }
     return html + (tr.html ?? '');
   }
@@ -462,10 +483,10 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
     const tr = this.trace, t = tr.tokens[i];
     const vec = tr.embeddings[i];
     return {
-      tooltip: `«${t.text}»${t.known ? '' : ' (незнакомое слово)'}`,
-      html: `<h3>Слово «${escapeHtml(t.text)}»</h3>
-        <p>${t.known ? 'Есть в словаре модели.' : '<b class="bad">Нет в словаре</b> — модель заменяет его нулевым вектором и фактически не учитывает.'}</p>
-        <table class="arch-table"><tbody>${tr.dims.map((dim, k) => `<tr><td>${escapeHtml(dim)}</td><td class="num">${formatValue(vec[k], 2)}</td></tr>`).join('')}</tbody></table>
+      tooltip: tl(t.known ? 'tokens.wordTip' : 'tokens.wordTipUnknown', { w: t.text }),
+      html: `<h3>${H('tokens.wordTitle', { w: t.text })}</h3>
+        <p>${H(t.known ? 'tokens.known' : 'tokens.unknownHtml')}</p>
+        <table class="arch-table"><tbody>${tr.dims.map((dim, k) => `<tr><td>${escapeHtml(dim)}</td><td class="num">${fmtSigned(vec[k], 2)}</td></tr>`).join('')}</tbody></table>
         ${t.note ? `<p class="small">${t.note}</p>` : ''}`,
     };
   }
@@ -474,13 +495,13 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
     const tr = this.trace, st = tr.steps[i];
     const g = st.gates;
     return {
-      tooltip: `Ячейка ${i + 1} («${tr.tokens[i].text}») · f=${g.f.toFixed(2)} i=${g.i.toFixed(2)}`,
-      html: `<h3>Ячейка памяти, шаг ${i + 1}: «${escapeHtml(tr.tokens[i].text)}»</h3>
+      tooltip: tl('tokens.cellTip', { n: i + 1, w: tr.tokens[i].text, f: fmtNum(g.f, 2), i: fmtNum(g.i, 2) }),
+      html: `<h3>${H('tokens.cellTitle', { n: i + 1, w: tr.tokens[i].text })}</h3>
         <table class="arch-table"><tbody>
-          <tr><td><b>f</b> — забывание</td><td class="num">${g.f.toFixed(3)}</td><td class="muted small">сколько старой памяти оставить</td></tr>
-          <tr><td><b>i</b> — запись</td><td class="num">${g.i.toFixed(3)}</td><td class="muted small">сколько нового записать</td></tr>
-          <tr><td><b>g</b> — новое</td><td class="num">${formatValue(g.g, 3)}</td><td class="muted small">что именно записать</td></tr>
-          <tr><td><b>c</b> — память</td><td class="num">${formatValue(st.c[0], 3)}</td><td class="muted small">c = f·c<sub>прошл</sub> + i·g</td></tr>
+          <tr><td>${H('tokens.gateFHtml')}</td><td class="num">${fmtNum(g.f, 3)}</td><td class="muted small">${H('tokens.gateFHint')}</td></tr>
+          <tr><td>${H('tokens.gateIHtml')}</td><td class="num">${fmtNum(g.i, 3)}</td><td class="muted small">${H('tokens.gateIHint')}</td></tr>
+          <tr><td>${H('tokens.gateGHtml')}</td><td class="num">${fmtSigned(g.g, 3)}</td><td class="muted small">${H('tokens.gateGHint')}</td></tr>
+          <tr><td>${H('tokens.gateCHtml')}</td><td class="num">${fmtSigned(st.c[0], 3)}</td><td class="muted small">${H('tokens.gateCHintHtml')}</td></tr>
         </tbody></table>
         ${st.note ? `<p class="small">${st.note}</p>` : ''}`,
     };
@@ -491,14 +512,17 @@ i ${st.gates.i.toFixed(2)}`, { center: [0.5, 0.5] });
   bindControls() {
     this.$('run').addEventListener('click', () => this.run());
     this.$('text').addEventListener('keydown', e => { if (e.key === 'Enter') this.run(); });
+    this.$('text').addEventListener('input', () => { this.presetIdx = null; });
     this.$('preset')?.addEventListener('change', e => {
-      this.$('text').value = this.space.presets[Number(e.target.value)];
+      this.presetIdx = Number(e.target.value);
+      this.$('text').value = str(this.space.presets[this.presetIdx]);
       this.run();
     });
     this.$('append')?.addEventListener('click', () => {
       const best = this.trace?.candidates?.[0];
       if (!best) return;
       this.$('text').value = `${this.$('text').value.trim()} ${best.word}`;
+      this.presetIdx = null;
       this.run();
     });
     this.$('all-attention')?.addEventListener('change', () => this.run());

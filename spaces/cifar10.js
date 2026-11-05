@@ -1,46 +1,38 @@
 // CIFAR-10: классификация маленьких цветных картинок по 10 категориям.
+// Тексты — в словарях src/i18n/<язык>/spaces/cifar10.js.
 import { syntheticVision, HOW_SYNTHETIC_WORKS } from '../src/engine/models/syntheticVision.js';
 import { generateCifar, CIFAR_CLASSES } from '../src/engine/models/generators.js';
+import { scope, L, str } from '../src/i18n/i18n.js';
+
+const S = scope('sp.cifar10');
 
 export default {
   meta: {
     id: 'cifar10',
-    title: 'CIFAR-10: кошки, собаки, машины…',
+    title: S('title'),
     category: 'vision',
     order: 30,
     level: 2,
     fidelity: 'trained',
-    summary: 'Цветные картинки 32×32 десяти категорий: самолёт, автомобиль, птица, кошка, олень, собака, лягушка, лошадь, корабль, грузовик.',
-    uses: 'Сортировка фотографий по содержимому, модерация изображений, «умные» альбомы в телефоне; CIFAR-10 — стандартный тест для новых архитектур.',
-    tags: ['CNN', 'свёртки', 'классификация', 'CIFAR-10', 'цвет'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['CNN', 'convolutions', 'classification', 'CIFAR-10', 'color'],
     preview: { blocks: [[1, 0.25], [0.85, 0.5], [0.45, 0.5], [0.38, 0.7], [0.2, 0.7], [0.6, 0.12], [0.35, 0.12], [0.25, 0.12]] },
   },
 
   ...syntheticVision({ size: 32, channels: 3, classes: CIFAR_CLASSES, generate: generateCifar, perClass: 80 }),
-  accuracyLabel: 'Точность на новых синтетических сценах',
+  accuracyLabel: S('accuracy'),
 
-  intro: `
-    <p>CIFAR-10 (2009) — 60 000 цветных картинок 32×32. В отличие от MNIST, здесь важны и форма, и цвет, и фон:
-    корабль обычно на синем море, лягушка — зелёная, самолёт — на фоне неба.
-    Свёртки смотрят на яркость, а к признакам добавлена грубая «цветовая карта» картинки.</p>`,
+  intro: S('introHtml'),
 
   sections: [
-    { title: 'Как это работает', html: HOW_SYNTHETIC_WORKS },
-    {
-      title: 'Сеть смотрит на фон',
-      open: false,
-      html: `<p>Классификаторы часто «жульничают»: узнают корабль по морю, а самолёт — по небу.
-        На настоящих фотографиях из-за этого птицу на фоне неба нередко принимают за самолёт.
-        Здесь синтетические картинки нарисованы по строгим правилам, поэтому сеть почти не ошибается (точность — в строке статуса),
-        но посмотрите на «цветовую часть» признаков: фон действительно входит в решение.
-        В реальных системах с этим борются разнообразием данных и аугментацией (сдвиги, отражения, смена фона).</p>`,
-    },
+    { title: L('sv.howTitle'), html: HOW_SYNTHETIC_WORKS },
+    { title: S('bgTitle'), open: false, html: S('bgHtml') },
   ],
 
   explainResult(result, { classes }) {
     const order = result.probs.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
     const [[p1, c1], [p2, c2]] = order;
-    return `<p>Сеть считает, что на картинке <b>«${classes[c1]}»</b> (${Math.round(p1 * 100)}%), второй вариант — «${classes[c2]}» (${Math.round(p2 * 100)}%).
-      Для цветных картинок решение складывается из формы (карты свёрток) и цвета (средние цвета по участкам).</p>`;
+    return S.h('explainHtml', { c1: str(classes[c1]), p1: Math.round(p1 * 100), c2: str(classes[c2]), p2: Math.round(p2 * 100) });
   },
 };

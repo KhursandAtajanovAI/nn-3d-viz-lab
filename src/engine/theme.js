@@ -6,6 +6,8 @@
 //   ?scale=1                       — масштаб интерфейса (0.75…3, по умолчанию 2); клавиши + и − меняют его
 //   Выбор запоминается в localStorage (nnlab-theme, nnlab-scale) и общий для всех страниц.
 
+import { L, At } from '../i18n/i18n.js';
+
 const THEME_KEY = 'nnlab-theme';
 const SCALE_KEY = 'nnlab-scale';
 
@@ -19,19 +21,19 @@ const SCALE_KEY = 'nnlab-scale';
  */
 export const THEMES = {
   black: {
-    title: 'Чёрный', swatch: '#0a0e17',
+    title: L('theme.black'), swatch: '#0a0e17',
     scene: { background: 0x0a0e17, neutral: 0x4a5264, neuronIdle: 0x8a9ab3, pulse: 0xfff4d6, hover: 0xffffff, accent: 0xffd166, plate: 0x1a2130, axes: 0x3a4660, cell: 0x1b2436, bloom: 0.7, glow: 1,
       links: { restOpacity: 0.45, restGain: 0.55, activeGain: 1.9 } },
   },
   // Средне-серый фон: светлые и тёмные объекты видны одинаково; тёмные нейроны и связи, светлые импульсы и подсветка
   gray: {
-    title: 'Серый', swatch: '#8d939e',
+    title: L('theme.gray'), swatch: '#8d939e',
     scene: { background: 0x8d939e, neutral: 0x3e4658, neuronIdle: 0x4d5870, pulse: 0xffffff, hover: 0xffffff, accent: 0xffd166, plate: 0x363d4a, axes: 0x5a6272, cell: 0x727a88, bloom: 0.3, glow: 0.7,
       links: { restOpacity: 0.8, restGain: 1, activeGain: 1.3 } },
   },
   // Неоновая: основной цвет #37fd12. Свечение выключено, объекты — более тёмных оттенков
   green: {
-    title: 'Зелёный', swatch: '#37fd12',
+    title: L('theme.green'), swatch: '#37fd12',
     scene: { background: 0x37fd12, neutral: 0x24501f, neuronIdle: 0x2f6a3a, pulse: 0x06240a, hover: 0x06240a, accent: 0xa85a00, plate: 0x0d3a14, axes: 0x1c7a10, cell: 0x2fb50e, bloom: 0, glow: 0.3,
       links: { restOpacity: 0.9, restGain: 1, activeGain: 1 },
       remap: {
@@ -42,7 +44,7 @@ export const THEMES = {
       } },
   },
   white: {
-    title: 'Белый', swatch: '#f4f6f9',
+    title: L('theme.white'), swatch: '#f4f6f9',
     scene: { background: 0xf4f6f9, neutral: 0x5d6678, neuronIdle: 0x6f7c94, pulse: 0x1f2a44, hover: 0x1a2233, accent: 0xe09b00, plate: 0x1a2130, axes: 0x9aa4b6, cell: 0xdfe5ee, bloom: 0, glow: 0.3,
       links: { restOpacity: 0.9, restGain: 0.75, activeGain: 0.95 } },
   },
@@ -112,8 +114,8 @@ export function nextTheme() { setTheme(ORDER[(ORDER.indexOf(current) + 1) % ORDE
 
 /** Разметка переключателя: 4 цветных кружка. Обработчик кликов — общий, на документе */
 export function themeSwitchHtml() {
-  return `<div class="theme-switch" role="group" aria-label="Фон">${Object.entries(THEMES).map(([id, t]) =>
-    `<button type="button" class="theme-dot" data-theme-set="${id}" style="--swatch:${t.swatch}" title="Фон: ${t.title} (клавиша T — следующая тема)" aria-label="Фон: ${t.title}" aria-pressed="${id === current}"></button>`).join('')}</div>`;
+  return `<div class="theme-switch" role="group" ${At('aria-label', 'theme.label')}>${Object.entries(THEMES).map(([id, t]) =>
+    `<button type="button" class="theme-dot" data-theme-set="${id}" style="--swatch:${t.swatch}" ${At('title', 'theme.dotTitle', { name: t.title })} ${At('aria-label', 'theme.dotLabel', { name: t.title })} aria-pressed="${id === current}"></button>`).join('')}</div>`;
 }
 
 // ---------- Масштаб интерфейса ----------

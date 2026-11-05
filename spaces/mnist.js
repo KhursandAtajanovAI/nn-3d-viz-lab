@@ -1,51 +1,34 @@
 // MNIST: распознавание рукописных цифр свёрточной сетью. Можно нарисовать цифру мышью.
-import { syntheticVision, HOW_SYNTHETIC_WORKS } from '../src/engine/models/syntheticVision.js';
+// Тексты — в словарях src/i18n/<язык>/spaces/mnist.js.
+import { syntheticVision, HOW_SYNTHETIC_WORKS, explainTop2 } from '../src/engine/models/syntheticVision.js';
 import { generateDigit, DIGIT_CLASSES } from '../src/engine/models/generators.js';
+import { scope, L } from '../src/i18n/i18n.js';
+
+const S = scope('sp.mnist');
 
 export default {
   meta: {
     id: 'mnist',
-    title: 'MNIST: распознавание рукописных цифр',
+    title: S('title'),
     category: 'vision',
     order: 10,
     level: 1,
     fidelity: 'trained',
-    summary: 'Нарисуйте цифру — свёрточная сеть покажет карты признаков каждого слоя и вероятности всех 10 классов.',
-    uses: 'Чтение индексов на конвертах, сумм в банковских чеках, номеров в анкетах; MNIST — «Hello, world» компьютерного зрения.',
-    tags: ['CNN', 'свёртки', 'классификация', 'MNIST', 'рисование'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['CNN', 'convolutions', 'classification', 'MNIST', 'drawing'],
     preview: { blocks: [[1, 0.1], [0.85, 0.5], [0.45, 0.5], [0.35, 0.7], [0.18, 0.7], [0.6, 0.12], [0.35, 0.12], [0.25, 0.12]] },
   },
 
   ...syntheticVision({ size: 28, channels: 1, classes: DIGIT_CLASSES, generate: generateDigit, draw: true }),
-  accuracyLabel: 'Точность на новых синтетических цифрах (шрифтах)',
+  accuracyLabel: S('accuracy'),
 
-  intro: `
-    <p>Настоящий датасет MNIST — 70 000 рукописных цифр 28×28 пикселей. Здесь сеть той же формы:
-    две свёртки с пулингом, затем полносвязные слои и softmax на 10 классов.
-    <b>Нарисуйте цифру на чёрном квадрате</b> в «Управлении» или выберите пример — и посмотрите,
-    как картинка превращается в карты признаков, а затем в вероятности.</p>`,
+  intro: S('introHtml'),
 
   sections: [
-    { title: 'Как это работает', html: HOW_SYNTHETIC_WORKS },
-    {
-      title: 'Что попробовать',
-      open: false,
-      html: `
-        <ul class="steps">
-          <li>Нарисуйте «1» и «7» — посмотрите на карту «Горизонтальные края»: у семёрки сверху яркая полоса, у единицы её нет.</li>
-          <li>Нарисуйте цифру очень криво или две цифры сразу: вероятности «размажутся» по нескольким классам — сеть не уверена.</li>
-          <li>Наведите курсор на карту первого слоя — увидите веса фильтра 5×5, который её построил.</li>
-        </ul>
-        <p class="muted small">Сеть видела только «печатные» цифры разных шрифтов с искажениями, поэтому необычный почерк она иногда путает — ровно как настоящие модели путаются на данных, не похожих на обучающие.</p>`,
-    },
+    { title: L('sv.howTitle'), html: HOW_SYNTHETIC_WORKS },
+    { title: S('tryTitle'), open: false, html: S('tryHtml') },
   ],
 
-  explainResult(result, { classes }) {
-    const p = result.probs;
-    const order = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
-    const [[p1, c1], [p2, c2]] = order;
-    const sure = p1 > 0.8 ? 'уверена' : p1 > 0.5 ? 'скорее уверена' : 'сомневается';
-    return `<p>Сеть ${sure}, что это <b>«${classes[c1]}»</b> (${Math.round(p1 * 100)}%). Второй вариант — «${classes[c2]}» (${Math.round(p2 * 100)}%).
-      Вероятности получаются из последнего слоя через softmax и в сумме дают 100%.</p>`;
-  },
+  explainResult: explainTop2,
 };

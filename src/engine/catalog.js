@@ -1,25 +1,23 @@
-// Категории каталога. Модуль без зависимостей — используется и хабом, и страницей пространства.
+// Категории каталога. Используется и хабом, и страницей пространства; тексты — в словарях (cat.*, level.*, fid.*).
+import { L, t } from '../i18n/i18n.js';
+
 // Чтобы добавить категорию, достаточно дописать её сюда; пространства ссылаются на неё по id.
 
 export const CATEGORIES = [
-  { id: 'basics', title: 'Основы', icon: '◉', description: 'Как устроен нейрон, слой и прямой проход сигнала.' },
-  { id: 'vision', title: 'Изображения', icon: '▦', description: 'Классификация картинок: свёртки, карты признаков, вероятности классов.' },
-  { id: 'nlp', title: 'Текст (NLP)', icon: '¶', description: 'Как слова превращаются в числа: эмбеддинги, рекуррентные сети, внимание.' },
-  { id: 'tasks', title: 'Другие задачи', icon: '◇', description: 'Регрессия, автоэнкодеры, рекомендации и кластеризация.' },
-  { id: 'training', title: 'Обучение', icon: '↘', description: 'Градиентный спуск, обратное распространение ошибки, кривые loss.' },
-  { id: 'library', title: 'Библиотека моделей', icon: '▤', description: 'Известные архитектуры и датасеты: от LeNet до Transformer.' },
+  { id: 'basics', icon: '◉' },
+  { id: 'vision', icon: '▦' },
+  { id: 'nlp', icon: '¶' },
+  { id: 'tasks', icon: '◇' },
+  { id: 'training', icon: '↘' },
+  { id: 'library', icon: '▤' },
   // Пространства пользователя (IndexedDB): отдельный блок «Мои» в каталоге, в фильтрах встроенных не участвует
-  { id: 'user', title: 'Мои', icon: '✎', description: 'Пространства, созданные или загруженные вами. Хранятся только в этом браузере.', user: true },
-];
+  { id: 'user', icon: '✎', user: true },
+].map(c => ({ ...c, title: L(`cat.${c.id}.title`), description: L(`cat.${c.id}.description`) }));
 
 export const categoryById = id => CATEGORIES.find(c => c.id === id);
 
-/** Уровень сложности для бейджа карточки */
-export const LEVELS = {
-  1: 'Начальный',
-  2: 'Средний',
-  3: 'Продвинутый',
-};
+/** Уровень сложности для бейджа карточки (тексты — в словаре, level.1 …) */
+export const LEVELS = { 1: L('level.1'), 2: L('level.2'), 3: L('level.3') };
 
 /**
  * Насколько «настоящие» вычисления в пространстве — честная пометка на карточке и в шапке.
@@ -27,11 +25,7 @@ export const LEVELS = {
  *   trained — сеть обучается прямо в браузере (на синтетических данных)
  *   demo    — упрощённая иллюстрация архитектуры: структура верная, выходы демонстрационные
  */
-export const FIDELITY = {
-  real: { title: 'Реальные вычисления', hint: 'Все числа на экране реально вычисляются по показанным весам и формулам.' },
-  trained: { title: 'Обучается в браузере', hint: 'Сеть обучается прямо на этой странице на синтетических данных — результат настоящий, но данные упрощены.' },
-  demo: { title: 'Упрощённая иллюстрация', hint: 'Идея и структура показаны верно, но данные или выходы демонстрационные — подробности в описании пространства.' },
-};
+export const FIDELITY = Object.fromEntries(['real', 'trained', 'demo'].map(id => [id, { title: L(`fid.${id}.title`), hint: L(`fid.${id}.hint`) }]));
 
 /** Разрешённый id пространства (он же имя файла spaces/<id>.js) */
 export const isValidSpaceId = id => /^[a-z0-9][a-z0-9-]*$/.test(id ?? '');
@@ -39,6 +33,6 @@ export const isValidSpaceId = id => /^[a-z0-9][a-z0-9-]*$/.test(id ?? '');
 /** Загрузить список пространств (генерируется tools/build-manifest.sh при деплое) */
 export async function loadManifest(base = '') {
   const res = await fetch(`${base}spaces/manifest.json`, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`Не удалось загрузить spaces/manifest.json (${res.status})`);
+  if (!res.ok) throw new Error(t('catalog.manifestFailed', { status: res.status }));
   return (await res.json()).filter(isValidSpaceId);
 }

@@ -82,3 +82,17 @@ layers: [
 добавьте визуализатор в `src/engine/` и зарегистрируйте его в `VISUALIZERS` в
 `src/engine/boot.js`. Общая сцена (`SceneKit`: рендер, свечение, подписи, камера) и блоки
 боковой панели (`sidebar.js`) переиспользуются.
+
+## Тексты и переводы
+
+Тексты конфига (`title`, `summary`, `uses`, подписи, пояснения, названия демо-данных) не пишутся строками в коде: они лежат в словарях
+`src/i18n/ru/spaces/<id>.js` и `src/i18n/en/spaces/<id>.js`, а в конфиге берутся через `scope`:
+
+```js
+import { scope } from '../src/i18n/i18n.js';
+const S = scope('sp.my-space');
+export default { meta: { id: 'my-space', title: S('title'), summary: S('summary'), uses: S('uses'), tags: ['classification'] } };
+```
+
+Числа в панелях форматируются по языку (`fmtNum`), множественное число — через формы `one/few/many/other`. Подробно —
+в [src/i18n/README.md](../src/i18n/README.md). `node tools/check-spaces.mjs` проверяет, что наборы ключей RU и EN совпадают.

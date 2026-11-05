@@ -6,13 +6,12 @@
 //   given — последние применённые «свои» веса (для кнопки «Вернуть заданные»)
 // Проверки размеров и чисел — общим валидатором spaceFormat.js.
 import { checkWeights, checkInput, checkLayers, parseNumberList } from './spaceFormat.js';
-import { plural } from './format.js';
+import { t, T, At, L } from '../i18n/i18n.js';
 
 const clone = ({ weights, biases }) => ({ weights: weights.map(W => W.map(r => r.slice())), biases: biases.map(b => b.slice()) });
 // В ячейках — до 4 знаков; в draft остаются точные значения, пока ячейку не отредактируют
 const NUM = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4, useGrouping: false });
 const fmt = v => (v === null || v === undefined ? '' : NUM.format(v));
-const VALUES = ['значение', 'значения', 'значений'];
 
 /** Разложить веса под новую архитектуру: совпадающие индексы сохраняются, остальное — null */
 export function remapWeights(src, layers) {
@@ -53,7 +52,7 @@ export class CustomWeightsPanel {
   static html() {
     return `
       <details class="card" id="custom-card">
-        <summary><h2>Свои веса и вход</h2> <span class="muted small">необязательно</span></summary>
+        <summary><h2>${T('cw.title')}</h2> <span class="muted small">${T('cw.optional')}</span></summary>
         <div id="cw-body"></div>
       </details>`;
   }
@@ -62,34 +61,32 @@ export class CustomWeightsPanel {
 
   render() {
     this.root.querySelector('#cw-body').innerHTML = `
-      <p class="small muted">По умолчанию веса случайные. Здесь можно задать их вручную — таблицей или JSON —
-        и подать на вход свои числа.</p>
+      <p class="small muted">${T('cw.intro')}</p>
 
-      <h3 class="cw-title">Вход</h3>
-      <label class="check"><input type="checkbox" id="cw-use-input" /> Подавать свой вход</label>
-      <input type="text" id="cw-input" spellcheck="false" inputmode="decimal" placeholder="Числа через запятую" />
+      <h3 class="cw-title">${T('cw.input')}</h3>
+      <label class="check"><input type="checkbox" id="cw-use-input" /> ${T('cw.useInput')}</label>
+      <input type="text" id="cw-input" spellcheck="false" inputmode="decimal" ${At('placeholder', 'cw.inputPlaceholder')} />
       <p class="small muted" id="cw-input-hint"></p>
 
-      <h3 class="cw-title">Веса</h3>
-      <label for="cw-gap">Связи между слоями</label>
+      <h3 class="cw-title">${T('cw.weights')}</h3>
+      <label for="cw-gap">${T('cw.gap')}</label>
       <select id="cw-gap"></select>
       <div class="cw-table-wrap" id="cw-table"></div>
       <p class="small" id="cw-state" role="status"></p>
       <div class="cw-buttons">
-        <button type="button" id="cw-apply" class="primary">Применить таблицу</button>
-        <button type="button" id="cw-fill">Дозаполнить случайными</button>
-        <button type="button" id="cw-reset">Сбросить к случайным</button>
-        <button type="button" id="cw-restore">Вернуть заданные</button>
+        <button type="button" id="cw-apply" class="primary">${T('cw.apply')}</button>
+        <button type="button" id="cw-fill">${T('cw.fill')}</button>
+        <button type="button" id="cw-reset">${T('cw.reset')}</button>
+        <button type="button" id="cw-restore">${T('cw.restore')}</button>
       </div>
 
       <details class="cw-json">
         <summary>JSON</summary>
-        <p class="small muted">Формат: <code>{"weights": [[[…]]], "biases": [[…]]}</code>, weights[l][j][i] — вес связи
-          от нейрона i слоя l к нейрону j следующего слоя. Если указать <code>"layers": [2, 3, 1]</code>, архитектура тоже изменится.</p>
+        <p class="small muted">${T('cw.jsonHelpHtml')}</p>
         <textarea id="cw-json" rows="6" spellcheck="false"></textarea>
         <div class="row">
-          <button type="button" id="cw-json-show">Показать текущие</button>
-          <button type="button" id="cw-json-apply">Применить JSON</button>
+          <button type="button" id="cw-json-show">${T('cw.jsonShow')}</button>
+          <button type="button" id="cw-json-apply">${T('cw.jsonApply')}</button>
         </div>
       </details>
       <p class="small" id="cw-error" role="alert"></p>`;
@@ -98,13 +95,20 @@ export class CustomWeightsPanel {
 
   get layers() { return this.lab.model.layers; }
 
+  /** Смена языка: подписи, собранные из данных (список промежутков, таблица, состояние) */
+  onLang() {
+    const extra = this.lastExtra;
+    this.refresh();
+    if (extra) this.renderState(extra);
+  }
+
   /** Перерисовать список промежутков, таблицу и строку состояния */
   refresh() {
     const layers = this.layers;
     this.gap = Math.min(this.gap, layers.length - 2);
     this.$('gap').innerHTML = layers.slice(0, -1).map((n, l) =>
-      `<option value="${l}"${l === this.gap ? ' selected' : ''}>Слой ${l + 1} → ${l + 2} (${n} × ${layers[l + 1]})</option>`).join('');
-    this.$('input-hint').textContent = `Нужно ${layers[0]} ${plural(layers[0], ['число', 'числа', 'чисел'])} — по числу входных нейронов.`;
+      `<option value="${l}"${l === this.gap ? ' selected' : ''}>${t('cw.gapOption', { a: l + 1, b: l + 2, n, m: layers[l + 1] })}</option>`).join('');
+    this.$('input-hint').textContent = t('cw.inputHint', { n: layers[0] });
     if (this.root.open) this.renderTable();
     this.renderState();
   }
@@ -112,25 +116,27 @@ export class CustomWeightsPanel {
   renderTable() {
     const l = this.gap, nIn = this.layers[l], nOut = this.layers[l + 1];
     const W = this.draft.weights[l], B = this.draft.biases[l];
-    const head = Array.from({ length: nIn }, (_, i) => `<th scope="col" title="Нейрон ${i + 1} слоя ${l + 1}">${i + 1}</th>`).join('');
-    const rows = Array.from({ length: nOut }, (_, j) => `<tr><th scope="row" title="Нейрон ${j + 1} слоя ${l + 2}">${j + 1}</th>${
-      Array.from({ length: nIn }, (_, i) => `<td><input data-j="${j}" data-i="${i}" value="${fmt(W[j][i])}" inputmode="decimal" aria-label="Вес ${i + 1} → ${j + 1}"${W[j][i] === null ? ' class="empty"' : ''} /></td>`).join('')
-    }<td class="cw-bias"><input data-j="${j}" data-b="1" value="${fmt(B[j])}" inputmode="decimal" aria-label="Смещение нейрона ${j + 1}"${B[j] === null ? ' class="empty"' : ''} /></td></tr>`).join('');
+    const head = Array.from({ length: nIn }, (_, i) => `<th scope="col" title="${t('cw.neuronOfLayer', { n: i + 1, l: l + 1 })}">${i + 1}</th>`).join('');
+    const rows = Array.from({ length: nOut }, (_, j) => `<tr><th scope="row" title="${t('cw.neuronOfLayer', { n: j + 1, l: l + 2 })}">${j + 1}</th>${
+      Array.from({ length: nIn }, (_, i) => `<td><input data-j="${j}" data-i="${i}" value="${fmt(W[j][i])}" inputmode="decimal" aria-label="${t('cw.weightLabel', { i: i + 1, j: j + 1 })}"${W[j][i] === null ? ' class="empty"' : ''} /></td>`).join('')
+    }<td class="cw-bias"><input data-j="${j}" data-b="1" value="${fmt(B[j])}" inputmode="decimal" aria-label="${t('cw.biasLabel', { j: j + 1 })}"${B[j] === null ? ' class="empty"' : ''} /></td></tr>`).join('');
     this.$('table').innerHTML = `
       <table class="cw-table">
-        <thead><tr><th class="cw-corner" title="Строки — нейроны слоя ${l + 2}, столбцы — нейроны слоя ${l + 1}">к \\ от</th>${head}<th class="cw-bias" title="Смещение (bias)">b</th></tr></thead>
+        <thead><tr><th class="cw-corner" title="${t('cw.cornerHint', { a: l + 2, b: l + 1 })}">${t('cw.corner')}</th>${head}<th class="cw-bias" title="${t('cw.biasHint')}">b</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
   }
 
-  renderState(extra = '') {
+  /** extra — L(...) с пояснением к последнему действию (переводится при смене языка) */
+  renderState(extra = null) {
+    this.lastExtra = extra;
     const holes = countHoles(this.draft);
     const el = this.$('state');
     let text;
-    if (holes) text = `Пустых ячеек: ${holes}. Сеть пока со случайными весами — введите значения или нажмите «Дозаполнить случайными».`;
-    else if (this.applied) text = 'Сейчас в сети заданные вами веса.';
-    else text = this.dirty ? 'Таблица изменена — нажмите «Применить таблицу».' : 'Сейчас в сети случайные веса (в таблице — они же).';
-    el.textContent = extra ? `${extra} ${text}` : text;
+    if (holes) text = t('cw.stateHoles', { n: holes });
+    else if (this.applied) text = t('cw.stateApplied');
+    else text = this.dirty ? t('cw.stateDirty') : t('cw.stateRandom');
+    el.textContent = extra ? `${t(extra)} ${text}` : text;
     el.classList.toggle('warn', holes > 0);
     this.$('fill').disabled = holes === 0;
     this.$('restore').disabled = !this.given;
@@ -176,8 +182,8 @@ export class CustomWeightsPanel {
     this.applied = false;
     this.dirty = true;
     this.refresh();
-    this.renderState(`Архитектура изменилась: сохранено ${kept} из ${before} ${before % 10 === 1 && before % 100 !== 11 ? 'значения' : 'значений'}.`);
-    if (!holes) this.applyWeights(this.draft, 'Свои веса перенесены на новую архитектуру');
+    this.renderState(L('cw.archChanged', { kept, n: before }));
+    if (!holes) this.applyWeights(this.draft, L('cw.moved'));
   }
 
   /** Вход для прогона: свой (если включён) или null */
@@ -185,7 +191,7 @@ export class CustomWeightsPanel {
     if (!this.$('use-input').checked) return null;
     const values = parseNumberList(this.$('input').value);
     const errors = checkInput(values.map(v => v ?? NaN), this.layers[0]);
-    if (errors.length) throw new Error(`Свой вход: ${errors[0]}`);
+    if (errors.length) throw new Error(t('cw.inputError', { err: errors[0] }));
     return values;
   }
 
@@ -215,10 +221,10 @@ export class CustomWeightsPanel {
     });
     this.$('apply').addEventListener('click', () => {
       const invalid = this.$('table').querySelectorAll('input.invalid').length;
-      if (invalid) { this.error(`В таблице ${invalid} ${plural(invalid, ['ячейка', 'ячейки', 'ячеек'])} не с числом — они подсвечены.`); return; }
+      if (invalid) { this.error(t('cw.invalidCells', { n: invalid })); return; }
       const holes = countHoles(this.draft);
-      if (holes) { this.error(`Не заполнено ${holes} ${plural(holes, VALUES)} (в том числе на других промежутках) — введите их или нажмите «Дозаполнить случайными».`); return; }
-      this.applyWeights(this.draft, 'Заданы свои веса');
+      if (holes) { this.error(t('cw.emptyCells', { n: holes })); return; }
+      this.applyWeights(this.draft, L('cw.applied'));
     });
     this.$('fill').addEventListener('click', () => {
       const rnd = this.lab.model.snapshot(); // сеть сейчас со случайными весами новой архитектуры
@@ -226,24 +232,24 @@ export class CustomWeightsPanel {
         weights: this.draft.weights.map((W, l) => W.map((r, j) => r.map((v, i) => v ?? rnd.weights[l][j][i]))),
         biases: this.draft.biases.map((b, l) => b.map((v, j) => v ?? rnd.biases[l][j])),
       };
-      this.applyWeights(filled, 'Пустые ячейки дозаполнены случайными весами');
+      this.applyWeights(filled, L('cw.filled'));
     });
     this.$('reset').addEventListener('click', () => {
       this.lab.model.randomize();
       this.lab.rebuildView();
       this.syncFromModel();
       this.error('');
-      this.lab.setStatus(this.given ? 'Случайные веса — заданные можно вернуть' : 'Случайные веса');
+      this.lab.setStatus(L(this.given ? 'cw.randomCanRestore' : 'cw.random'));
     });
     this.$('restore').addEventListener('click', () => {
       if (!this.given) return;
       const errors = checkWeights(this.layers, this.given.weights, this.given.biases);
       if (errors.length) {
         const given = [this.given.weights[0]?.[0]?.length ?? 0, ...this.given.biases.map(b => b.length)];
-        this.error(`Заданные веса — для архитектуры ${given.join(' → ')}, а сейчас ${this.layers.join(' → ')}. Верните архитектуру или задайте веса заново.`);
+        this.error(t('cw.restoreMismatch', { a: given.join(' → '), b: this.layers.join(' → ') }));
         return;
       }
-      this.applyWeights(this.given, 'Возвращены заданные веса');
+      this.applyWeights(this.given, L('cw.restored'));
     });
     this.$('json-show').addEventListener('click', () => {
       const w = this.lab.model.snapshot();
@@ -272,8 +278,8 @@ export class CustomWeightsPanel {
 
   applyJson(text) {
     let data;
-    try { data = JSON.parse(text); } catch (e) { this.error(`JSON не читается: ${e.message}`); return; }
-    if (!data || typeof data !== 'object' || Array.isArray(data)) { this.error('Ожидался объект { "weights": …, "biases": … }'); return; }
+    try { data = JSON.parse(text); } catch (e) { this.error(t('cw.jsonBad', { msg: e.message })); return; }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) { this.error(t('cw.jsonNotObject')); return; }
     const src = data.model && typeof data.model === 'object' ? data.model : data;
     if (src.layers !== undefined) {
       const errs = checkLayers(src.layers);
@@ -282,6 +288,6 @@ export class CustomWeightsPanel {
       if (errsW.length) { this.error(errsW); return; }
       if (src.layers.join() !== this.layers.join()) this.lab.applyArchitecture(src.layers, { keepCustom: false });
     }
-    this.applyWeights({ weights: src.weights, biases: src.biases }, 'Веса загружены из JSON');
+    this.applyWeights({ weights: src.weights, biases: src.biases }, L('cw.fromJson'));
   }
 }

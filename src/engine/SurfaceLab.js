@@ -3,7 +3,10 @@ import { BaseLab } from './BaseLab.js';
 import { makeLabel, makeLines, setLineResolution, disposeTree } from './three-utils.js';
 import { lineChartSvg } from './chart.js';
 import { OPTIMIZERS, numGrad } from './models/optimizers.js';
-import { escapeHtml, formatValue } from './format.js';
+import { escapeHtml, fmtSigned as formatValue } from './format.js';
+import { L, T, t, H, TA, str, isText, fmtNum, setT } from '../i18n/i18n.js';
+
+const n3 = v => fmtNum(v, 3);
 
 const SIZE = 8;      // сторона поверхности в мировых единицах
 const HEIGHT = 3.2;  // высота рельефа
@@ -19,29 +22,29 @@ export class SurfaceLab extends BaseLab {
     const s = space;
     this.mount({
       controls: `
-        <label for="surface">Поверхность ошибки</label>
-        <select id="surface">${s.surfaces.map(f => `<option value="${f.id}">${escapeHtml(f.name)}</option>`).join('')}</select>
-        <label>Оптимизаторы</label>
+        <label for="surface">${T('surf.surface')}</label>
+        <select id="surface">${s.surfaces.map(f => `<option value="${f.id}" ${isText(f.name) ? TA(f.name) : ''}>${escapeHtml(str(f.name))}</option>`).join('')}</select>
+        <label>${T('surf.optimizers')}</label>
         <div class="opt-list">${Object.entries(OPTIMIZERS).map(([id, o], i) => `
           <label class="check"><input type="checkbox" data-opt="${id}" ${i === 0 ? 'checked' : ''} />
-            <span class="swatch" style="background:${o.color}"></span>${o.name}</label>`).join('')}</div>
-        <label for="lr">Скорость обучения η: <b id="lr-v"></b></label>
+            <span class="swatch" style="background:${o.color}"></span>${isText(o.name) ? T(o.name) : escapeHtml(o.name)}</label>`).join('')}</div>
+        <label for="lr">${T('tl.lr')} <b id="lr-v"></b></label>
         <input id="lr" type="range" min="-3" max="0" step="0.05" />
         <div class="row">
-          <button id="play" class="primary">▶ Старт</button>
-          <button id="step">Шаг</button>
-          <button id="reset">Сброс</button>
+          <button id="play" class="primary">${T('surf.start')}</button>
+          <button id="step">${T('surf.step')}</button>
+          <button id="reset">${T('surf.reset')}</button>
         </div>
-        <p class="small muted">Кликните по поверхности, чтобы поставить шарики в новую точку.</p>`,
-      resultTitle: 'Ошибка (loss) по шагам',
-      hoverHint: 'Наведите курсор на поверхность или шарик.',
-      cards: [{ title: 'Как читать сцену', open: !(s.sections?.length), html: `
+        <p class="small muted">${T('surf.clickHint')}</p>`,
+      resultTitle: L('surf.resultTitle'),
+      hoverHint: L('surf.hoverHint'),
+      cards: [{ title: L('tl.howToRead'), open: !(s.sections?.length), html: `
         <ul class="legend">
-          <li><span class="dot" style="background:linear-gradient(90deg,#2f9bff,#ff9f1c)"></span><span><b>Поверхность</b> — значение ошибки L(w₁, w₂) для каждой пары весов: <b class="neg">синее</b> — ошибка мала, <b class="pos">оранжевое</b> — велика.</span></li>
-          <li><span class="dot glow-pos"></span><span><b>Шарик</b> — текущие веса модели. На каждом шаге он сдвигается против градиента — «вниз по склону».</span></li>
-          <li><span class="line thick"></span><span><b>След</b> — путь оптимизатора. Белая стрелка у шарика — направление −∇L.</span></li>
+          <li><span class="dot" style="background:linear-gradient(90deg,#2f9bff,#ff9f1c)"></span><span>${T('surf.legendSurfaceHtml')}</span></li>
+          <li><span class="dot glow-pos"></span><span>${T('surf.legendBallHtml')}</span></li>
+          <li><span class="line thick"></span><span>${T('surf.legendTrailHtml')}</span></li>
         </ul>` }],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг. Пробел — старт/пауза.',
+      hint: L('surf.hint'),
     });
 
     this.group = new THREE.Group();
@@ -80,7 +83,7 @@ export class SurfaceLab extends BaseLab {
     this.$('surface').value = id;
     const S = this.surf;
     this.$('lr').value = String(Math.log10(S.lr));
-    this.$('lr-v').textContent = S.lr;
+    this.$('lr-v').textContent = fmtNum(S.lr);
     disposeTree(this.group);
 
     // Диапазон высот
@@ -129,15 +132,16 @@ export class SurfaceLab extends BaseLab {
       const m = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffffff }));
       m.rotation.x = Math.PI / 2;
       m.position.copy(this.toScene(argMin[0], argMin[1], zMin)).add(new THREE.Vector3(0, 0.05, 0));
-      m.add(makeLabel('dim-label', 'глобальный минимум', { center: [0.5, 1.4] }));
+      m.add(makeLabel('dim-label', L('surf.globalMin'), { center: [0.5, 1.4] }));
       this.group.add(m);
     }
     // Подписи осей
-    const lx = makeLabel('dim-label', 'вес w₁ →'); lx.position.set(0, -0.2, SIZE / 2 + 0.5); this.group.add(lx);
-    const ly = makeLabel('dim-label', 'вес w₂ →'); ly.position.set(SIZE / 2 + 0.6, -0.2, 0); this.group.add(ly);
-    const lz = makeLabel('dim-label', 'ошибка L ↑'); lz.position.set(-SIZE / 2 - 0.3, HEIGHT, -SIZE / 2); this.group.add(lz);
+    const lx = makeLabel('dim-label', L('surf.axisW1')); lx.position.set(0, -0.2, SIZE / 2 + 0.5); this.group.add(lx);
+    const ly = makeLabel('dim-label', L('surf.axisW2')); ly.position.set(SIZE / 2 + 0.6, -0.2, 0); this.group.add(ly);
+    const lz = makeLabel('dim-label', L('surf.axisL')); lz.position.set(-SIZE / 2 - 0.3, HEIGHT, -SIZE / 2); this.group.add(lz);
 
-    this.setSceneInfo(`<p><b>${escapeHtml(S.name)}</b>: ${S.note}</p><p class="small muted">L(w₁, w₂) = ${S.formula}</p>`);
+    const html = x => (isText(x) ? H(x) : x);
+    this.setSceneInfo(() => `<p><b>${escapeHtml(str(S.name))}</b>: ${html(S.note)}</p><p class="small muted">L(w₁, w₂) = ${html(S.formula)}</p>`);
     const box = new THREE.Box3(new THREE.Vector3(-SIZE / 2, 0, -SIZE / 2), new THREE.Vector3(SIZE / 2, HEIGHT, SIZE / 2));
     this.kit.setAutoFrame(() => this.kit.fitBox(box, { dir: new THREE.Vector3(0.55, 0.85, 1), margin: 0.85 }));
     this.resetBalls(S.start);
@@ -161,7 +165,7 @@ export class SurfaceLab extends BaseLab {
       return ball;
     });
     this.renderChart();
-    this.setStatus(this.balls.length ? 'Нажмите «Старт» или «Шаг»' : 'Выберите хотя бы один оптимизатор', !this.balls.length);
+    this.setStatus(L(this.balls.length ? 'surf.pressStart' : 'surf.pickOne'), !this.balls.length);
   }
 
   placeBall(b) {
@@ -205,17 +209,19 @@ export class SurfaceLab extends BaseLab {
       b.p = [Math.min(x1, Math.max(x0, next[0])), Math.min(y1, Math.max(y0, next[1]))];
       this.placeBall(b);
     }
-    const txt = this.balls.map(b => `${b.O.name}: ${b.diverged ? 'разошёлся ✗' : `L = ${formatValue(b.losses.at(-1), 3)}`}`).join(' · ');
-    this.setStatus(`Шаг ${this.balls[0]?.steps ?? 0}. ${txt}`);
+    const txt = this.balls.map(b => `${str(b.O.name)}: ${b.diverged ? t('surf.diverged') : `L = ${formatValue(b.losses.at(-1), 3)}`}`).join(' · ');
+    this.setStatus(t('surf.stepStatus', { n: this.balls[0]?.steps ?? 0, txt }));
     if (this.balls.every(b => b.diverged || b.lastStep < 1e-5)) this.stop();
   }
 
   renderChart() {
-    const series = this.balls.map(b => ({ values: b.losses, color: b.O.color, label: b.O.name }));
-    const div = this.balls.filter(b => b.diverged).map(b => b.O.name);
-    this.setResult(`${lineChartSvg(series, { xLabel: 'шаг', yLabel: 'ошибка L', logY: this.surf.log })}
-      ${div.length ? `<p class="small"><b class="bad">${div.join(', ')}: шаг слишком большой — ошибка растёт и оптимизатор «улетает».</b> Уменьшите η.</p>` : ''}
-      <p class="small muted">Формулы шага: ${this.balls.map(b => `${b.O.name} — <code>${b.O.formula}</code>`).join('; ')}.</p>`);
+    this.setResult(() => {
+      const series = this.balls.map(b => ({ values: b.losses, color: b.O.color, label: str(b.O.name) }));
+      const div = this.balls.filter(b => b.diverged).map(b => escapeHtml(str(b.O.name)));
+      return `${lineChartSvg(series, { xLabel: t('surf.stepAxis'), yLabel: t('surf.lossAxis'), logY: this.surf.log })}
+      ${div.length ? `<p class="small">${t('surf.divergedHtml', { names: div.join(', ') })}</p>` : ''}
+      <p class="small muted">${H('surf.formulas')} ${this.balls.map(b => `${escapeHtml(str(b.O.name))} — <code>${b.O.formula}</code>`).join('; ')}.</p>`;
+    });
   }
 
   frame(dt) {
@@ -238,13 +244,13 @@ export class SurfaceLab extends BaseLab {
   play() {
     if (!this.balls.length) return;
     this.playing = true;
-    this.$('play').textContent = '⏸ Пауза';
+    setT(this.$('play'), 'surf.pause');
   }
 
   stop() {
     this.playing = false;
     const btn = this.$('play');
-    if (btn) btn.textContent = '▶ Старт';
+    if (btn) setT(btn, 'surf.start');
   }
 
   pointInfo(hit) {
@@ -253,30 +259,30 @@ export class SurfaceLab extends BaseLab {
     const S = this.surf;
     const z = S.f(x, y), g = numGrad(S.f, x, y);
     return {
-      tooltip: `w = (${x.toFixed(2)}; ${y.toFixed(2)}) · L = ${formatValue(z, 3)}`,
-      html: `<h3>Точка поверхности</h3>
-        <p>Веса: <b class="num">w₁ = ${x.toFixed(3)}, w₂ = ${y.toFixed(3)}</b></p>
-        <p>Ошибка: <b class="num">L = ${formatValue(z, 4)}</b></p>
-        <p>Градиент: <b class="num">∇L = (${formatValue(g[0], 3)}; ${formatValue(g[1], 3)})</b>, крутизна |∇L| = ${Math.hypot(...g).toFixed(3)}</p>
-        <p class="muted small">Градиент указывает, куда ошибка растёт быстрее всего. Спуск идёт в противоположную сторону. Кликните, чтобы начать отсюда.</p>`,
+      tooltip: `w = (${fmtNum(x, 2)}; ${fmtNum(y, 2)}) · L = ${formatValue(z, 3)}`,
+      html: `<h3>${H('surf.point')}</h3>
+        <p>${H('surf.weights')} <b class="num">w₁ = ${n3(x)}, w₂ = ${n3(y)}</b></p>
+        <p>${H('surf.loss')} <b class="num">L = ${formatValue(z, 4)}</b></p>
+        <p>${H('surf.gradient')} <b class="num">∇L = (${formatValue(g[0], 3)}; ${formatValue(g[1], 3)})</b>, ${H('surf.steepness')} |∇L| = ${n3(Math.hypot(...g))}</p>
+        <p class="muted small">${H('surf.pointHint')}</p>`,
     };
   }
 
   ballInfo(b) {
     const g = b.lastGrad ?? numGrad(this.surf.f, ...b.p);
     return {
-      tooltip: `${b.O.name}: шаг ${b.steps}, L = ${formatValue(b.losses.at(-1), 3)}`,
-      html: `<h3>${escapeHtml(b.O.name)}</h3>
-        <p>Шаг: <b>${b.steps}</b> · веса (${b.p.map(v => v.toFixed(3)).join('; ')})</p>
-        <p>Ошибка: <b class="num">${formatValue(b.losses.at(-1), 4)}</b> (начальная ${formatValue(b.losses[0], 3)})</p>
-        <p>Градиент: (${formatValue(g[0], 3)}; ${formatValue(g[1], 3)})${b.lastStep !== undefined ? ` · длина последнего шага ${b.lastStep.toFixed(4)}` : ''}</p>
-        <p class="small muted"><code>${b.O.formula}</code>, η = ${this.lr.toPrecision(2)}</p>`,
+      tooltip: t('surf.ballTip', { name: b.O.name, n: b.steps, l: formatValue(b.losses.at(-1), 3) }),
+      html: `<h3>${escapeHtml(str(b.O.name))}</h3>
+        <p>${H('surf.stepLabel')} <b>${b.steps}</b> · ${H('surf.weightsShort')} (${b.p.map(n3).join('; ')})</p>
+        <p>${H('surf.loss')} <b class="num">${formatValue(b.losses.at(-1), 4)}</b> (${H('surf.initial', { v: formatValue(b.losses[0], 3) })})</p>
+        <p>${H('surf.gradient')} (${formatValue(g[0], 3)}; ${formatValue(g[1], 3)})${b.lastStep !== undefined ? ` · ${H('surf.lastStep', { v: fmtNum(b.lastStep, 4) })}` : ''}</p>
+        <p class="small muted"><code>${b.O.formula}</code>, η = ${fmtNum(Number(this.lr.toPrecision(2)))}</p>`,
     };
   }
 
   bindControls() {
     this.$('surface').addEventListener('change', e => this.loadSurface(e.target.value));
-    this.$('lr').addEventListener('input', () => { this.$('lr-v').textContent = this.lr.toPrecision(2); });
+    this.$('lr').addEventListener('input', () => { this.$('lr-v').textContent = fmtNum(Number(this.lr.toPrecision(2))); });
     this.$('play').addEventListener('click', () => (this.playing ? this.stop() : this.play()));
     this.$('step').addEventListener('click', () => { this.stop(); this.stepAll(); this.renderChart(); this.refreshHover(); });
     this.$('reset').addEventListener('click', () => this.resetBalls(this.start ?? this.surf.start));

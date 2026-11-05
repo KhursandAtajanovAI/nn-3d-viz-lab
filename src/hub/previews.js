@@ -2,10 +2,13 @@
 //   [3, 4, 2]                                 — полносвязная сеть: столбцы нейронов
 //   { blocks: [[h, c], …], skips: [[a, b]] }  — свёрточная/блочная архитектура: прямоугольники
 //                                              (h — относительная высота 0..1, c — «толщина» 0..1)
-//   { tokens: ['я', 'люблю', …] }             — последовательность слов с дугами внимания
+//   { tokens: [L(...), …] }                   — последовательность слов с дугами внимания (строки или L)
 //   { scatter: 3 }                            — облако точек из N кластеров
 //   { surface: true }                         — линии уровня поверхности ошибки с траекторией
 //   { grid: 5 }                               — клетчатая среда (обучение с подкреплением)
+import { str } from '../i18n/i18n.js';
+import { escapeHtml } from '../engine/format.js';
+
 const W = 220, H = 96;
 
 function svg(content, cls = '') {
@@ -65,7 +68,7 @@ function tokens({ tokens: words }) {
   }).join('');
   const boxes = words.map((w, i) => `
     <rect class="token" x="${(xs[i] - step / 2 + 2).toFixed(1)}" y="${H - 30}" width="${(step - 4).toFixed(1)}" height="18" rx="4" />
-    <text x="${xs[i].toFixed(1)}" y="${H - 17}" text-anchor="middle">${w}</text>`).join('');
+    <text x="${xs[i].toFixed(1)}" y="${H - 17}" text-anchor="middle">${escapeHtml(str(w))}</text>`).join('');
   return svg(`${arcs}${boxes}`, 'tokens');
 }
 

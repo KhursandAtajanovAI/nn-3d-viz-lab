@@ -1,135 +1,189 @@
 // Предсказание следующего слова с self-attention: последнее слово «смотрит» на контекст.
 import { tokenize, softmax, dot, vocabularyTable } from '../src/engine/models/text.js';
+import { scope, lang, fmtNum } from '../src/i18n/i18n.js';
 
-const DIMS = ['еда/питьё', 'животные', 'погода', 'время (утро+, вечер−)', 'действие', 'место'];
-const V = {
-  'кот': [0, 1, 0, 0, 0, 0], 'кошка': [0, 1, 0, 0, 0, 0], 'собака': [0, 1, 0, 0, 0, 0], 'птица': [0, 1, 0.2, 0, 0, 0],
-  'молоко': [1, 0.8, 0, 0.2, 0, 0], 'кофе': [1, 0, 0, 1, 0, 0], 'чай': [1, 0, 0, -0.8, 0, 0], 'воду': [1, 0.3, 0.3, 0, 0, 0],
-  'сок': [1, 0, 0, 0.5, 0, 0], 'рыбу': [1, 0.8, 0, 0, 0, 0], 'кашу': [1, 0, 0, 0.9, 0, 0], 'кость': [0.7, 1, 0, 0, 0, 0],
-  'зерно': [0.7, 0.9, 0.2, 0, 0, 0], 'ужин': [1, 0, 0, -1, 0, 0], 'завтрак': [1, 0, 0, 1, 0, 0],
-  // Казахстанские слова: кумыс — кобылье молоко (связан с лошадьми и степью), баурсаки, степь, юрта
-  'кумыс': [1, 0.5, 0.3, 0, 0, 0.5], 'баурсаки': [1, 0, 0, 0.4, 0, 0.2], 'степи': [0, 0.3, 0.6, 0, 0, 1], 'юрте': [0, 0.2, 0, -0.3, 0, 1],
-  'дождь': [0, 0, 1, 0, 0, 0.3], 'снег': [0, 0, 1, -0.2, 0, 0.3], 'холодно': [0, 0, 1, 0, 0, 0.2], 'тепло': [0, 0, 0.9, 0.2, 0, 0.2],
-  'дома': [0, 0.2, 0, -0.4, 0, 1], 'улице': [0, 0, 0.6, 0, 0, 1], 'парке': [0, 0.3, 0.3, 0.3, 0, 1], 'работу': [0, 0, 0, 0.8, 0, 1], 'домой': [0, 0, 0, -0.6, 0, 1],
-  'утром': [0, 0, 0, 1, 0, 0], 'вечером': [0, 0, 0, -1, 0, 0], 'ночью': [0, 0, 0, -1, 0, 0.2], 'днем': [0, 0, 0.2, 0.5, 0, 0],
-  'пьет': [0.9, 0, 0, 0, 1, 0], 'пью': [0.9, 0, 0, 0, 1, 0], 'пьют': [0.9, 0, 0, 0, 1, 0], 'пьем': [0.9, 0, 0, 0, 1, 0],
-  'ест': [0.9, 0, 0, 0, 1, 0], 'ем': [0.9, 0, 0, 0, 1, 0], 'едят': [0.9, 0, 0, 0, 1, 0],
-  'спит': [0, 0.3, 0, -0.8, 1, 0.3], 'сплю': [0, 0, 0, -0.8, 1, 0.3], 'идет': [0, 0, 0.8, 0, 1, 0.3], 'иду': [0, 0, 0, 0, 1, 0.8],
-  'гуляет': [0, 0.4, 0.3, 0.2, 1, 0.6], 'гуляем': [0, 0, 0.3, 0.2, 1, 0.6], 'мурлычет': [0, 1, 0, 0, 1, 0], 'лает': [0, 1, 0, 0, 1, 0], 'поет': [0, 0.8, 0, 0.5, 1, 0],
-  'я': [0, 0, 0, 0, 0, 0], 'мы': [0, 0, 0, 0, 0, 0], 'на': [0, 0, 0, 0, 0, 0.8], 'в': [0, 0, 0, 0, 0, 0.6], 'и': [0, 0, 0, 0, 0, 0],
+// Тексты и слова модели — в словарях src/i18n/<язык>/spaces/next-word.js (sp.next-word.w.<id>: слово на языке; пусто — слова нет).
+// Векторы и частые сочетания (биграммы) заданы по id и одинаковы для всех языков.
+const S = scope('sp.next-word');
+
+// Измерения: еда/питьё, животные, погода, время (утро+, вечер−), действие, место
+const VEC = {
+  cat: [0, 1, 0, 0, 0, 0],
+  kitten: [0, 1, 0, 0, 0, 0],
+  dog: [0, 1, 0, 0, 0, 0],
+  bird: [0, 1, 0.2, 0, 0, 0],
+  milk: [1, 0.8, 0, 0.2, 0, 0],
+  coffee: [1, 0, 0, 1, 0, 0],
+  tea: [1, 0, 0, -0.8, 0, 0],
+  water: [1, 0.3, 0.3, 0, 0, 0],
+  juice: [1, 0, 0, 0.5, 0, 0],
+  fish: [1, 0.8, 0, 0, 0, 0],
+  porridge: [1, 0, 0, 0.9, 0, 0],
+  bone: [0.7, 1, 0, 0, 0, 0],
+  grain: [0.7, 0.9, 0.2, 0, 0, 0],
+  dinner: [1, 0, 0, -1, 0, 0],
+  breakfast: [1, 0, 0, 1, 0, 0],
+  kumis: [1, 0.5, 0.3, 0, 0, 0.5],
+  baursaks: [1, 0, 0, 0.4, 0, 0.2],
+  steppe: [0, 0.3, 0.6, 0, 0, 1],
+  yurt: [0, 0.2, 0, -0.3, 0, 1],
+  rain: [0, 0, 1, 0, 0, 0.3],
+  snow: [0, 0, 1, -0.2, 0, 0.3],
+  cold: [0, 0, 1, 0, 0, 0.2],
+  warm: [0, 0, 0.9, 0.2, 0, 0.2],
+  home: [0, 0.2, 0, -0.4, 0, 1],
+  outside: [0, 0, 0.6, 0, 0, 1],
+  park: [0, 0.3, 0.3, 0.3, 0, 1],
+  work: [0, 0, 0, 0.8, 0, 1],
+  homeward: [0, 0, 0, -0.6, 0, 1],
+  morning: [0, 0, 0, 1, 0, 0],
+  evening: [0, 0, 0, -1, 0, 0],
+  night: [0, 0, 0, -1, 0, 0.2],
+  day: [0, 0, 0.2, 0.5, 0, 0],
+  drinks: [0.9, 0, 0, 0, 1, 0],
+  drink: [0.9, 0, 0, 0, 1, 0],
+  drinkThey: [0.9, 0, 0, 0, 1, 0],
+  drinkWe: [0.9, 0, 0, 0, 1, 0],
+  eats: [0.9, 0, 0, 0, 1, 0],
+  eat: [0.9, 0, 0, 0, 1, 0],
+  eatThey: [0.9, 0, 0, 0, 1, 0],
+  sleeps: [0, 0.3, 0, -0.8, 1, 0.3],
+  sleep: [0, 0, 0, -0.8, 1, 0.3],
+  goes: [0, 0, 0.8, 0, 1, 0.3],
+  go: [0, 0, 0, 0, 1, 0.8],
+  walks: [0, 0.4, 0.3, 0.2, 1, 0.6],
+  walk: [0, 0, 0.3, 0.2, 1, 0.6],
+  purrs: [0, 1, 0, 0, 1, 0],
+  barks: [0, 1, 0, 0, 1, 0],
+  sings: [0, 0.8, 0, 0.5, 1, 0],
+  i: [0, 0, 0, 0, 0, 0],
+  we: [0, 0, 0, 0, 0, 0],
+  on: [0, 0, 0, 0, 0, 0.8],
+  in: [0, 0, 0, 0, 0, 0.6],
+  and: [0, 0, 0, 0, 0, 0],
+  the: [0, 0, 0, 0, 0, 0],
+  it: [0, 0, 0, 0, 0, 0],
+  is: [0, 0, 0, 0, 0, 0],
+  a: [0, 0, 0, 0, 0, 0],
 };
-const FUNCTION_WORDS = new Set(['я', 'мы', 'на', 'в', 'и']);
-const CANDIDATES = Object.keys(V).filter(w => !FUNCTION_WORDS.has(w));
-const FOOD_NEXT = { 'утром': 0.6, 'вечером': 0.6, 'дома': 0.5 };
+const FUNCTION_IDS = new Set(['i', 'we', 'on', 'in', 'and', 'the', 'it', 'is', 'a']);
+const FOOD_NEXT = { morning: 0.6, evening: 0.6, home: 0.5 };
 // Биграммы: какие слова обычно идут сразу после данного (бонус к оценке)
 const B = {
-  'кот': { 'спит': 1.2, 'ест': 1.1, 'пьет': 1.0, 'мурлычет': 1.4, 'гуляет': 0.6 },
-  'кошка': { 'спит': 1.2, 'ест': 1.1, 'пьет': 1.0, 'мурлычет': 1.4 },
-  'собака': { 'лает': 1.4, 'ест': 1.1, 'спит': 1.0, 'гуляет': 1.0, 'пьет': 0.6 },
-  'птица': { 'поет': 1.4, 'ест': 0.9, 'пьет': 0.5 },
-  'пьет': { 'молоко': 1.3, 'кофе': 1.3, 'чай': 1.3, 'воду': 1.3, 'сок': 1.1, 'кумыс': 1.1 },
-  'ест': { 'рыбу': 1.2, 'кашу': 1.2, 'кость': 1.0, 'зерно': 1.0, 'завтрак': 0.8, 'ужин': 0.8, 'баурсаки': 1.0 },
-  'идет': { 'дождь': 1.5, 'снег': 1.5 },
-  'на': { 'улице': 1.5, 'работу': 1.1 },
-  'в': { 'парке': 1.3, 'юрте': 1.2, 'степи': 1.1 },
-  'улице': { 'холодно': 1.3, 'тепло': 1.2, 'дождь': 0.9, 'снег': 0.9 },
-  'я': { 'пью': 1.1, 'ем': 1.1, 'сплю': 0.9, 'иду': 1.0 },
-  'мы': { 'гуляем': 1.2, 'пьем': 1.0, 'едят': -1 },
-  'утром': { 'пью': 0.8, 'ем': 0.7, 'иду': 0.6, 'гуляем': 0.5, 'идет': 0.6 },
-  'иду': { 'домой': 1.3, 'работу': 0.9 },
-  'спит': { 'дома': 1.1, 'днем': 0.7, 'ночью': 0.8 },
-  'гуляет': { 'парке': 1.0, 'вечером': 0.7, 'утром': 0.6 },
+  cat: { sleeps: 1.2, eats: 1.1, drinks: 1.0, purrs: 1.4, walks: 0.6 },
+  kitten: { sleeps: 1.2, eats: 1.1, drinks: 1.0, purrs: 1.4 },
+  dog: { barks: 1.4, eats: 1.1, sleeps: 1.0, walks: 1.0, drinks: 0.6 },
+  bird: { sings: 1.4, eats: 0.9, drinks: 0.5 },
+  drinks: { milk: 1.3, coffee: 1.3, tea: 1.3, water: 1.3, juice: 1.1, kumis: 1.1 },
+  eats: { fish: 1.2, porridge: 1.2, bone: 1.0, grain: 1.0, breakfast: 0.8, dinner: 0.8, baursaks: 1.0 },
+  goes: { rain: 1.5, snow: 1.5 },
+  on: { outside: 1.5, work: 1.1 },
+  in: { park: 1.3, yurt: 1.2, steppe: 1.1 },
+  outside: { cold: 1.3, warm: 1.2, rain: 0.9, snow: 0.9 },
+  i: { drink: 1.1, eat: 1.1, sleep: 0.9, go: 1.0 },
+  we: { walk: 1.2, drinkWe: 1.0, eatThey: -1 },
+  morning: { drink: 0.8, eat: 0.7, go: 0.6, walk: 0.5, goes: 0.6 },
+  go: { homeward: 1.3, work: 0.9 },
+  sleeps: { home: 1.1, day: 0.7, night: 0.8 },
+  walks: { park: 1.0, evening: 0.7, morning: 0.6 },
 };
-for (const w of ['пью', 'пьют', 'пьем']) B[w] = B['пьет'];
-for (const w of ['ем', 'едят']) B[w] = B['ест'];
-for (const w of ['вечером', 'днем', 'ночью']) B[w] = B['утром'];
-for (const w of ['молоко', 'кофе', 'чай', 'воду', 'сок', 'рыбу', 'кашу', 'кость', 'зерно', 'кумыс', 'баурсаки']) B[w] = FOOD_NEXT;
-B['сплю'] = B['спит'];
-B['гуляем'] = B['гуляет'];
+for (const w of ['drink', 'drinkThey', 'drinkWe']) B[w] = B.drinks;
+for (const w of ['eat', 'eatThey']) B[w] = B.eats;
+for (const w of ['evening', 'day', 'night']) B[w] = B.morning;
+for (const w of ['milk', 'coffee', 'tea', 'water', 'juice', 'fish', 'porridge', 'bone', 'grain', 'kumis', 'baursaks']) B[w] = FOOD_NEXT;
+B.sleep = B.sleeps;
+B.walk = B.walks;
+B.is = B.outside; // «outside it is …» — то же, что «на улице …»
 
-const vec = w => V[w] ?? [0, 0, 0, 0, 0, 0];
+const ZERO = [0, 0, 0, 0, 0, 0];
+const vec = id => VEC[id] ?? ZERO;
+
+// Слова текущего языка: слово → id и id → слово (собирается один раз на язык)
+const cache = {};
+function lexicon() {
+  if (!cache[lang]) {
+    const idOf = new Map(), wordOf = {};
+    for (const id of Object.keys(VEC)) {
+      const w = S.t(`w.${id}`);
+      if (w) { idOf.set(w, id); wordOf[id] = w; }
+    }
+    cache[lang] = { idOf, wordOf, candidates: Object.keys(wordOf).filter(id => !FUNCTION_IDS.has(id)) };
+  }
+  return cache[lang];
+}
+
 /** Запрос: что слово «ищет» в контексте. Глагол ищет «кто/когда/где», место ищет погоду и т.п. */
 function query(x) {
   const [food, , weather, , action, place] = x;
   return [food * 0.3 + action * 0.3, action, action * 0.4 + place * 0.8, action + food * 0.8, 0, action * 0.4 + weather * 0.4];
 }
-function attend(words, qi) {
-  const q = query(vec(words[qi]));
-  const scores = words.slice(0, qi + 1).map((w, j) => 2.2 * dot(q, vec(w)) - 0.15 * (qi - j) + (j === qi ? 0.5 : 0));
+function attend(ids, qi) {
+  const q = query(vec(ids[qi]));
+  const scores = ids.slice(0, qi + 1).map((id, j) => 2.2 * dot(q, vec(id)) - 0.15 * (qi - j) + (j === qi ? 0.5 : 0));
   return softmax(scores);
 }
 
 export default {
   meta: {
     id: 'next-word',
-    title: 'Автодополнение и внимание (attention)',
+    title: S('title'),
     category: 'nlp',
     order: 20,
     level: 2,
     fidelity: 'real',
-    summary: 'Модель предсказывает следующее слово. Дуги показывают, на какие слова она «смотрит»: толщина — вес внимания.',
-    uses: 'Подсказки на клавиатуре телефона, автодополнение в поиске и почте, чат-боты и языковые модели (GPT) — там это ядро архитектуры.',
-    tags: ['NLP', 'attention', 'Transformer', 'автодополнение', 'эмбеддинги'],
-    preview: { tokens: ['утром', 'я', 'пью', '?'] },
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['NLP', 'attention', 'Transformer', 'autocomplete', 'embeddings'],
+    preview: { tokens: [S('prev.0'), S('prev.1'), S('prev.2'), '?'] },
   },
 
   type: 'tokens',
   mode: 'attention',
-  runLabel: 'Предсказать следующее слово',
-  resultTitle: 'Следующее слово',
-  presets: ['кот пьет', 'утром я пью', 'вечером я пью', 'в степи мы пьем', 'мы гуляем в', 'собака ест', 'на улице идет', 'на улице', 'кот'],
+  runLabel: S('runLabel'),
+  resultTitle: S('resultTitle'),
+  presets: S.list('presets', 9),
 
   process(text) {
+    const { idOf, wordOf, candidates } = lexicon();
     const words = tokenize(text);
-    const tokens = words.map(w => ({ text: w, known: w in V }));
-    const embeddings = words.map(vec);
+    const ids = words.map(w => idOf.get(w) ?? null);
+    const tokens = words.map((w, i) => ({ text: w, known: ids[i] !== null }));
+    const embeddings = ids.map(vec);
     const qi = words.length - 1;
-    const weights = attend(words, qi);
-    const matrix = words.map((_, i) => attend(words, i));
+    const weights = attend(ids, qi);
+    const matrix = ids.map((_, i) => attend(ids, i));
     const ctx = embeddings[0].map((_, k) => weights.reduce((s, w, j) => s + w * embeddings[j][k], 0));
-    const last = words[qi];
-    const isVerb = vec(last)[4] > 0.5;
-    const raw = CANDIDATES.map(v => {
+    const last = words[qi], lastId = ids[qi];
+    const isVerb = vec(lastId)[4] > 0.5;
+    const raw = candidates.map(v => {
       const c = 1.8 * dot(ctx, vec(v));
-      const b = B[last]?.[v] ?? 0;
-      const pen = (words.includes(v) ? -1.5 : 0) + (isVerb && vec(v)[4] > 0.5 ? -1 : 0);
-      return { word: v, score: c + b + pen, c, b };
+      const b = B[lastId]?.[v] ?? 0;
+      const pen = (ids.includes(v) ? -1.5 : 0) + (isVerb && vec(v)[4] > 0.5 ? -1 : 0);
+      return { id: v, word: wordOf[v], score: c + b + pen, c, b };
     });
     const probs = softmax(raw.map(r => r.score));
     const cands = raw.map((r, i) => ({ ...r, p: probs[i] })).sort((a, b) => b.p - a.p).slice(0, 6);
     const topAttn = weights.map((w, j) => [w, j]).sort((a, b) => b[0] - a[0])[0];
     for (const c of cands) {
-      c.why = `Контекст (взвешенная сумма векторов по вниманию) даёт ${c.c >= 0 ? '+' : ''}${c.c.toFixed(2)}${c.b ? `, частое сочетание «${last} ${c.word}» даёт ${c.b > 0 ? '+' : ''}${c.b.toFixed(1)}` : ''}.`;
+      const ctxText = S.t('whyContext', { v: c.c >= 0 ? `+${fmtNum(c.c, 2)}` : fmtNum(c.c, 2) });
+      c.why = S.h('why', { ctx: ctxText, pair: c.b ? S.t('whyPair', { last, word: c.word, v: c.b > 0 ? `+${fmtNum(c.b, 1)}` : fmtNum(c.b, 1) }) : '' });
     }
     return {
-      tokens, dims: DIMS, embeddings,
+      tokens, dims: [0, 1, 2, 3, 4, 5].map(k => S.t(`dims.${k}`)), embeddings,
       attention: { query: qi, weights, matrix },
       candidates: cands,
-      html: `<p>Скорее всего дальше идёт <b>«${cands[0].word}»</b> (${Math.round(cands[0].p * 100)}%).
-        Больше всего внимания последнее слово «${last}» уделило слову <b>«${words[topAttn[1]]}»</b> (${Math.round(topAttn[0] * 100)}%)
-        — именно оно сильнее всего повлияло на выбор.</p>
-        <p class="small muted">Попробуйте «утром я пью» и «вечером я пью»: последнее слово одинаковое, а ответ разный — его меняет внимание к слову про время.
-        Кнопка «Добавить предсказанное слово» продолжает фразу, как автодополнение.</p>`,
+      html: S.h('resultHtml', { word: cands[0].word, p: Math.round(cands[0].p * 100), last, top: words[topAttn[1]], tp: Math.round(topAttn[0] * 100) }),
     };
   },
 
-  vocabularyHtml: vocabularyTable(V, DIMS),
+  vocabularyHtml: () => {
+    const { wordOf } = lexicon();
+    const V = {};
+    for (const id of Object.keys(wordOf)) V[wordOf[id]] = VEC[id];
+    return vocabularyTable(V, [0, 1, 2, 3, 4, 5].map(k => S.t(`dims.${k}`)), { limit: 200 });
+  },
 
-  intro: `<p>Каждое слово — вектор из 6 чисел. Последнее слово формирует <b>запрос</b> («что мне важно в контексте?»),
-    сравнивает его с векторами всех предыдущих слов и получает <b>веса внимания</b> (softmax).
-    Взвешенная сумма векторов — это контекст, из которого считаются вероятности следующего слова.</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Как это работает в трансформерах',
-      open: false,
-      html: `<ul class="steps">
-          <li>Каждое слово получает три вектора: <b>запрос</b> (Q), <b>ключ</b> (K) и <b>значение</b> (V) — это умножение эмбеддинга на три обучаемые матрицы.</li>
-          <li>Вес внимания = softmax(Q·K / √d): чем больше совпадают запрос и ключ, тем больше вес.</li>
-          <li>Выход — взвешенная сумма векторов V. Таких «голов» внимания несколько, и слоёв десятки.</li>
-        </ul>
-        <p class="muted small">Здесь матрица запроса задана вручную (глагол «ищет» кто/когда/где), ключи и значения равны эмбеддингам,
-        а к оценке кандидатов добавлены частоты пар слов. В GPT всё это выучивается на терабайтах текста.</p>`,
-    },
-  ],
+  sections: [{ title: S('transformersTitle'), open: false, html: S('transformersHtml') }],
 };

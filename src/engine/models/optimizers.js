@@ -1,4 +1,6 @@
 // Оптимизаторы для двумерных функций (поверхность ошибки). Без зависимостей.
+import { L } from '../../i18n/i18n.js';
+
 
 /** Численный градиент (центральные разности) */
 export function numGrad(f, x, y, h = 1e-4) {
@@ -7,14 +9,14 @@ export function numGrad(f, x, y, h = 1e-4) {
 
 export const OPTIMIZERS = {
   sgd: {
-    name: 'Градиентный спуск',
+    name: L('opt.sgd'),
     color: '#ff9f1c',
     init: () => ({}),
     step(p, g, s, { lr }) { return [p[0] - lr * g[0], p[1] - lr * g[1]]; },
     formula: 'w ← w − η·∇L',
   },
   momentum: {
-    name: 'С моментом',
+    name: L('opt.momentum'),
     color: '#2f9bff',
     init: () => ({ v: [0, 0] }),
     step(p, g, s, { lr, beta = 0.9 }) {
@@ -35,6 +37,6 @@ export const OPTIMIZERS = {
       const mh = s.m.map(m => m / (1 - b1 ** s.t)), vh = s.v.map(v => v / (1 - b2 ** s.t));
       return p.map((w, i) => w - (lr * mh[i]) / (Math.sqrt(vh[i]) + eps));
     },
-    formula: 'шаг ∝ m / √v — своя скорость для каждого веса',
+    formula: L('opt.adamFormula'),
   },
 };

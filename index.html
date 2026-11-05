@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NN 3D Viz Lab — каталог</title>
-  <meta name="description" content="Интерактивная лаборатория для изучения нейронных сетей в 3D: от одного нейрона до свёрточных сетей и трансформеров." />
+  <title>NN 3D Viz Lab</title>
+  <meta name="description" content="" data-t-content="catalog.metaDescription" />
   <link rel="stylesheet" href="src/hub/hub.css" />
   <script>
     try {
@@ -33,37 +33,36 @@
   <div class="page">
     <header class="hero">
       <div class="hero-top">
-        <h1>NN 3D Viz Lab <span class="accent">·</span> лаборатория нейросетей</h1>
+        <h1>NN 3D Viz Lab <span class="accent">·</span> <span data-t="catalog.heroTitle"></span></h1>
         <div id="theme-switch"></div>
       </div>
-      <p>Интерактивные 3D-пространства, в которых видно, как нейросети устроены, как по ним проходит сигнал и как они учатся.
-        Внутри пространства можно вращать сцену, запускать вычисления и наводить курсор на любой нейрон, слой или связь.</p>
-      <p class="stats">Всего пространств: <b id="total">…</b> · категорий: <b id="total-categories">…</b></p>
+      <p data-t="catalog.heroText"></p>
+      <p class="stats"><span data-t="catalog.statsSpaces"></span> <b id="total">…</b> · <span data-t="catalog.statsCategories"></span> <b id="total-categories">…</b></p>
     </header>
 
     <section id="my-spaces" class="my-spaces" aria-labelledby="my-title">
       <div class="my-head">
-        <h2 id="my-title"><span class="icon">✎</span> Мои пространства</h2>
+        <h2 id="my-title"><span class="icon">✎</span> <span data-t="my.title"></span></h2>
         <div class="my-buttons">
-          <button type="button" id="import-space" class="ghost-btn" title="Файл .nn3d.json, скачанный кнопкой «Скачать»">Загрузить файл</button>
-          <button type="button" id="create-space" class="primary-btn">+ Создать пространство</button>
+          <button type="button" id="import-space" class="ghost-btn" data-t="my.import" data-t-title="my.importHint"></button>
+          <button type="button" id="create-space" class="primary-btn" data-t="my.create"></button>
         </div>
       </div>
       <p id="my-msg" class="my-msg" role="status"></p>
-      <p class="muted">Свои сети и графы блоков. Хранятся только в этом браузере; встроенные пространства ниже не меняются.</p>
+      <p class="muted" data-t="my.intro"></p>
       <div id="my-list"></div>
     </section>
 
     <div class="toolbar" id="toolbar">
       <div class="search-wrap">
-        <input id="search" type="search" placeholder="Поиск: MNIST, свёртки, внимание, регрессия…" aria-label="Поиск по названию, описанию и тегам" autocomplete="off" />
+        <input id="search" type="search" data-t-placeholder="catalog.searchPlaceholder" data-t-aria-label="catalog.searchLabel" autocomplete="off" />
       </div>
-      <nav id="filters" aria-label="Категории"></nav>
+      <nav id="filters" data-t-aria-label="catalog.categoriesLabel"></nav>
     </div>
 
     <details class="tag-panel">
-      <summary>Фильтр по тегам</summary>
-      <div id="tag-cloud" aria-label="Теги"></div>
+      <summary data-t="catalog.tagFilter"></summary>
+      <div id="tag-cloud" data-t-aria-label="catalog.tagsLabel"></div>
     </details>
 
     <div class="status-row">
@@ -71,17 +70,14 @@
       <div id="active-filters"></div>
     </div>
 
-    <main id="catalog"><p class="muted">Загрузка каталога…</p></main>
+    <main id="catalog"><p class="muted">…</p></main>
 
     <footer>
-      <p>Каждое пространство — это один файл в папке
-        <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/tree/main/spaces">spaces/</a>;
-        новые файлы появляются здесь автоматически. Как добавить своё — в
-        <a href="https://github.com/KhursandAtajanovAI/nn-3d-viz-lab/blob/main/spaces/README.md">spaces/README.md</a>.</p>
-      <p>Бейджи на карточках: <span class="badge fidelity real">Реальные вычисления</span>
-        <span class="badge fidelity trained">Обучается в браузере</span>
-        <span class="badge fidelity demo">Упрощённая иллюстрация</span> — насколько «настоящие» числа в пространстве.</p>
-      <p>Технический тест рендера без движка: <a href="examples/simple-demo/">examples/simple-demo</a>.</p>
+      <p data-t="catalog.footerSpacesHtml"></p>
+      <p><span data-t="catalog.footerBadges"></span> <span class="badge fidelity real" data-t="fid.real.title"></span>
+        <span class="badge fidelity trained" data-t="fid.trained.title"></span>
+        <span class="badge fidelity demo" data-t="fid.demo.title"></span> <span data-t="catalog.footerBadgesTail"></span></p>
+      <p><span data-t="catalog.footerDemo"></span> <a href="examples/simple-demo/">examples/simple-demo</a>.</p>
     </footer>
   </div>
   <script type="module" src="src/hub/hub.js"></script>

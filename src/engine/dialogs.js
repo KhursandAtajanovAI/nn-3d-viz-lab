@@ -1,6 +1,7 @@
 // Свои диалоги вместо confirm / prompt / alert: в стиле проекта, на всех темах, с клавиатурой
 // (Enter — подтвердить, Esc — отмена). Работают и в каталоге, и на странице пространства.
 // Все тексты выводятся через textContent — пользовательские строки не попадают в HTML.
+import { t } from '../i18n/i18n.js';
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -20,7 +21,7 @@ function el(tag, cls, text) {
  * @param {boolean} [o.danger] — необратимое действие: красная кнопка, фокус на «Отмена»
  * @returns {Promise<boolean|string|null>} confirm: true/false; с полем ввода: строка или null
  */
-export function showDialog({ title, text = '', input = null, okText = 'OK', cancelText = 'Отмена', danger = false }) {
+export function showDialog({ title, text = '', input = null, okText = 'OK', cancelText = t('common.cancel'), danger = false }) {
   return new Promise(resolve => {
     const before = document.activeElement;
     const dlg = el('dialog', 'ui-dialog');
@@ -90,13 +91,13 @@ export function showDialog({ title, text = '', input = null, okText = 'OK', canc
 }
 
 /** Подтверждение: true — «да», false — отмена */
-export const confirmDialog = ({ title, text, okText = 'Да', cancelText = 'Отмена', danger = false }) =>
+export const confirmDialog = ({ title, text, okText = t('common.yes'), cancelText = t('common.cancel'), danger = false }) =>
   showDialog({ title, text, okText, cancelText, danger });
 
 /** Ввод строки: строка (без пробелов по краям) или null при отмене */
-export const promptDialog = ({ title, text, label, value = '', maxLength, validate, okText = 'Сохранить' }) =>
+export const promptDialog = ({ title, text, label, value = '', maxLength, validate, okText = t('common.save') }) =>
   showDialog({ title, text, input: { label, value, maxLength, validate }, okText });
 
 /** Сообщение с одной кнопкой */
-export const alertDialog = ({ title, text, okText = 'Понятно' }) =>
+export const alertDialog = ({ title, text, okText = t('common.gotIt') }) =>
   showDialog({ title, text, okText, cancelText: null });

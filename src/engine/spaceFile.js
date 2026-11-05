@@ -3,6 +3,7 @@
 // пространство в «Мои»; неизвестные поля отбрасываются.
 import { LIMITS, parseSpaceFileText, validateSpaceFile } from './spaceFormat.js';
 import { saveSpace } from './userStore.js';
+import { t } from '../i18n/i18n.js';
 
 /** Имя файла из названия: буквы, цифры и дефисы */
 function fileName(title) {
@@ -13,9 +14,9 @@ function fileName(title) {
 /** Скачать файл пространства */
 export function downloadSpaceFile(file) {
   const check = validateSpaceFile(file);
-  if (!check.ok) throw new Error(`Файл не прошёл проверку: ${check.errors[0]}`);
+  if (!check.ok) throw new Error(t('file.checkFailed', { err: check.errors[0] }));
   const text = JSON.stringify({ ...check.space, exportedAt: new Date().toISOString() });
-  if (text.length > LIMITS.fileBytes) throw new Error(`Пространство слишком большое для файла (${(text.length / 1048576).toFixed(1)} МБ)`);
+  if (text.length > LIMITS.fileBytes) throw new Error(t('file.tooBigForFile', { mb: { num: text.length / 1048576, d: 1 } }));
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
@@ -32,14 +33,14 @@ export function downloadSpaceFile(file) {
  * @throws Error с понятным текстом (несколько ошибок — через перевод строки)
  */
 export async function importSpaceFile(f) {
-  if (!f) throw new Error('Файл не выбран');
+  if (!f) throw new Error(t('file.noFile'));
   if (f.size > LIMITS.fileBytes) {
-    throw new Error(`Файл слишком большой: ${(f.size / 1048576).toFixed(1)} МБ, допустимо до ${LIMITS.fileBytes / 1048576} МБ`);
+    throw new Error(t('fmt.tooBig', { mb: { num: f.size / 1048576, d: 1 }, max: LIMITS.fileBytes / 1048576 }));
   }
   let text;
-  try { text = await f.text(); } catch { throw new Error('Не удалось прочитать файл'); }
+  try { text = await f.text(); } catch { throw new Error(t('fmt.readFailed')); }
   const check = parseSpaceFileText(text);
-  if (!check.ok) throw new Error(`Файл «${f.name}» не открыт:\n${check.errors.join('\n')}`);
+  if (!check.ok) throw new Error(`${t('file.notOpened', { name: f.name })}\n${check.errors.join('\n')}`);
   const id = await saveSpace(check.space);
   return { id, title: check.space.meta.title, warnings: check.warnings };
 }

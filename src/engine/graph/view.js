@@ -2,40 +2,71 @@
 // Всё строится через createElement/textContent — значения из файлов пользователя не попадают в innerHTML.
 // Цвета графиков берутся из CSS-переменных темы в момент рисования.
 
+import { L, isText, setT, setAttrT, t, fmtNum } from '../../i18n/i18n.js';
+
+/** Элемент с текстом: строка (как есть, через textContent) или L(...) — переводится при смене языка */
 export function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
-  if (text !== undefined && text !== null) e.textContent = text;
+  if (isText(text)) setT(e, text);
+  else if (text !== undefined && text !== null) e.textContent = text;
   return e;
+}
+
+/** Подсказка (title) из строки или L(...) */
+export function setTitle(e, title) {
+  if (isText(title)) setAttrT(e, 'title', title);
+  else {
+    e.title = title ?? '';
+    e.removeAttribute('data-t-title');
+    e.removeAttribute('data-tp-title');
+  }
 }
 
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
 /** Цвета классов: те же акценты, что в 3D-сценах */
 export const classColor = i => [css('--pos'), css('--neg'), css('--ok'), css('--demo'), '#c06cff', '#ff6b9a', '#4fd1c5', '#a3a948', '#8d6e63', '#7f8c8d'][i % 10];
 
-export function fmt(v, digits = 3) {
+/** Список переводимых элементов, склеенных переводимым разделителем: L(key, { a, b }) вложенно */
+export const joinL = (items, key) => items.reduceRight((acc, x) => (acc ? L(key, { a: x, b: acc }) : x), null);
+
+/** Число для подстановки в L(...): округлённое число (формат — по языку) или строка вида 1.23e-4 */
+export function fv(v, digits = 3) {
   if (typeof v !== 'number') return v === null || v === undefined ? '—' : String(v);
   if (!Number.isFinite(v)) return String(v);
   const a = Math.abs(v);
   if (a !== 0 && (a < 1e-3 || a >= 1e5)) return v.toExponential(2);
-  return String(+v.toFixed(digits));
+  return +v.toFixed(digits);
 }
 
-/** Крупные числа с подписями: [[«Точность (тест)», «93.5 %»], …] */
+/** Число строкой на текущем языке (для текста, который строится на месте) */
+export function fmt(v, digits = 3) {
+  const x = fv(v, digits);
+  return typeof x === 'number' ? fmtNum(x) : x;
+}
+
+/** Число как переводимый текст: пересчитывается при смене языка */
+export const numL = (v, digits = 3) => L('graph.num', { v: fv(v, digits) });
+
+/** Крупные числа с подписями: [[L('…'), L('…', { v }), hint?], …] — подписи и значения строка или L(...) */
 export function numbers(pairs) {
   const box = el('div', 'gv-numbers');
   for (const [label, value, hint] of pairs) {
     const item = el('div', 'gv-number');
     item.append(el('b', '', value), el('span', '', label));
-    if (hint) item.title = hint;
+    if (hint) setTitle(item, hint);
     box.append(item);
   }
   return box;
 }
 
-/** Моноширинный текст (вывод чисел) */
+/** Моноширинный текст (вывод чисел): строки — строка или L(...), каждая переводится на месте */
 export function text(lines) {
-  return el('pre', 'gv-text', Array.isArray(lines) ? lines.join('\n') : lines);
+  const pre = el('pre', 'gv-text');
+  for (const l of Array.isArray(lines) ? lines : [lines]) {
+    pre.append(el('span', '', l), '\n');
+  }
+  return pre;
 }
 
 export function note(t, kind = '') {
@@ -59,9 +90,9 @@ export function table(columns, rows, { caption } = {}) {
   for (const r of rows) {
     const row = el('tr');
     for (const v of r) {
-      const isObj = v && typeof v === 'object';
-      const td = el('td', isObj ? v.cls ?? '' : typeof v === 'number' ? 'num' : '', isObj ? v.text : fmt(v));
-      if (isObj && v.title) td.title = v.title;
+      const isObj = v && typeof v === 'object' && !isText(v);
+      const td = el('td', isObj ? v.cls ?? '' : typeof v === 'number' ? 'num' : '', isObj ? v.text : typeof v === 'number' ? numL(v) : v ?? '—');
+      if (isObj && v.title) setTitle(td, v.title);
       if (isObj && v.bg) td.style.background = v.bg;
       row.append(td);
     }
@@ -81,9 +112,20 @@ export function canvas(w, h, draw) {
   c.style.width = '100%';
   c.style.aspectRatio = `${w} / ${h}`;
   const ctx = c.getContext('2d');
-  ctx.scale(dpr, dpr);
-  draw(ctx, w, h);
+  // Перерисовка (после смены языка подписи на холсте должны смениться)
+  c._redraw = () => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.scale(dpr, dpr);
+    draw(ctx, w, h);
+  };
+  c._redraw();
   return c;
+}
+
+/** Перерисовать все графики внутри root (смена языка или темы) */
+export function redrawCharts(root) {
+  root.querySelectorAll('canvas.gv-canvas').forEach(c => c._redraw?.());
 }
 
 /**
@@ -92,7 +134,7 @@ export function canvas(w, h, draw) {
 export function lineChart(series, { yLabel = '', w = 320, h = 180 } = {}) {
   const box = el('div', 'gv-chart');
   const all = series.flatMap(s => s.values).filter(Number.isFinite);
-  if (!all.length) return note('Нет данных для графика');
+  if (!all.length) return note(L('graph.chart.noData'));
   let lo = Math.min(...all), hi = Math.max(...all);
   if (hi - lo < 1e-9) { hi += 0.5; lo -= 0.5; }
   const n = Math.max(...series.map(s => s.values.length));
@@ -109,8 +151,8 @@ export function lineChart(series, { yLabel = '', w = 320, h = 180 } = {}) {
       ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
       ctx.fillText(fmt(v, 2), 2, yy + 3);
     }
-    ctx.fillText(`эпохи: ${n}`, W - pad.r - 50, H - 6);
-    if (yLabel) ctx.fillText(yLabel, pad.l, H - 6);
+    ctx.fillText(t('graph.chart.epochs', { n }), W - pad.r - 50, H - 6);
+    if (yLabel) ctx.fillText(isText(yLabel) ? t(yLabel) : yLabel, pad.l, H - 6);
     for (const s of series) {
       ctx.strokeStyle = s.color;
       ctx.lineWidth = 2;
@@ -134,7 +176,7 @@ export function lineChart(series, { yLabel = '', w = 320, h = 180 } = {}) {
  */
 export function scatter(points, { classes = [], xLabel = 'x', yLabel = 'y', background = null, w = 320, h = 260 } = {}) {
   const box = el('div', 'gv-chart');
-  if (!points.length) return note('Нет точек');
+  if (!points.length) return note(L('graph.chart.noPoints'));
   const xs = points.map(p => p.x), ys = points.map(p => p.y);
   let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const mx = (x1 - x0 || 1) * 0.06, my = (y1 - y0 || 1) * 0.06;
@@ -161,8 +203,9 @@ export function scatter(points, { classes = [], xLabel = 'x', yLabel = 'y', back
     }
     ctx.fillStyle = css('--muted');
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText(xLabel, W - 6 - ctx.measureText(xLabel).width, H - 4);
-    ctx.fillText(yLabel, 4, 11);
+    const xs_ = isText(xLabel) ? t(xLabel) : xLabel, ys_ = isText(yLabel) ? t(yLabel) : yLabel;
+    ctx.fillText(xs_, W - 6 - ctx.measureText(xs_).width, H - 4);
+    ctx.fillText(ys_, 4, 11);
   }));
   if (classes.length) {
     const legend = el('div', 'gv-legend');

@@ -4,7 +4,8 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { PALETTE, IDLE_COLOR as COLOR_IDLE, weightColor, signColor, setGlow } from './palette.js';
-import { formatValue, layerShortName } from './format.js';
+import { formatValue, layerShortL } from './format.js';
+import { L, isText, setT } from '../i18n/i18n.js';
 
 const LAYER_GAP = 4;
 const NEURON_GAP = 1.2;
@@ -29,7 +30,7 @@ const _v = new THREE.Vector3();
 function makeLabel(className, text = '') {
   const el = document.createElement('div');
   el.className = `${className} nv`;
-  el.textContent = text;
+  if (isText(text)) setT(el, text); else el.textContent = text ?? ''; // L(...) переводится при смене языка
   return new CSS2DObject(el);
 }
 
@@ -91,7 +92,7 @@ export class NetworkView {
     // Подписи слоёв над каждым столбцом нейронов
     this.positions.forEach((layer, l) => {
       const top = Math.max(...layer.map(p => p.y));
-      const label = makeLabel('layer-label', `${layerShortName(l, layers.length)} · ${layers[l]}`);
+      const label = makeLabel('layer-label', L('lab.layerWithCount', { name: layerShortL(l, layers.length), n: layers[l] }));
       label.center.set(0.5, 1); // нижний край — над верхним шариком
       label.position.set(layer[0].x, top + LABEL_GAP.layer, 0);
       this.group.add(label);

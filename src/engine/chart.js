@@ -1,4 +1,6 @@
 // Простой линейный график в SVG (без зависимостей): loss по эпохам, награда по эпизодам и т.п.
+import { t } from '../i18n/i18n.js';
+
 
 // Цвета палитры → CSS-переменные темы (на светлом фоне они темнее)
 const THEMED = { '#ff9f1c': 'var(--pos)', '#2f9bff': 'var(--neg)', '#7ee081': 'var(--ok)', '#ffd166': 'var(--accent-text)', '#c77dff': 'var(--grad)' };
@@ -23,7 +25,7 @@ function niceNum(v) {
 export function lineChartSvg(series, { width = 320, height = 150, xLabel = '', yLabel = '', yMin, yMax, logY = false, marker } = {}) {
   const pad = { l: 42, r: 10, t: 12, b: 28 };
   const all = series.flatMap(s => s.values).filter(Number.isFinite);
-  if (!all.length) return `<svg class="chart" viewBox="0 0 ${width} ${height}"><text x="${width / 2}" y="${height / 2}" text-anchor="middle" class="chart-empty">Нет данных</text></svg>`;
+  if (!all.length) return `<svg class="chart" viewBox="0 0 ${width} ${height}"><text x="${width / 2}" y="${height / 2}" text-anchor="middle" class="chart-empty">${t('chart.noData')}</text></svg>`;
   const tf = v => (logY ? Math.log10(Math.max(v, 1e-6)) : v);
   let lo = yMin ?? Math.min(...all), hi = yMax ?? Math.max(...all);
   lo = tf(lo); hi = tf(hi);

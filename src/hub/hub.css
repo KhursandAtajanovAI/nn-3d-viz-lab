@@ -7,7 +7,7 @@ button { font: inherit; }
 .page { zoom: var(--ui-scale); max-width: 1180px; margin: 0 auto; padding: 32px 20px 48px; }
 
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.hero-top .theme-switch { margin-top: 8px; flex: none; }
+.hero-top .switches { margin-top: 8px; flex: none; }
 .hero h1 { margin: 0; font-size: 30px; letter-spacing: .2px; }
 .hero h1 .accent { color: var(--pos); }
 .hero p { max-width: 760px; margin: 8px 0 0; font-size: 15px; color: var(--muted); }

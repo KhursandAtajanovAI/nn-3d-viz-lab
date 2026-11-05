@@ -1,25 +1,26 @@
 // Диаграмма рассеяния двух признаков; после обучения — с областями решений сети.
 import { scatter, note } from '../graph/view.js';
 import { isNumericColumn, toXY } from '../graph/data.js';
+import { L } from '../../i18n/i18n.js';
 
 export default {
   id: 'scatter',
-  title: 'Диаграмма рассеяния',
+  title: L('blk.scatter.title'),
   group: 'result',
-  info: 'Точки по двум признакам, цвет — класс. Для обученной модели на 2 признаках закрашиваются области, где сеть отвечает тем или иным классом.',
-  inputs: [{ id: 'in', title: 'Данные или обученная', types: ['data', 'split', 'trained'] }],
+  info: L('blk.scatter.info'),
+  inputs: [{ id: 'in', title: L('blk.port.dataOrTrained'), types: ['data', 'split', 'trained'] }],
   outputs: [],
   params: [
-    { id: 'x', title: 'Признак по X (номер)', kind: 'number', min: 1, max: 100, step: 1, int: true, default: 1 },
-    { id: 'y', title: 'Признак по Y (номер)', kind: 'number', min: 1, max: 100, step: 1, int: true, default: 2 },
+    { id: 'x', title: L('blk.scatter.p.x'), kind: 'number', min: 1, max: 100, step: 1, int: true, default: 1 },
+    { id: 'y', title: L('blk.scatter.p.y'), kind: 'number', min: 1, max: 100, step: 1, int: true, default: 2 },
   ],
-  summary: p => `признаки ${p.x} и ${p.y}`,
+  summary: p => L('blk.scatter.summary', { x: String(p.x), y: String(p.y) }),
   run({ inputs, params: p }) {
     const v = inputs.in;
     if (v.net) {
-      if (v.inputShape.length !== 1) return { view: note('Для картинок диаграмма рассеяния не строится') };
+      if (v.inputShape.length !== 1) return { view: note(L('blk.scatter.noImages')) };
       const nf = v.inputShape[0], fx = p.x - 1, fy = p.y - 1;
-      if (fx >= nf || fy >= nf) return { view: note(`Признаков всего ${nf}`) };
+      if (fx >= nf || fy >= nf) return { view: note(L('blk.scatter.featuresTotal', { n: String(nf) })) };
       const pts = v.test.X.map((x, i) => (v.task === 'class'
         ? { x: x[fx], y: x[fy], c: v.test.y[i], ok: v.final.preds[i].cls === v.test.y[i] }
         : { x: x[fx], y: v.test.y[i][0], c: 0 }));
@@ -34,15 +35,15 @@ export default {
           return best;
         };
       }
-      const views = [scatter(pts, { classes: v.classes ?? [], xLabel: v.featureNames[fx], yLabel: v.task === 'class' ? v.featureNames[fy] : 'цель', background })];
-      if (v.task === 'class') views.push(note('Точки теста; обведены ошибки сети' + (background ? ', фон — ответ сети' : '')));
+      const views = [scatter(pts, { classes: v.classes ?? [], xLabel: v.featureNames[fx], yLabel: v.task === 'class' ? v.featureNames[fy] : L('blk.scatter.target'), background })];
+      if (v.task === 'class') views.push(note(L(background ? 'blk.scatter.legendBg' : 'blk.scatter.legend')));
       return { view: views };
     }
     const d = v.train ?? v;
-    if (d.image) return { view: note('Для картинок диаграмма рассеяния не строится') };
+    if (d.image) return { view: note(L('blk.scatter.noImages')) };
     const t = d.columns.indexOf(d.target);
     const feats = d.columns.map((_, c) => c).filter(c => c !== t && isNumericColumn(d, c));
-    if (!feats.length) return { view: note('Нет числовых признаков') };
+    if (!feats.length) return { view: note(L('blk.scatter.noNumeric')) };
     const cx = feats[Math.min(p.x, feats.length) - 1], cy = feats[Math.min(p.y, feats.length) - 1];
     let classes = [], cls = () => 0;
     try {

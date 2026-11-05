@@ -1,6 +1,9 @@
 // U-Net (2015): сегментация — для каждого пикселя сказать, что на нём. Энкодер, декодер и «мостики» между ними.
+// Тексты — в словарях src/i18n/<язык>/spaces/unet.js.
 import { blurImage } from '../src/engine/models/libraryHelpers.js';
+import { scope } from '../src/i18n/i18n.js';
 
+const T = scope('sp.unet');
 const S = 64;
 
 /** Синтетический «микроскопный снимок»: светлые клетки на шумном тёмном фоне */
@@ -29,41 +32,41 @@ function mask(img) {
 export default {
   meta: {
     id: 'unet',
-    title: 'U-Net: сегментация изображений (2015)',
+    title: T('title'),
     category: 'library',
     order: 60,
     level: 3,
     fidelity: 'demo',
-    fidelityNote: 'Структура U-Net (энкодер, декодер, мостики) точная, размеры уменьшены: 3 уровня и 32 канала на первом уровне вместо 4 уровней и 64 каналов в оригинале. Маска на выходе получена простым порогом по яркости — так выглядит результат сегментации, но это не вычисление самой сети.',
-    summary: 'Сеть в форме буквы U: энкодер сжимает картинку, декодер разворачивает её обратно до маски «пиксель — объект или фон», а мостики передают мелкие детали.',
-    uses: 'Медицина (опухоли на МРТ, клетки на снимках микроскопа), спутниковые карты, беспилотники (где дорога, где пешеход), удаление фона на фото.',
-    tags: ['CNN', 'U-Net', 'сегментация', 'медицина', 'энкодер-декодер'],
+    fidelityNote: T('fidelityNote'),
+    summary: T('summary'),
+    uses: T('uses'),
+    tags: ['CNN', 'U-Net', 'segmentation', 'medicine', 'encoder-decoder'],
     preview: { blocks: [[1, 0.2], [1, 0.3], [0.6, 0.45], [0.35, 0.6], [0.2, 0.8], [0.35, 0.6], [0.6, 0.45], [1, 0.3], [1, 0.15]], skips: [[1, 7], [2, 6], [3, 5]] },
   },
 
   type: 'stack',
   layers: [
-    { name: 'Снимок', kind: 'input', shape: [64, 64, 1], maps: true, slices: 1, note: 'Синтетический «снимок микроскопа»: светлые клетки на шумном фоне.' },
-    { name: 'Энкодер 1', kind: 'conv', repeat: 2, shape: [64, 64, 32], params: 9568 },
-    { name: 'Энкодер 2', kind: 'conv', repeat: 2, shape: [32, 32, 64], params: 55424, note: 'Перед блоком — max-pooling: карта вдвое меньше, каналов вдвое больше.' },
-    { name: 'Энкодер 3', kind: 'conv', repeat: 2, shape: [16, 16, 128], params: 221440 },
-    { name: 'Дно «U»', kind: 'conv', repeat: 2, shape: [8, 8, 256], params: 885248, note: 'Самое сжатое представление: сеть «понимает», что на картинке, но уже не знает точно где.' },
-    { name: 'Декодер 3', kind: 'deconv', repeat: 2, shape: [16, 16, 128], params: 573824, note: 'Увеличение карты + склейка с картой Энкодера 3 (мостик) + две свёртки.' },
-    { name: 'Декодер 2', kind: 'deconv', repeat: 2, shape: [32, 32, 64], params: 143552 },
-    { name: 'Декодер 1', kind: 'deconv', repeat: 2, shape: [64, 64, 32], params: 35936 },
-    { name: 'Маска', kind: 'output', shape: [64, 64, 1], maps: true, slices: 1, params: 33, note: 'Для каждого пикселя — вероятность «клетка». Светлое — клетка, тёмное — фон.' },
+    { name: T('l.input'), kind: 'input', shape: [64, 64, 1], maps: true, slices: 1, note: T('n.input') },
+    { name: T('l.enc', { n: 1 }), kind: 'conv', repeat: 2, shape: [64, 64, 32], params: 9568 },
+    { name: T('l.enc', { n: 2 }), kind: 'conv', repeat: 2, shape: [32, 32, 64], params: 55424, note: T('n.enc2') },
+    { name: T('l.enc', { n: 3 }), kind: 'conv', repeat: 2, shape: [16, 16, 128], params: 221440 },
+    { name: T('l.bottom'), kind: 'conv', repeat: 2, shape: [8, 8, 256], params: 885248, note: T('n.bottom') },
+    { name: T('l.dec', { n: 3 }), kind: 'deconv', repeat: 2, shape: [16, 16, 128], params: 573824, note: T('n.dec3') },
+    { name: T('l.dec', { n: 2 }), kind: 'deconv', repeat: 2, shape: [32, 32, 64], params: 143552 },
+    { name: T('l.dec', { n: 1 }), kind: 'deconv', repeat: 2, shape: [64, 64, 32], params: 35936 },
+    { name: T('l.mask'), kind: 'output', shape: [64, 64, 1], maps: true, slices: 1, params: 33, note: T('n.mask') },
   ],
   totalParams: 1925025,
   skips: [
-    { from: 1, to: 7, label: 'мостик: мелкие детали' },
-    { from: 2, to: 6, label: 'мостик' },
-    { from: 3, to: 5, label: 'мостик' },
+    { from: 1, to: 7, label: T('skipDetails') },
+    { from: 2, to: 6, label: T('skip') },
+    { from: 3, to: 5, label: T('skip') },
   ],
   groups: [
-    { from: 0, to: 4, label: 'Энкодер: что на картинке', color: 0xff9f1c },
-    { from: 5, to: 8, label: 'Декодер: где именно', color: 0x2f9bff },
+    { from: 0, to: 4, label: T('groupEnc'), color: 0xff9f1c },
+    { from: 5, to: 8, label: T('groupDec'), color: 0x2f9bff },
   ],
-  input: { kind: 'image', size: 64, channels: 1, classes: ['Мало клеток', 'Много клеток'], generate: cells },
+  input: { kind: 'image', size: 64, channels: 1, classes: T.list('classes', 2), generate: cells },
 
   demo(img) {
     const m = mask(img);
@@ -72,20 +75,10 @@ export default {
   },
 
   explainResult(result) {
-    return `<p>На маске светлым отмечены пиксели, отнесённые к клеткам: <b>${Math.round(result.share * 100)}%</b> площади снимка.
-      По такой маске врач или программа считает число клеток, их размер и форму.</p>
-      <p class="small muted">Маска здесь получена сглаживанием и порогом — это «правильная разметка», которую U-Net училась бы воспроизводить.</p>`;
+    return T.h('explainHtml', { p: Math.round(result.share * 100) });
   },
 
-  intro: `<p>Классификатор отвечает «что на картинке», а <b>сегментация</b> — «какие пиксели чему принадлежат».
-    U-Net сначала сжимает снимок (левая ветвь «U»), потом разворачивает обратно (правая ветвь), а синие <b>мостики</b>
-    передают карты с мелкими деталями напрямую из энкодера в декодер — иначе границы объектов получились бы размытыми.</p>`,
+  intro: T('introHtml'),
 
-  sections: [{
-    title: 'Почему именно U',
-    open: false,
-    html: `<p>Сжатие даёт сети широкий контекст («это клетка, а не шум»), но теряет точные координаты. Мостики возвращают их.
-      U-Net придумали для биомедицинских снимков, где размеченных данных мало, и она до сих пор — стандарт в медицине,
-      а ещё основа диффузионных моделей, генерирующих картинки (Stable Diffusion).</p>`,
-  }],
+  sections: [{ title: T('whyTitle'), open: false, html: T('whyHtml') }],
 };

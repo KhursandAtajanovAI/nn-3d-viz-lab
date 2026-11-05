@@ -5,6 +5,7 @@
 import { FORMAT, FORMAT_VERSION, textToHtml, checkInput } from './spaceFormat.js';
 import { saveSpace } from './userStore.js';
 import { downloadSpaceFile, importSpaceFile, pickFile } from './spaceFile.js';
+import { t, T, At, L, locale } from '../i18n/i18n.js';
 
 /** Пустой файл нового пространства */
 export function newSpaceFile({ title, summary = '', type = 'mlp' }) {
@@ -27,7 +28,7 @@ export function toRuntimeConfig(id, file) {
   const common = {
     meta,
     intro: textToHtml(file.text.intro),
-    sections: file.text.sections.map(s => ({ title: s.title || 'Пояснение', html: textToHtml(s.text), open: false })),
+    sections: file.text.sections.map(s => ({ title: s.title || L('user.sectionDefault'), html: textToHtml(s.text), open: false })),
     settings: file.settings,
     user: { id, file },
   };
@@ -80,15 +81,15 @@ export function attachUserCard(lab, { toFile, notes = () => [], extraButtons = '
   const card = document.createElement('section');
   card.className = 'card user-card';
   card.innerHTML = `
-    <h2>Моё пространство</h2>
-    <p class="small muted">Хранится только в этом браузере. Изменения не сохраняются сами — нажмите «Сохранить».</p>
+    <h2>${T('user.cardTitle')}</h2>
+    <p class="small muted">${T('user.cardHint')}</p>
     <div class="row">
-      <button type="button" data-act="save" class="primary">Сохранить</button>
+      <button type="button" data-act="save" class="primary">${T('common.save')}</button>
       ${extraButtons}
     </div>
     <div class="row">
-      <button type="button" data-act="download" title="Файл .nn3d.json с архитектурой, весами, входами и текстами">Скачать</button>
-      <button type="button" data-act="import" title="Открыть файл .nn3d.json как новое пространство">Загрузить</button>
+      <button type="button" data-act="download" ${At('title', 'user.downloadHint')}>${T('my.download')}</button>
+      <button type="button" data-act="import" ${At('title', 'user.importHint')}>${T('user.import')}</button>
     </div>
     <p class="small" data-role="msg" role="status"></p>`;
   const header = lab.sidebar.querySelector('header.brand');
@@ -101,16 +102,16 @@ export function attachUserCard(lab, { toFile, notes = () => [], extraButtons = '
       await saveSpace(file, id);
       lab.space.user.file = file;
       const extra = notes();
-      say([`Сохранено ${new Date().toLocaleTimeString('ru-RU')}`, ...extra].join('. '), extra.length > 0);
+      say([t('user.saved', { time: new Date().toLocaleTimeString(locale()) }), ...extra].join('. '), extra.length > 0);
     } catch (e) {
-      say(`Не сохранено: ${e.message}`, true);
+      say(t('user.notSaved', { msg: e.message }), true);
     }
   });
   card.querySelector('[data-act="download"]').addEventListener('click', async () => {
     try {
       downloadSpaceFile(await toFile()); // текущее состояние, даже если оно ещё не сохранено
       const extra = notes();
-      say(['Файл скачан', ...extra].join('. '), extra.length > 0);
+      say([t('user.downloaded'), ...extra].join('. '), extra.length > 0);
     } catch (e) {
       say(e.message, true);
     }
@@ -118,10 +119,10 @@ export function attachUserCard(lab, { toFile, notes = () => [], extraButtons = '
   card.querySelector('[data-act="import"]').addEventListener('click', () => pickFile(async f => {
     try {
       const { id: newId, title, warnings } = await importSpaceFile(f);
-      msg.replaceChildren(`Загружено как новое пространство «${title}». `);
+      msg.replaceChildren(`${t('user.importedAsNew', { title })} `);
       const a = document.createElement('a');
       a.href = `space.html?user=${newId}`;
-      a.textContent = 'Открыть';
+      a.textContent = t('my.open');
       msg.append(a, warnings.length ? `\n${warnings.join('\n')}` : '');
       msg.classList.remove('error-text');
     } catch (e) {

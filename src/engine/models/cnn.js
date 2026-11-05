@@ -4,6 +4,7 @@
 // Изображение: { w, h, c, data: Float32Array } — значения 0..1, каналы хранятся плоскостями
 // (сначала весь канал 0, потом канал 1…). Карта признаков: { w, h, data }.
 import { MLP, seededRandom } from './mlp.js';
+import { L } from '../../i18n/i18n.js';
 
 // ---------- Фильтры первого слоя: классические «детекторы» ----------
 
@@ -21,12 +22,12 @@ const g = (x, y, s = 1.3) => Math.exp(-(x * x + y * y) / (2 * s * s));
 
 /** 6 фильтров 5×5 первого свёрточного слоя. Они заданы вручную — как детекторы краёв в классическом зрении. */
 export const CONV1_FILTERS = [
-  { name: 'Вертикальные края', description: 'реагирует на переход «тёмное → светлое» слева направо', kernel: kernelFrom((x, y) => -x * g(x, y)) },
-  { name: 'Горизонтальные края', description: 'реагирует на переход «тёмное → светлое» сверху вниз', kernel: kernelFrom((x, y) => -y * g(x, y)) },
-  { name: 'Диагональ ↘', description: 'реагирует на наклонные линии сверху-слева вниз-вправо', kernel: kernelFrom((x, y) => (Math.abs(x - y) < 1 ? 1 : -0.35) * g(x, y, 1.8)) },
-  { name: 'Диагональ ↗', description: 'реагирует на наклонные линии снизу-слева вверх-вправо', kernel: kernelFrom((x, y) => (Math.abs(x + y) < 1 ? 1 : -0.35) * g(x, y, 1.8)) },
-  { name: 'Пятно / точка', description: 'реагирует на небольшие светлые пятна и концы штрихов (центр минус окружение)', kernel: kernelFrom((x, y) => g(x, y, 0.9) - 0.55 * g(x, y, 2)) },
-  { name: 'Размытие (яркость)', description: 'усредняет яркость в окрестности — показывает, где вообще есть «чернила»', kernel: kernelFrom((x, y) => g(x, y, 1.4)) },
+  { name: L('cnn.f.0.name'), description: L('cnn.f.0.desc'), kernel: kernelFrom((x, y) => -x * g(x, y)) },
+  { name: L('cnn.f.1.name'), description: L('cnn.f.1.desc'), kernel: kernelFrom((x, y) => -y * g(x, y)) },
+  { name: L('cnn.f.2.name'), description: L('cnn.f.2.desc'), kernel: kernelFrom((x, y) => (Math.abs(x - y) < 1 ? 1 : -0.35) * g(x, y, 1.8)) },
+  { name: L('cnn.f.3.name'), description: L('cnn.f.3.desc'), kernel: kernelFrom((x, y) => (Math.abs(x + y) < 1 ? 1 : -0.35) * g(x, y, 1.8)) },
+  { name: L('cnn.f.4.name'), description: L('cnn.f.4.desc'), kernel: kernelFrom((x, y) => g(x, y, 0.9) - 0.55 * g(x, y, 2)) },
+  { name: L('cnn.f.5.name'), description: L('cnn.f.5.desc'), kernel: kernelFrom((x, y) => g(x, y, 1.4)) },
 ];
 
 /** Второй свёрточный слой: 8 фильтров 3×3, каждый смотрит на пару каналов первого слоя (фиксированные случайные веса) */
@@ -39,7 +40,7 @@ function makeConv2(seed = 11) {
       for (let i = 0; i < 9; i++) data[i] = (rnd() * 2 - 1) * 0.6 + (i === 4 ? 0.4 : 0);
       return { size: 3, data };
     });
-    return { name: `Комбинация каналов ${inputs[0] + 1} и ${inputs[1] + 1}`, inputs, kernels };
+    return { name: L('cnn.combo', { a: inputs[0] + 1, b: inputs[1] + 1 }), inputs, kernels };
   });
 }
 export const CONV2_FILTERS = makeConv2();

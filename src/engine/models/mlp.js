@@ -1,5 +1,6 @@
 // Простая полносвязная сеть (многослойный перцептрон): хранит веса и считает forward-pass.
 // Модуль не зависит от Three.js — его могут импортировать конфиги пространств и каталог.
+import { t } from '../../i18n/i18n.js';
 
 export const ACTIVATIONS = {
   tanh: Math.tanh,
@@ -29,7 +30,7 @@ export class MLP {
    * @param {number} [opts.seed] — seed для воспроизводимых весов; без него — Math.random
    */
   constructor(layers, { activation = 'tanh', outputActivation = 'sigmoid', seed } = {}) {
-    if (layers.length < 2) throw new Error('Нужно минимум 2 слоя');
+    if (layers.length < 2) throw new Error(t('fmt.layersMin'));
     this.layers = layers;
     this.activation = activation;
     this.outputActivation = outputActivation;

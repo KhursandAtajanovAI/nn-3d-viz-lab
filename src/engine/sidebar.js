@@ -1,6 +1,7 @@
 // Общие блоки боковой панели, которые повторяются во всех пространствах.
+// Тексты — из словарей (lab.*); заголовки и описания пространств — L(...) из конфига или строки пользователя.
 import { categoryById, LEVELS, FIDELITY } from './catalog.js';
-import { escapeHtml } from './format.js';
+import { T, Tx, Hx, At, langSwitchHtml } from '../i18n/i18n.js';
 import { themeSwitchHtml } from './theme.js';
 
 /** Шапка: ссылка в каталог, категория, название, описание и «где применяется» */
@@ -9,49 +10,31 @@ export function headerHtml(meta) {
   const fid = FIDELITY[meta.fidelity];
   return `
     <header class="brand">
-      <div class="brand-top"><a class="back" href="./">← Каталог</a>${themeSwitchHtml()}</div>
+      <div class="brand-top"><a class="back" href="./">${T('lab.backToCatalog')}</a><div class="switches">${themeSwitchHtml()}${langSwitchHtml()}</div></div>
       <div class="badges">
-        ${cat ? `<a class="badge" href="${cat.user ? './#my-spaces' : `./?cat=${cat.id}`}">${cat.icon} ${escapeHtml(cat.title)}</a>` : ''}
-        ${meta.level ? `<span class="badge muted">${LEVELS[meta.level]}</span>` : ''}
-        ${fid ? `<span class="badge fidelity ${meta.fidelity}" title="${escapeHtml(fid.hint)}">${fid.title}</span>` : ''}
+        ${cat ? `<a class="badge" href="${cat.user ? './#my-spaces' : `./?cat=${cat.id}`}">${cat.icon} ${T(cat.title)}</a>` : ''}
+        ${meta.level ? `<span class="badge muted">${T(LEVELS[meta.level])}</span>` : ''}
+        ${fid ? `<span class="badge fidelity ${meta.fidelity}" ${At('title', fid.hint)}>${T(fid.title)}</span>` : ''}
       </div>
-      <h1>${escapeHtml(meta.title)}</h1>
-      ${meta.summary ? `<p class="muted">${escapeHtml(meta.summary)}</p>` : ''}
-      ${meta.uses ? `<p class="uses"><b>Где применяется:</b> ${escapeHtml(meta.uses)}</p>` : ''}
-      ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${escapeHtml(meta.fidelityNote ?? fid.hint)}</p>` : ''}
+      <h1>${Tx(meta.title)}</h1>
+      ${meta.summary ? `<p class="muted">${Tx(meta.summary)}</p>` : ''}
+      ${meta.uses ? `<p class="uses"><b>${T('common.usesLabel')}</b> ${Tx(meta.uses)}</p>` : ''}
+      ${fid && meta.fidelity !== 'real' ? `<p class="fidelity-note small muted">${Tx(meta.fidelityNote ?? fid.hint)}</p>` : ''}
     </header>`;
 }
 
-/** Карточка-раскрывашка с произвольным HTML (пояснения пространства) */
+/** Карточка-раскрывашка (пояснения пространства): title и html — L(...) или строки */
 export function detailsCardHtml({ title, html, open = true }) {
   return `
     <details class="card"${open ? ' open' : ''}>
-      <summary><h2>${escapeHtml(title)}</h2></summary>
-      ${html}
+      <summary><h2>${Tx(title)}</h2></summary>
+      ${Hx(html)}
     </details>`;
 }
 
-export const FORWARD_PASS_HTML = `
-  <p>Forward pass (прямой проход) — это вычисление ответа сети. Сигнал идёт строго слева направо, слой за слоем:</p>
-  <ol class="steps">
-    <li>Во <b>входной слой</b> подаются числа — это «данные».</li>
-    <li>Каждое число умножается на <b>вес</b> связи и передаётся дальше.</li>
-    <li>Нейрон следующего слоя <b>складывает</b> всё, что пришло, добавляет смещение и пропускает сумму через <b>функцию активации</b>.</li>
-    <li>Так повторяется до <b>выходного слоя</b> — его значения и есть ответ сети.</li>
-  </ol>
-  <p class="muted">На экране: слой «загорается», когда его нейроны посчитали значения, а по связям бегут светящиеся импульсы — это сигнал, переходящий в следующий слой.</p>
-  <p id="stage" class="stage muted">Нажмите «Запустить forward pass» или пробел.</p>`;
+export const forwardPassHtml = () => `${T('lab.forwardPassHtml', undefined, 'div')}
+  <p id="stage" class="stage muted">${T('lab.stageIdle')}</p>`;
 
-export const LEGEND_HTML = `
-  <ul class="legend">
-    <li><span class="dot idle"></span><span><b>Шар — нейрон.</b> Хранит одно число — активацию. Серый шар — нейрон ещё не посчитан или его значение около нуля.</span></li>
-    <li><span class="dot glow-pos"></span><span><b>Яркость и свечение</b> — насколько сильно нейрон активирован: чем больше |значение|, тем ярче. <b class="pos">Тёплый</b> — значение положительное, <b class="neg">холодный</b> — отрицательное.</span></li>
-    <li><span class="line pos"></span><span><b>Линия — связь с весом.</b> <b class="pos">Оранжевая</b> — вес положительный (усиливает сигнал).</span></li>
-    <li><span class="line neg"></span><span><b class="neg">Синяя</b> — вес отрицательный (подавляет сигнал).</span></li>
-    <li><span class="line weak"></span><span><b>Серая</b> — слабый вес, почти не влияет. Чем насыщеннее цвет, тем больше |вес|.</span></li>
-    <li><span class="line thick"></span><span><b>Толстая яркая линия</b> — по связи прямо сейчас идёт сигнал.</span></li>
-  </ul>`;
+export const legendHtml = () => T('lab.legendHtml', undefined, 'div');
 
-export const HINT_HTML = `
-  <p class="hint muted">Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг.<br />
-  Клавиши: пробел — forward pass, N — показать/скрыть числа.</p>`;
+export const hintHtml = () => `<p class="hint muted">${T('lab.hintHtml')}</p>`;

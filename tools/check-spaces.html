@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Проверка пространств — NN 3D Viz Lab</title>
+  <title>Space check — NN 3D Viz Lab</title>
   <style>
     body { margin: 24px; font: 16px/1.5 system-ui, sans-serif; background: #0a0e17; color: #e8eef8; }
     pre { white-space: pre-wrap; background: #141b29; padding: 12px; border-radius: 8px; }
@@ -11,23 +11,25 @@
   </style>
 </head>
 <body>
-  <h1>Проверка пространств</h1>
-  <p>Та же проверка, что <code>node tools/check-spaces.mjs</code> при деплое, но в браузере.</p>
-  <pre id="out">Проверяю…</pre>
+  <h1>Space check</h1>
+  <p>The same check as <code>node tools/check-spaces.mjs</code> at deploy time, but in the browser.</p>
+  <pre id="out">Checking…</pre>
   <script type="module">
+    import { initI18n } from '../src/i18n/i18n.js';
     import { checkSpaces } from './check-spaces-core.js';
     const out = document.getElementById('out');
     try {
+      await initI18n('ru');
       const ids = await (await fetch('../spaces/manifest.json', { cache: 'no-cache' })).json();
       const errors = await checkSpaces(ids, async id => (await import(`../spaces/${id}.js`)).default);
       out.className = errors.length ? 'err' : 'ok';
       out.textContent = errors.length
-        ? `Ошибки в пространствах (${errors.length}):\n- ${errors.join('\n- ')}`
-        : `Пространства в порядке: ${ids.length} (${ids.join(', ')})`;
+        ? `Errors in the spaces (${errors.length}):\n- ${errors.join('\n- ')}`
+        : `Spaces OK: ${ids.length} (${ids.join(', ')})`;
       window.checkResult = { ok: !errors.length, errors, count: ids.length };
     } catch (e) {
       out.className = 'err';
-      out.textContent = `Проверка не запустилась: ${e.message}`;
+      out.textContent = `The check did not start: ${e.message}`;
       window.checkResult = { ok: false, errors: [e.message] };
     }
   </script>

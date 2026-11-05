@@ -3,6 +3,7 @@
 // Пространство подключает её так: export default { meta, ...syntheticVision({...}), intro, sections }.
 import { CONV1_FILTERS, CONV2_FILTERS, featureShapes, trainSyntheticClassifier } from './cnn.js';
 import { normalizeGlyph } from './generators.js';
+import { L, t, H, str } from '../../i18n/i18n.js';
 
 /**
  * @param {object} o
@@ -14,18 +15,16 @@ import { normalizeGlyph } from './generators.js';
  */
 export function syntheticVision({ size, channels, classes, generate, draw = false, perClass = 90, epochs = 14, hidden = 32 }) {
   const sh = featureShapes(size, channels);
-  const colorNote = channels === 3
-    ? ' К вектору также добавлены средние цвета картинки по участкам 4×4 (48 чисел): свёртки здесь смотрят на яркость, а цвет помогает отличить, например, лягушку от корабля.'
-    : '';
+  const colorNote = channels === 3 ? L('sv.colorNote') : '';
   const layers = [
-    { name: 'Вход', kind: 'input', shape: [size, size, channels], maps: true, slices: 1, note: channels === 3 ? 'Цветная картинка 32×32: три канала — красный, зелёный, синий.' : 'Картинка 28×28 в оттенках серого: 784 числа от 0 (чёрный) до 1 (белый).' },
-    { name: 'Свёртка 1 + ReLU', kind: 'conv', kernel: 5, shape: [sh.c1, sh.c1, 6], maps: true, filters: CONV1_FILTERS, params: 150, fixed: true, note: '6 фильтров 5×5 заданы вручную — классические детекторы краёв. В настоящих сетях такие фильтры получаются сами при обучении (см. карточку «Как это работает»).' },
-    { name: 'Пулинг 1', kind: 'pool', shape: [sh.p1, sh.p1, 6], maps: true, note: 'Max-pooling 2×2: карта уменьшается вдвое по каждой стороне.' },
-    { name: 'Свёртка 2 + ReLU', kind: 'conv', kernel: 3, shape: [sh.c2, sh.c2, 8], maps: true, slices: 8, filters: CONV2_FILTERS.map(f => ({ ...f, description: 'складывает два канала первого слоя с фиксированными случайными весами — получаются более сложные сочетания признаков' })), params: 144, fixed: true, note: '8 фильтров 3×3, каждый смотрит на пару каналов первого слоя. Веса фиксированные (случайные) — это тоже рабочий приём: «случайные признаки».' },
-    { name: 'Пулинг 2', kind: 'pool', shape: [sh.p2, sh.p2, 8], maps: true, slices: 8 },
-    { name: 'Вектор признаков', kind: 'flatten', shape: [sh.flat], note: `Все карты вытягиваются в один вектор из ${sh.flat} чисел.${colorNote}` },
-    { name: 'Скрытый слой (ReLU)', kind: 'dense', shape: [hidden], note: 'Обучается в браузере: комбинирует признаки в «понятия» вроде «замкнутый контур сверху».' },
-    { name: 'Вероятности (softmax)', kind: 'output', shape: [classes.length], note: 'Softmax превращает выходы в вероятности, которые в сумме дают 100%. Обучается в браузере.' },
+    { name: L('sv.input'), kind: 'input', shape: [size, size, channels], maps: true, slices: 1, note: L(channels === 3 ? 'sv.inputColor' : 'sv.inputGray') },
+    { name: L('sv.conv1'), kind: 'conv', kernel: 5, shape: [sh.c1, sh.c1, 6], maps: true, filters: CONV1_FILTERS, params: 150, fixed: true, note: L('sv.conv1Note') },
+    { name: L('sv.pool1'), kind: 'pool', shape: [sh.p1, sh.p1, 6], maps: true, note: L('sv.pool1Note') },
+    { name: L('sv.conv2'), kind: 'conv', kernel: 3, shape: [sh.c2, sh.c2, 8], maps: true, slices: 8, filters: CONV2_FILTERS.map(f => ({ ...f, description: L('sv.conv2Desc') })), params: 144, fixed: true, note: L('sv.conv2Note') },
+    { name: L('sv.pool2'), kind: 'pool', shape: [sh.p2, sh.p2, 8], maps: true, slices: 8 },
+    { name: L('sv.flat'), kind: 'flatten', shape: [sh.flat], note: L('sv.flatNote', { n: sh.flat, color: colorNote }) },
+    { name: L('sv.hidden'), kind: 'dense', shape: [hidden], note: L('sv.hiddenNote') },
+    { name: L('sv.out'), kind: 'output', shape: [classes.length], note: L('sv.outNote') },
   ];
 
   return {
@@ -54,15 +53,14 @@ export function syntheticVision({ size, channels, classes, generate, draw = fals
   };
 }
 
-/** Общий текст «Как это работает» для синтетических классификаторов */
-export const HOW_SYNTHETIC_WORKS = `
-  <ol class="steps">
-    <li><b>Свёртки</b> проходят по картинке маленькими фильтрами и строят <b>карты признаков</b>: где есть вертикальные края, где горизонтальные, где пятна.</li>
-    <li><b>Пулинг</b> уменьшает карты, оставляя самые сильные отклики, — сеть становится устойчивой к небольшим сдвигам.</li>
-    <li>Второй слой свёрток комбинирует простые признаки в более сложные.</li>
-    <li>Карты <b>выпрямляются</b> в вектор, а <b>полносвязные слои</b> превращают его в вероятности классов.</li>
-  </ol>
-  <p class="muted small">Что здесь настоящее: все свёртки, пулинги и вероятности реально вычисляются для вашей картинки.
-    Что упрощено: фильтры свёрток заданы вручную, а полносвязные слои обучаются прямо при открытии страницы
-    на <b>синтетических</b> картинках (нарисованных программой), а не на настоящем наборе данных — он весит десятки мегабайт.
-    Точность на новых синтетических картинках показана в строке статуса.</p>`;
+/** Общий текст «Как это работает» для синтетических классификаторов (sv.howHtml) */
+export const HOW_SYNTHETIC_WORKS = L('sv.howHtml');
+
+/** Пояснение к результату синтетического классификатора */
+export function explainTop2(result, { classes }) {
+  const p = result.probs;
+  const order = p.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
+  const [[p1, c1], [p2, c2]] = order;
+  const sure = t(p1 > 0.8 ? 'sv.sureHigh' : p1 > 0.5 ? 'sv.sureMid' : 'sv.sureLow');
+  return H('sv.explainHtml', { sure, c1: str(classes[c1]), p1: Math.round(p1 * 100), c2: str(classes[c2]), p2: Math.round(p2 * 100) });
+}

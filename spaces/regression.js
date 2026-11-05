@@ -1,12 +1,16 @@
 // Регрессия: сеть предсказывает цену квартиры по четырём признакам. Обучается прямо в браузере.
 import { MLP, seededRandom } from '../src/engine/models/mlp.js';
 import { lineChartSvg } from '../src/engine/chart.js';
+import { scope, fmtNum, str } from '../src/i18n/i18n.js';
+
+// Тексты — в словарях src/i18n/<язык>/spaces/regression.js
+const S = scope('sp.regression');
 
 const FEATURES = [
-  { name: 'Площадь', unit: 'м²', min: 25, max: 150 },
-  { name: 'Комнаты', unit: '', min: 1, max: 5, int: true },
-  { name: 'До центра города', unit: 'км', min: 1, max: 25 },
-  { name: 'Возраст дома', unit: 'лет', min: 0, max: 60, int: true },
+  { name: S('f.area'), unit: S('u.area'), min: 25, max: 150 },
+  { name: S('f.rooms'), unit: '', min: 1, max: 5, int: true },
+  { name: S('f.dist'), unit: S('u.dist'), min: 1, max: 25 },
+  { name: S('f.age'), unit: S('u.age'), min: 0, max: 60, int: true },
 ];
 
 /**
@@ -35,27 +39,28 @@ const norm = x => x.map((v, k) => (v - mean[k]) / std[k]);
 const denorm = z => z.map((v, k) => v * std[k] + mean[k]);
 
 const APARTMENTS = [
-  { name: 'Студия 28 м², 1 комн., 18 км, 5 лет', x: [28, 1, 18, 5] },
-  { name: 'Двушка 54 м², 2 комн., 9 км, 30 лет', x: [54, 2, 9, 30] },
-  { name: 'Трёшка 78 м², 3 комн., 4 км, 50 лет', x: [78, 3, 4, 50] },
-  { name: 'Пентхаус 140 м², 5 комн., 2 км, 3 года', x: [140, 5, 2, 3] },
-  { name: 'Дом-«хрущёвка» 44 м², 2 комн., 22 км, 60 лет', x: [44, 2, 22, 60] },
+  { name: S('apt.0'), x: [28, 1, 18, 5] },
+  { name: S('apt.1'), x: [54, 2, 9, 30] },
+  { name: S('apt.2'), x: [78, 3, 4, 50] },
+  { name: S('apt.3'), x: [140, 5, 2, 3] },
+  { name: S('apt.4'), x: [44, 2, 22, 60] },
 ];
 
 let history = [];
-const fmtFeature = (f, v) => `${f.int ? Math.round(v) : v.toFixed(0)}${f.unit ? ` ${f.unit}` : ''}`;
+const fmtFeature = (f, v) => `${f.int ? Math.round(v) : v.toFixed(0)}${f.unit ? ` ${str(f.unit)}` : ''}`;
+const money = v => S.t('money', { v: fmtNum(v, 1) });
 
 export default {
   meta: {
     id: 'regression',
-    title: 'Регрессия: предсказание цены квартиры',
+    title: S('title'),
     category: 'tasks',
     order: 10,
     level: 1,
     fidelity: 'trained',
-    summary: 'Сеть 4 → 8 → 1 учится по 400 примерам оценивать цену квартиры по площади, числу комнат, расстоянию до центра города и возрасту дома. Цены — в миллионах тенге.',
-    uses: 'Оценка недвижимости и автомобилей, прогноз спроса и продаж, расчёт времени доставки, кредитный скоринг.',
-    tags: ['MLP', 'регрессия', 'табличные данные', 'нормирование'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['MLP', 'regression', 'tabular', 'normalization'],
     preview: [4, 8, 1],
   },
 
@@ -67,12 +72,12 @@ export default {
     history = net.fit(X, Y, { epochs: 120, lr: 0.02 });
     return net;
   },
-  names: { input: FEATURES.map(f => f.name), output: ['Цена, млн ₸'] },
-  randomInputNote: 'Случайный вход: нормированные признаки берутся случайно из [−1, 1] — это не реальная квартира, а произвольная точка. Нужен, чтобы показать, что сеть выдаёт число для любых входов; ошибка относительно формулы здесь может быть большой.',
+  names: { input: FEATURES.map(f => f.name), output: [S('outName')] },
+  randomInputNote: S('randomNote'),
   // Подсказка при наведении: перевод нормированных значений в исходные единицы
   valueText(l, i, a) {
-    if (l === 0) return `В исходных единицах: <b>${fmtFeature(FEATURES[i], a * std[i] + mean[i])}</b>`;
-    if (l === 2) return `В тенге: <b>≈ ${(a * yStd + yMean).toFixed(1)} млн ₸</b>`;
+    if (l === 0) return S.t('rawUnitsHtml', { v: fmtFeature(FEATURES[i], a * std[i] + mean[i]) });
+    if (l === 2) return S.t('inTengeHtml', { v: money(a * yStd + yMean) });
     return null;
   },
   inputs: APARTMENTS.map(a => ({ name: a.name, values: norm(a.x) })),
@@ -83,30 +88,18 @@ export default {
     const truth = truePrice(raw);
     const err = Math.abs(pred - truth) / truth;
     return `
-      <p class="big-number">≈ ${pred.toFixed(1)} млн ₸</p>
+      <p class="big-number">≈ ${money(pred)}</p>
       <table class="arch-table"><tbody>
-        ${FEATURES.map((f, k) => `<tr><td>${f.name}</td><td class="num">${fmtFeature(f, raw[k])}</td><td class="num muted">→ ${acts[0][k] >= 0 ? '+' : '−'}${Math.abs(acts[0][k]).toFixed(2)}</td></tr>`).join('')}
+        ${FEATURES.map((f, k) => `<tr><td>${str(f.name)}</td><td class="num">${fmtFeature(f, raw[k])}</td><td class="num muted">→ ${acts[0][k] >= 0 ? '+' : '−'}${fmtNum(Math.abs(acts[0][k]), 2)}</td></tr>`).join('')}
       </tbody></table>
-      <p>По формуле, из которой сгенерированы данные, цена ≈ <b>${truth.toFixed(1)} млн ₸</b> — ошибка сети ${(err * 100).toFixed(0)}%.
-        Выходной нейрон линейный (без функции активации): регрессия выдаёт любое число, а не вероятность.</p>
-      <p class="small muted">Числа во входном слое — нормированные признаки: (значение − среднее) / разброс. Цена на выходе тоже нормирована и переводится обратно в миллионы тенге.</p>
-      <p class="list-title">Ошибка (MSE) во время обучения — в нормированных единицах</p>
-      ${lineChartSvg([{ values: history, color: '#ff9f1c' }], { xLabel: 'эпоха', yLabel: 'MSE (норм.)', logY: true })}
-      <p class="small muted">Итоговая ошибка ${history.at(-1).toFixed(4)} в нормированных единицах ≈ ±${(Math.sqrt(history.at(-1)) * yStd).toFixed(1)} млн ₸ в среднем.</p>`;
+      <p>${S.t('truthHtml', { v: money(truth), err: (err * 100).toFixed(0) })}</p>
+      <p class="small muted">${S.h('normNote')}</p>
+      <p class="list-title">${S.h('lossTitle')}</p>
+      ${lineChartSvg([{ values: history, color: '#ff9f1c' }], { xLabel: S.t('epoch'), yLabel: S.t('mseNorm'), logY: true })}
+      <p class="small muted">${S.h('finalLoss', { loss: fmtNum(history.at(-1), 4), v: money(Math.sqrt(history.at(-1)) * yStd) })}</p>`;
   },
 
-  intro: `<p>Регрессия — это предсказание <b>числа</b>, а не класса. Сеть обучилась при открытии страницы на 400 синтетических квартирах
-    (120 эпох градиентного спуска). Цены — в миллионах тенге, порядок как в Астане и Алматы: от ~25 млн ₸ за студию на окраине до 120+ млн ₸ за пентхаус в центре. Выберите квартиру во «Входных данных» и запустите forward pass.</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Что попробовать',
-      open: false,
-      html: `<ul class="steps">
-          <li>Сравните «Студию» и «Пентхаус»: наведите на скрытые нейроны — какие из них реагируют на площадь, а какие на расстояние?</li>
-          <li>Наведите на связь «Площадь → скрытый нейрон»: у важных признаков веса больше по модулю.</li>
-          <li>Выберите «Случайный вход» — это случайная точка в пространстве нормированных признаков.</li>
-        </ul>`,
-    },
-  ],
+  sections: [{ title: S('tryTitle'), open: false, html: S('tryHtml') }],
 };

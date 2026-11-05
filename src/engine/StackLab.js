@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { labelScale } from './theme.js';
-import { BaseLab, MODE_TOGGLE_HTML, SPEED_HTML, bindModeToggle } from './BaseLab.js';
+import { BaseLab, modeToggleHtml, speedHtml, bindModeToggle } from './BaseLab.js';
 import { StackView } from './StackView.js';
 import { Timeline } from './Timeline.js';
 import { KINDS, kindInfo, formatShape, formatCount, layerParams } from './stackKinds.js';
-import { escapeHtml, formatValue } from './format.js';
+import { escapeHtml, fmtSigned as formatValue } from './format.js';
+import { t, T, H, L as Lt, At, TA, str, isText, fmtNum, setT } from '../i18n/i18n.js';
 import { seededRandom } from './models/mlp.js';
 
 /**
@@ -31,12 +32,12 @@ export class StackLab extends BaseLab {
     const kindsUsed = [...new Set(this.layers.map(l => l.kind))];
     this.mount({
       controls: this.controlsHtml(),
-      resultTitle: 'Результат на выходе',
-      hoverHint: 'Наведите курсор на слой, карту признаков или нейрон.',
+      resultTitle: Lt('lab.outputResult'),
+      hoverHint: Lt('stack.hoverHint'),
       cards: [
-        { title: 'Как читать сцену', open: !(s.sections?.length), html: this.legendHtml(kindsUsed) },
+        { title: Lt('tl.howToRead'), open: !(s.sections?.length), html: this.legendHtml(kindsUsed) },
       ],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг.<br />Клавиши: пробел — прогнать через сеть, N — показать/скрыть числа.',
+      hint: Lt('stack.hintHtml'),
     });
 
     this.view = new StackView(this.kit.scene);
@@ -61,7 +62,8 @@ export class StackLab extends BaseLab {
     this.enablePicking(() => this.view.pickables);
     this.onHoverChange = (_, obj) => this.view.highlight(obj ? obj.userData.layer : null);
     this.decoratePickables();
-    this.setSceneInfo(this.architectureHtml());
+    this.setSceneInfo(() => this.architectureHtml());
+    this.onLang = () => { if (this.lastResult && !this.timeline.running) this.showResult(this.lastResult); };
     this.bindControls();
     this.prepare();
   }
@@ -84,25 +86,25 @@ export class StackLab extends BaseLab {
     if (inp?.kind === 'image') {
       html += `
         <div class="input-panel">
-          <canvas id="input-canvas" width="168" height="168" class="${inp.draw ? 'drawable' : ''}" aria-label="Входная картинка"></canvas>
+          <canvas id="input-canvas" width="168" height="168" class="${inp.draw ? 'drawable' : ''}" ${At('aria-label', 'stack.inputImage')}></canvas>
           <div class="input-side">
-            <label for="sample-class">${inp.draw ? 'Пример из набора' : 'Картинка на входе'}</label>
+            <label for="sample-class">${T(inp.draw ? 'stack.sampleFromSet' : 'stack.inputPicture')}</label>
             <select id="sample-class">
-              <option value="random">Случайный класс</option>
-              ${inp.classes.map((c, i) => `<option value="${i}">${escapeHtml(c)}</option>`).join('')}
+              <option value="random" ${TA('stack.randomClass')}>${H('stack.randomClass')}</option>
+              ${inp.classes.map((c, i) => `<option value="${i}" ${isText(c) ? TA(c) : ''}>${escapeHtml(str(c))}</option>`).join('')}
             </select>
-            <button id="next-sample">Другой пример</button>
-            ${inp.draw ? '<button id="clear-canvas">Очистить</button>' : ''}
+            <button id="next-sample">${T('stack.another')}</button>
+            ${inp.draw ? `<button id="clear-canvas">${T('stack.clear')}</button>` : ''}
           </div>
         </div>
-        ${inp.draw ? '<p class="small muted">Нарисуйте цифру мышью или пальцем прямо на картинке — сеть распознает её сразу после того, как вы отпустите кнопку.</p>' : ''}`;
+        ${inp.draw ? `<p class="small muted">${T('stack.drawHint')}</p>` : ''}`;
     } else if (this.space.inputs?.length) {
-      html += `<label for="preset">Вход</label><select id="preset">${this.space.inputs.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join('')}</select>`;
+      html += `<label for="preset">${T('lab.inputLabel')}</label><select id="preset">${this.space.inputs.map((p, i) => `<option value="${i}" ${isText(p.name) ? TA(p.name) : ''}>${escapeHtml(str(p.name))}</option>`).join('')}</select>`;
     }
     html += `
-      ${SPEED_HTML}
-      <button id="run" class="primary" disabled>▶ Прогнать через сеть</button>
-      ${MODE_TOGGLE_HTML}`;
+      ${speedHtml()}
+      <button id="run" class="primary" disabled>${T('stack.run')}</button>
+      ${modeToggleHtml()}`;
     return html;
   }
 
@@ -113,13 +115,11 @@ export class StackLab extends BaseLab {
         ${kinds.map(k => {
           const K = KINDS[k] || this.space.kinds?.[k] ? kindInfo(k, this.space.kinds) : { title: k, color: 0x8a9ab3, info: '' };
           return `<li><span class="kind-swatch" style="--c:#${new THREE.Color(K.color).getHexString()}"></span>
-          <span><b>${escapeHtml(K.title)}.</b> ${escapeHtml(K.info)}</span></li>`;
+          <span><b>${isText(K.title) ? T(K.title) : escapeHtml(K.title)}.</b> ${isText(K.info) ? T(K.info) : escapeHtml(K.info)}</span></li>`;
         }).join('')}
       </ul>
-      ${hasMaps ? `<p class="small muted">Плоскости в стопке — <b>карты признаков</b>: каждая показывает, где на картинке фильтр нашёл «свой» признак.
-        Тёмное — признака нет, <b class="pos">оранжевое → светло-жёлтое</b> — признак выражен сильно.</p>` : ''}
-      <p class="small muted">Размер блока по высоте — пространственный размер (сколько пикселей), толщина — число каналов.
-        Шары — нейроны векторных слоёв (показаны не больше ${12} из каждого слоя). Синие дуги сверху — остаточные связи.</p>`;
+      ${hasMaps ? `<p class="small muted">${T('stack.mapsLegendHtml')}</p>` : ''}
+      <p class="small muted">${T('stack.sizeLegend', { n: 12 })}</p>`;
   }
 
   architectureHtml() {
@@ -130,21 +130,21 @@ export class StackLab extends BaseLab {
     const rows = this.layers.map((L, i) => `
       <tr data-layer="${i}">
         <td><span class="kind-swatch" style="--c:#${new THREE.Color(kindInfo(L.kind, this.space.kinds).color).getHexString()}"></span></td>
-        <td>${escapeHtml(L.name)}${L.repeat > 1 ? ` <span class="muted">×${L.repeat}</span>` : ''}</td>
+        <td>${escapeHtml(str(L.name))}${L.repeat > 1 ? ` <span class="muted">×${L.repeat}</span>` : ''}</td>
         <td class="num">${formatShape(L.shape)}</td>
-        <td class="num muted">${L._params ? formatCount(L._params) : '—'}${L.fixed ? ' <span title="заданы вручную, не обучаются">фикс.</span>' : ''}</td>
+        <td class="num muted">${L._params ? formatCount(L._params) : '—'}${L.fixed ? ` <span title="${H('stack.fixedHint')}">${H('stack.fixed')}</span>` : ''}</td>
       </tr>`).join('');
-    const lines = [`Всего слоёв на схеме: ${this.layers.length}.`];
-    if (trainable) lines.push(`Обучаемых параметров (сумма строк таблицы): <b>${trainable.toLocaleString('ru-RU')}</b>.`);
-    if (fixed) lines.push(`Ещё ${fixed.toLocaleString('ru-RU')} — веса фильтров, заданные вручную: они не обучаются.`);
+    const lines = [H('stack.totalLayers', { n: this.layers.length })];
+    if (trainable) lines.push(t('stack.trainableHtml', { n: fmtNum(trainable) }));
+    if (fixed) lines.push(H('stack.fixedParams', { n: fmtNum(fixed) }));
     if (declared) {
       lines.push(declared === trainable + fixed
-        ? `Совпадает с заявленным общим числом: ${declared.toLocaleString('ru-RU')}.`
-        : `Заявленное общее число (по оригинальной работе): <b>${declared.toLocaleString('ru-RU')}</b> — ${this.space.paramsNote ?? 'сумма строк таблицы приближённая'}.`);
+        ? H('stack.matchesDeclared', { n: fmtNum(declared) })
+        : t('stack.declaredHtml', { n: fmtNum(declared), note: escapeHtml(this.space.paramsNote ? str(this.space.paramsNote) : t('stack.approx')) }));
     }
     return `
       <table class="arch-table">
-        <thead><tr><th></th><th>Слой</th><th>Выход</th><th>Параметры</th></tr></thead>
+        <thead><tr><th></th><th>${H('stack.colLayer')}</th><th>${H('stack.colOut')}</th><th>${H('stack.colParams')}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <p class="small muted">${lines.join('<br />')}</p>`;
@@ -160,38 +160,39 @@ export class StackLab extends BaseLab {
 
   infoFor(it, ud) {
     const L = it.layer, K = kindInfo(L.kind, this.space.kinds);
-    let extra = '', tooltip = `${L.name} · ${formatShape(L.shape)}`;
+    const lname = str(L.name);
+    let extra = '', tooltip = `${lname} · ${formatShape(L.shape)}`;
     if (ud.channel !== undefined) {
       const f = L.filters?.[ud.channel];
       const m = it.maps?.[ud.channel];
       const max = m ? m.data.reduce((a, v) => Math.max(a, v), 0) : null;
-      tooltip = `${L.name} · канал ${ud.channel + 1}${f ? ` — ${f.name}` : ''}`;
-      extra = `<p>Канал <b>${ud.channel + 1}</b> из ${L.shape[2]}${f ? `: <b>${escapeHtml(f.name)}</b> — ${escapeHtml(f.description ?? '')}` : ''}.</p>
+      tooltip = `${lname} · ${t('stack.channel', { n: ud.channel + 1 })}${f ? ` — ${str(f.name)}` : ''}`;
+      extra = `<p>${t('stack.channelOfHtml', { n: ud.channel + 1, m: L.shape[2] })}${f ? `: <b>${escapeHtml(str(f.name))}</b> — ${escapeHtml(str(f.description ?? ''))}` : ''}.</p>
         ${f?.kernel ? kernelHtml(f.kernel) : ''}
-        ${m && L.kind !== 'input' ? `<p class="muted small">Максимум на карте: ${formatValue(max)} · светлые места — где признак найден.</p>` : ''}`;
+        ${m && L.kind !== 'input' ? `<p class="muted small">${H('stack.mapMax', { v: formatValue(max) })}</p>` : ''}`;
     } else if (ud.neuron !== undefined) {
       const v = it.vector?.[ud.neuron];
-      const name = L.kind === 'output' ? this.space.outputNames?.[ud.neuron] : null;
+      const name = L.kind === 'output' && this.space.outputNames?.[ud.neuron] ? str(this.space.outputNames[ud.neuron]) : null;
       // Выход-вероятность — в процентах; format: 'value' (например, Q-значения DQN) — просто число
       const isProb = L.kind === 'output' && L.format !== 'value';
-      const label = isProb ? 'Вероятность' : L.kind === 'output' ? (L.valueLabel ?? 'Значение') : 'Активация';
-      const shown = v === undefined ? '' : isProb ? `${(v * 100).toFixed(1)}%` : formatValue(v, 3);
-      tooltip = `${L.name} · нейрон ${ud.neuron + 1}${name ? ` (${name})` : ''}${v !== undefined ? ` · ${isProb ? '' : `${label} `}${shown}` : ''}`;
-      extra = `<p>Нейрон <b>${ud.neuron + 1}</b>${name ? ` — ${isProb ? 'класс' : 'действие'} «${escapeHtml(name)}»` : ''}${L.shape[0] > 12 ? ` (показаны первые 12 из ${L.shape[0]})` : ''}.</p>
-        ${v !== undefined ? `<p>${label}: <b class="num">${shown}</b></p>` : '<p class="muted">Значение появится после прогона.</p>'}`;
+      const label = isProb ? t('stack.probability') : L.kind === 'output' ? (L.valueLabel ? str(L.valueLabel) : t('stack.value')) : t('stack.activation');
+      const shown = v === undefined ? '' : isProb ? `${fmtNum(v * 100, 1)}%` : formatValue(v, 3);
+      tooltip = `${lname} · ${t('stack.neuron', { n: ud.neuron + 1 })}${name ? ` (${name})` : ''}${v !== undefined ? ` · ${isProb ? '' : `${label} `}${shown}` : ''}`;
+      extra = `<p>${t('stack.neuronHtml', { n: ud.neuron + 1 })}${name ? ` — ${t(isProb ? 'stack.classQ' : 'stack.actionQ', { name: escapeHtml(name) })}` : ''}${L.shape[0] > 12 ? ` ${H('stack.firstOf', { n: L.shape[0] })}` : ''}.</p>
+        ${v !== undefined ? `<p>${escapeHtml(label)}: <b class="num">${shown}</b></p>` : `<p class="muted">${H('stack.afterRun')}</p>`}`;
     }
     const params = L._params
-      ? `<p>${L.fixed ? 'Параметров (заданы вручную, не обучаются)' : 'Обучаемых параметров'}: <b>${formatCount(L._params)}</b></p>`
+      ? `<p>${H(L.fixed ? 'stack.paramsFixed' : 'stack.paramsTrainable')}: <b>${formatCount(L._params)}</b></p>`
       : '';
     return {
       tooltip,
       html: `
-        <h3>${escapeHtml(L.name)} <span class="muted">· ${escapeHtml(K.title)}</span></h3>
-        <p>Выход: <b class="num">${formatShape(L.shape)}</b>${L.kernel ? ` · ядро ${L.kernel}×${L.kernel}` : ''}</p>
+        <h3>${escapeHtml(lname)} <span class="muted">· ${escapeHtml(str(K.title))}</span></h3>
+        <p>${H('stack.outputShape')} <b class="num">${formatShape(L.shape)}</b>${L.kernel ? ` · ${H('stack.kernel', { k: L.kernel })}` : ''}</p>
         ${params}
         ${extra}
-        <p class="muted small">${escapeHtml(K.info)}</p>
-        ${L.note ? `<p class="small">${L.note}</p>` : ''}`,
+        <p class="muted small">${escapeHtml(str(K.info))}</p>
+        ${L.note ? `<p class="small">${isText(L.note) ? H(L.note) : L.note}</p>` : ''}`,
     };
   }
 
@@ -201,22 +202,22 @@ export class StackLab extends BaseLab {
     const run = this.$('run');
     try {
       if (this.space.setup) {
-        this.setStatus('Подготовка сети…');
+        this.setStatus(Lt('stack.preparing'));
         this.runtime = await this.space.setup({
           onProgress: p => this.setStatus(p.phase === 'data'
-            ? `Генерирую обучающие картинки… ${Math.round((p.done / p.total) * 100)}%`
-            : `Обучаю классификатор: эпоха ${p.epoch} из ${p.epochs}, ошибка ${p.loss.toFixed(3)}`),
+            ? Lt('stack.genData', { p: Math.round((p.done / p.total) * 100) })
+            : Lt('stack.trainingProgress', { epoch: p.epoch, epochs: p.epochs, loss: { num: p.loss, d: 3 } })),
         });
         const acc = this.runtime.accuracy;
-        this.setStatus(acc !== undefined ? `Готово. ${this.space.accuracyLabel ?? 'Точность на новых картинках'}: ${Math.round(acc * 100)}%` : 'Готово');
+        this.setStatus(acc !== undefined ? Lt('stack.readyAcc', { label: this.space.accuracyLabel ?? Lt('stack.accNew'), acc: Math.round(acc * 100) }) : Lt('stack.ready'));
       } else {
-        this.setStatus('Готово — нажмите «Прогнать через сеть»');
+        this.setStatus(Lt('stack.readyPress'));
       }
       run.disabled = false;
       if (this.input?.kind === 'image') this.newSample();
     } catch (e) {
       console.error(e);
-      this.setStatus(`Не удалось подготовить сеть: ${e.message}`, true);
+      this.setStatus(Lt('stack.prepareFailed', { msg: e.message }), true);
     }
   }
 
@@ -277,7 +278,7 @@ export class StackLab extends BaseLab {
           this.view.setActive(i, t);
           if (i > 0) this.view.setFlow(i - 1, 1, 1 - t);
           (this.space.skips ?? []).forEach((sk, k) => { if (sk.to === i) this.view.setSkip(k, 1 - t); });
-          this.$('status').textContent = `Слой ${i + 1} из ${this.layers.length}: ${L.name}`;
+          setT(this.$('status'), 'stack.layerProgress', { i: i + 1, n: this.layers.length, name: L.name });
         },
       });
       if (i < this.layers.length - 1) {
@@ -312,7 +313,7 @@ export class StackLab extends BaseLab {
   }
 
   showResult(result) {
-    this.setStatus('Прогон завершён — результат ниже');
+    this.setStatus(Lt('stack.runDone'));
     const probs = result.probs ?? [];
     // Демо-функция может вернуть свои названия классов (например, варианты следующего слова)
     const classes = result.classes ?? this.classes;
@@ -325,17 +326,17 @@ export class StackLab extends BaseLab {
       const maxAbs = Math.max(1e-9, ...probs.map(Math.abs));
       html += `<ul class="bars">${order.map(([p, i]) => `
         <li class="${i === best ? 'best' : ''}">
-          <span class="name">${escapeHtml(classes[i])}</span>
+          <span class="name">${escapeHtml(str(classes[i]))}</span>
           <span class="bar"><span style="width:${((asValue ? Math.abs(p) / maxAbs : p) * 100).toFixed(1)}%"></span></span>
-          <span class="num">${asValue ? formatValue(p, 2) : `${(p * 100).toFixed(1)}%`}</span><span></span>
+          <span class="num">${asValue ? formatValue(p, 2) : `${fmtNum(p * 100, 1)}%`}</span><span></span>
         </li>`).join('')}</ul>`;
       // Проверка «верно/ошибка» — только когда классы результата совпадают с классами примеров
       // В демонстрационных пространствах ответ заранее согласован с картинкой — «верно» там ничего не значит
       const truth = !this.space.resultClasses && this.space.meta.fidelity !== 'demo' && this.current && !this.current.drawn ? this.current.label : null;
       if (truth !== null && truth !== undefined) {
         html += truth === best
-          ? `<p><b class="ok">✓ Верно:</b> на входе «${escapeHtml(this.input.classes[truth])}».</p>`
-          : `<p><b class="bad">✗ Ошибка:</b> на входе был «${escapeHtml(this.input.classes[truth])}», сеть ответила «${escapeHtml(classes[best])}».</p>`;
+          ? `<p>${t('stack.correctHtml', { name: escapeHtml(str(this.input.classes[truth])) })}</p>`
+          : `<p>${t('stack.wrongHtml', { name: escapeHtml(str(this.input.classes[truth])), got: escapeHtml(str(classes[best])) })}</p>`;
       }
     }
     const extra = this.space.explainResult?.(result, { classes, current: this.current, runtime: this.runtime });
@@ -406,7 +407,7 @@ export class StackLab extends BaseLab {
       this.view.reset();
       this.view.clearMaps();
       this.setResult('');
-      this.setStatus('Холст очищен — нарисуйте цифру');
+      this.setStatus(Lt('stack.cleared'));
     });
   }
 }
@@ -423,6 +424,6 @@ function kernelHtml(kernel) {
       cells += `<span style="background:${bg}" title="${data[y * size + x].toFixed(3)}"></span>`;
     }
   }
-  return `<div class="kernel" style="--n:${size}" aria-label="Веса фильтра">${cells}</div>
-    <p class="small muted">Веса фильтра ${size}×${size}: <b class="pos">оранжевые</b> — положительные, <b class="neg">синие</b> — отрицательные.</p>`;
+  return `<div class="kernel" style="--n:${size}" aria-label="${H('stack.kernelLabel')}">${cells}</div>
+    <p class="small muted">${t('stack.kernelLegendHtml', { n: size })}</p>`;
 }

@@ -6,6 +6,7 @@
 //   spaces   — { id, createdAt, updatedAt, file }  (file — объект формата nn3d-space, уже проверенный)
 //   datasets — { id, name, kind, createdAt, size, data } (данные блочного конструктора)
 import { isValidUserId, isValidDatasetId, validateSpaceFile, newId } from './spaceFormat.js';
+import { t } from '../i18n/i18n.js';
 
 const DB_NAME = 'nnlab-user';
 const DB_VERSION = 1;
@@ -15,7 +16,7 @@ let dbPromise = null;
 function openDb() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') { reject(new Error('Браузер не поддерживает IndexedDB — свои пространства недоступны')); return; }
+    if (typeof indexedDB === 'undefined') { reject(new Error(t('store.noIndexedDb'))); return; }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -23,8 +24,8 @@ function openDb() {
       if (!db.objectStoreNames.contains('datasets')) db.createObjectStore('datasets', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(new Error(`Не удалось открыть хранилище браузера: ${req.error?.message ?? 'неизвестная ошибка'}`));
-    req.onblocked = () => reject(new Error('Хранилище занято другой вкладкой — закройте её и обновите страницу'));
+    req.onerror = () => reject(new Error(t('store.openFailed', { msg: req.error?.message ?? t('store.unknown') })));
+    req.onblocked = () => reject(new Error(t('store.blocked')));
   });
   dbPromise.catch(() => { dbPromise = null; });
   return dbPromise;
@@ -33,15 +34,15 @@ function openDb() {
 async function tx(store, mode, fn) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const t = db.transaction(store, mode);
-    const s = t.objectStore(store);
+    const tr = db.transaction(store, mode);
+    const s = tr.objectStore(store);
     let result;
     Promise.resolve(fn(s)).then(r => { result = r; }, reject);
-    t.oncomplete = () => resolve(result);
-    t.onerror = () => reject(new Error(t.error?.name === 'QuotaExceededError'
-      ? 'Не хватает места в хранилище браузера — удалите ненужные пространства или датасеты'
-      : `Ошибка хранилища: ${t.error?.message ?? 'неизвестная'}`));
-    t.onabort = t.onerror;
+    tr.oncomplete = () => resolve(result);
+    tr.onerror = () => reject(new Error(tr.error?.name === 'QuotaExceededError'
+      ? t('store.quota')
+      : t('store.error', { msg: tr.error?.message ?? t('store.unknown') })));
+    tr.onabort = tr.onerror;
   });
 }
 
@@ -78,7 +79,7 @@ export async function saveSpace(file, id = null) {
 
 export async function renameSpace(id, title) {
   const rec = await getSpace(id);
-  if (!rec?.check.ok) throw new Error('Пространство не найдено или повреждено');
+  if (!rec?.check.ok) throw new Error(t('store.notFound'));
   const file = { ...rec.check.space, meta: { ...rec.check.space.meta, title } };
   return saveSpace(file, id);
 }

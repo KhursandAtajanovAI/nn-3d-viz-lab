@@ -1,47 +1,41 @@
 // Fashion-MNIST: та же сеть, что и для цифр, но на силуэтах одежды и обуви.
+// Тексты — в словарях src/i18n/<язык>/spaces/fashion-mnist.js.
 import { syntheticVision, HOW_SYNTHETIC_WORKS } from '../src/engine/models/syntheticVision.js';
 import { generateFashion, FASHION_CLASSES } from '../src/engine/models/generators.js';
+import { scope, L, str } from '../src/i18n/i18n.js';
+
+const S = scope('sp.fashion-mnist');
 
 export default {
   meta: {
     id: 'fashion-mnist',
-    title: 'Fashion-MNIST: одежда и обувь',
+    title: S('title'),
     category: 'vision',
     order: 20,
     level: 1,
     fidelity: 'trained',
-    summary: 'Десять видов одежды 28×28: футболки, брюки, платья, кроссовки… На синтетических силуэтах сеть почти не ошибается; в пояснениях — какие классы путаются на настоящих фото.',
-    uses: 'Каталоги интернет-магазинов: автоматическая сортировка товаров по фотографиям, поиск похожей одежды.',
-    tags: ['CNN', 'свёртки', 'классификация', 'Fashion-MNIST'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['CNN', 'convolutions', 'classification', 'Fashion-MNIST'],
     preview: { blocks: [[1, 0.1], [0.85, 0.5], [0.45, 0.5], [0.35, 0.7], [0.18, 0.7], [0.6, 0.12], [0.35, 0.12], [0.25, 0.12]] },
   },
 
   ...syntheticVision({ size: 28, channels: 1, classes: FASHION_CLASSES, generate: generateFashion }),
-  accuracyLabel: 'Точность на новых синтетических силуэтах',
+  accuracyLabel: S('accuracy'),
 
-  intro: `
-    <p>Fashion-MNIST (Zalando, 2017) — «замена» MNIST такого же размера: 70 000 чёрно-белых картинок 28×28, 10 классов одежды.
-    Задача сложнее цифр: футболка, рубашка, свитер и пальто похожи по силуэту.
-    Здесь та же архитектура, что в пространстве MNIST, — меняются только данные.</p>`,
+  intro: S('introHtml'),
 
   sections: [
-    { title: 'Как это работает', html: HOW_SYNTHETIC_WORKS },
-    {
-      title: 'Почему на настоящих фото классы путаются',
-      open: false,
-      html: `<p>У футболки, рубашки, свитера и пальто общий силуэт «корпус + рукава». Различия — в длине рукавов,
-        воротнике, застёжке и длине изделия. На настоящем Fashion-MNIST хорошие сети ошибаются
-        чаще всего именно на классе «Рубашка»: вероятность делится между несколькими «верхними» классами.</p>
-        <p class="muted small">Здесь силуэты нарисованы программой по чётким правилам (у рубашки — воротник, пуговицы и клетка,
-        у пальто — тёмная застёжка), поэтому на них сеть почти не ошибается — точность видна в строке статуса.</p>`,
-    },
+    { title: L('sv.howTitle'), html: HOW_SYNTHETIC_WORKS },
+    { title: S('confuseTitle'), open: false, html: S('confuseHtml') },
   ],
 
   explainResult(result, { classes }) {
     const order = result.probs.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
     const [[p1, c1], [p2, c2]] = order;
     const close = p1 - p2 < 0.25;
-    return `<p>Ответ: <b>«${classes[c1]}»</b> (${Math.round(p1 * 100)}%).
-      ${close ? `Сеть колеблется: почти столько же за «${classes[c2]}» (${Math.round(p2 * 100)}%) — эти вещи похожи по форме.` : `Второй вариант «${classes[c2]}» заметно слабее (${Math.round(p2 * 100)}%).`}</p>`;
+    const p = { c1: str(classes[c1]), p1: Math.round(p1 * 100), c2: str(classes[c2]), p2: Math.round(p2 * 100) };
+    return `<p>${S.h('answerHtml', p)}
+      ${S.h(close ? 'closeHtml' : 'farHtml', p)}</p>`;
   },
 };

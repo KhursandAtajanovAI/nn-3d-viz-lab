@@ -1,5 +1,9 @@
 // XOR: сеть с вручную подобранными весами, которая действительно решает задачу.
 // Пример пространства с готовыми весами в конфиге (model.weights / model.biases), готовыми входами и своим объяснением результата.
+// Тексты — в словарях src/i18n/<язык>/spaces/xor.js.
+import { scope, fmtNum } from '../src/i18n/i18n.js';
+
+const S = scope('sp.xor');
 
 // Скрытый нейрон 1 ≈ ИЛИ, скрытый нейрон 2 ≈ И-НЕ, выход ≈ И от них → вместе это XOR
 const WEIGHTS = [
@@ -11,14 +15,14 @@ const BIASES = [[-10, 30], [-30]];
 export default {
   meta: {
     id: 'xor',
-    title: 'XOR: задача, которую не решить одним нейроном',
+    title: S('title'),
     category: 'basics',
     order: 20,
     level: 1,
     fidelity: 'real',
-    summary: 'Сеть 2 → 2 → 1 с подобранными вручную весами правильно вычисляет «исключающее ИЛИ».',
-    uses: 'Классический пример из истории ИИ: именно XOR показал, зачем нужны скрытые слои.',
-    tags: ['MLP', 'логика', 'готовые веса'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['MLP', 'logic', 'pretrained'],
     preview: [2, 2, 1],
   },
 
@@ -35,24 +39,9 @@ export default {
     { name: 'A = 1, B = 1', values: [1, 1] },
   ],
 
-  intro: `
-    <p>XOR («исключающее ИЛИ») выдаёт 1, когда ровно один из входов равен 1.
-    Один нейрон так не умеет: он может провести только одну прямую границу, а точки XOR
-    так не разделить. Два скрытых нейрона решают задачу вместе.</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Как это работает',
-      html: `
-        <ul class="steps">
-          <li><b>Скрытый Н1</b> работает как <b>ИЛИ</b>: загорается, если хотя бы один вход равен 1.</li>
-          <li><b>Скрытый Н2</b> работает как <b>И-НЕ</b>: гаснет, только если оба входа равны 1.</li>
-          <li><b>Выход</b> работает как <b>И</b>: горит, когда горят оба скрытых нейрона.</li>
-        </ul>
-        <p class="muted">ИЛИ и И-НЕ одновременно истинны только при разных входах — это и есть XOR.
-        Выберите вход в «Управлении» и наведите курсор на скрытые нейроны.</p>`,
-    },
-  ],
+  sections: [{ title: S('howTitle'), html: S('howHtml') }],
 
   explainResult(ctx, acts, { outputBarsHtml }) {
     const [a, b] = acts[0];
@@ -62,12 +51,8 @@ export default {
     const on = v => (v > 0.5 ? '<b class="pos">≈ 1</b>' : '<b class="neg">≈ 0</b>');
     return `
       ${outputBarsHtml(ctx, acts[2])}
-      <p>Вход A = ${a}, B = ${b}. Скрытый Н1 (ИЛИ) = ${or.toFixed(3)} ${on(or)},
-        скрытый Н2 (И-НЕ) = ${nand.toFixed(3)} ${on(nand)}.
-        Выход (И от них) = <b>${y.toFixed(3)}</b> ${on(y)}.</p>
-      <p>${Math.round(y) === expected
-        ? `Верно: ${a} XOR ${b} = ${expected}.`
-        : `Ожидалось ${expected} — что-то пошло не так.`}
-        Большие веса (±20) делают сигмоиду почти «ступенькой», поэтому ответы близки к точным 0 и 1.</p>`;
+      <p>${S.t('resultHtml', { a, b, or: fmtNum(or, 3), orOn: on(or), nand: fmtNum(nand, 3), nandOn: on(nand), y: fmtNum(y, 3), yOn: on(y) })}</p>
+      <p>${Math.round(y) === expected ? S.h('correct', { a, b, y: expected }) : S.h('wrong', { y: expected })}
+        ${S.h('bigWeights')}</p>`;
   },
 };

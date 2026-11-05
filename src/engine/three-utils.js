@@ -5,11 +5,12 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { PALETTE, IDLE_COLOR as IDLE, signColor, setGlow } from './palette.js';
+import { isText, setT } from '../i18n/i18n.js';
 
 export function makeLabel(className, text = '', { center } = {}) {
   const el = document.createElement('div');
   el.className = className;
-  el.textContent = text;
+  if (isText(text)) setT(el, text); else el.textContent = text ?? ''; // L(...) переводится при смене языка
   const obj = new CSS2DObject(el);
   if (center) obj.center.set(...center);
   return obj;

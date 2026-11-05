@@ -3,13 +3,23 @@
 //
 // Фильтры: категория, тег, уровень, тип вычислений и поиск. Они сочетаются друг с другом
 // и сохраняются в адресе страницы (?cat=…&tag=…&level=…&fid=…&q=…), поэтому ссылку можно отправить.
+// Тексты — в словарях (src/i18n); при смене языка каталог перерисовывается, фильтры не сбрасываются.
+import { initI18n, t, H, At, str, has, isText, lang, relabel, onLangChange, langSwitchHtml } from '../i18n/i18n.js';
 import { CATEGORIES, LEVELS, FIDELITY, categoryById, loadManifest } from '../engine/catalog.js';
-import { escapeHtml, plural } from '../engine/format.js';
+import { escapeHtml } from '../engine/format.js';
 import { previewSvg } from './previews.js';
 import { themeSwitchHtml } from '../engine/theme.js';
 import { initCreateDialog, renderMySpaces, initImport } from './userHub.js';
 
-document.getElementById('theme-switch').outerHTML = themeSwitchHtml();
+await initI18n();
+
+/** Текст карточки: перевод L(...) или обычная строка (название модели, текст пользователя) — экранируется */
+const hx = x => (isText(x) ? H(x) : escapeHtml(str(x)));
+
+document.getElementById('theme-switch').outerHTML = `<div class="switches">${themeSwitchHtml()}${langSwitchHtml()}</div>`;
+relabel(document);
+const setTitle = () => { document.title = t('catalog.pageTitle'); };
+setTitle();
 const openCreate = initCreateDialog();
 document.getElementById('create-space').addEventListener('click', openCreate);
 initImport(document.getElementById('import-space'), document.getElementById('my-msg'), () => renderMySpaces());
@@ -22,15 +32,19 @@ const search = $('search');
 let spaces = [];
 const state = { cat: 'all', tag: null, level: null, fid: null, q: '' };
 
+/** Подпись тега: теги в конфигах — идентификаторы (tag.<id> в словаре), неизвестные показываются как есть */
+const tagTitle = id => (has(`tag.${id}`) ? t(`tag.${id}`) : id);
+
 // ---------- Фильтрация ----------
 
-const norm = s => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+const YO = new RegExp(String.fromCharCode(0x451), 'g'), YE = String.fromCharCode(0x435); // буквы «ё» и «е»
+const norm = s => String(s ?? '').toLowerCase().replace(YO, YE);
 
 function searchText(s) {
   const m = s.meta;
   return norm([
-    m.title, m.summary, m.uses, ...(m.tags ?? []),
-    categoryById(m.category)?.title, LEVELS[m.level], FIDELITY[m.fidelity]?.title,
+    str(m.title), str(m.summary), str(m.uses), ...(m.tags ?? []).map(tagTitle), ...(m.tags ?? []),
+    str(categoryById(m.category)?.title), str(LEVELS[m.level]), str(FIDELITY[m.fidelity]?.title),
   ].join(' '));
 }
 
@@ -57,20 +71,20 @@ function cardHtml(s) {
   const tagBtn = (kind, value, label, extra = '') =>
     `<button type="button" class="tag ${extra}" data-${kind}="${escapeHtml(value)}"
       aria-pressed="${(kind === 'tag' && state.tag === value) || (kind === 'level' && state.level === String(value)) || (kind === 'fid' && state.fid === value)}"
-      title="Показать только: ${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+      title="${escapeHtml(t('catalog.onlyThis', { label }))}">${escapeHtml(label)}</button>`;
   return `
     <article class="space-card">
       <a class="preview-link" href="${href}" tabindex="-1" aria-hidden="true">${previewSvg(m.preview)}</a>
       <div class="body">
-        <h3><a class="title-link" href="${href}">${escapeHtml(m.title)}</a></h3>
-        <p>${escapeHtml(m.summary ?? '')}</p>
-        ${m.uses ? `<p class="uses"><span class="muted">Где применяется:</span> ${escapeHtml(m.uses)}</p>` : ''}
+        <h3><a class="title-link" href="${href}">${hx(m.title)}</a></h3>
+        <p>${m.summary ? hx(m.summary) : ''}</p>
+        ${m.uses ? `<p class="uses"><span class="muted">${H('common.usesLabel')}</span> ${hx(m.uses)}</p>` : ''}
         <div class="tags">
-          ${m.fidelity ? tagBtn('fid', m.fidelity, FIDELITY[m.fidelity].title, `fidelity ${m.fidelity}`) : ''}
-          ${m.level ? tagBtn('level', m.level, LEVELS[m.level], 'level') : ''}
-          ${(m.tags ?? []).map(t => tagBtn('tag', t, t)).join('')}
+          ${m.fidelity ? tagBtn('fid', m.fidelity, str(FIDELITY[m.fidelity].title), `fidelity ${m.fidelity}`) : ''}
+          ${m.level ? tagBtn('level', m.level, str(LEVELS[m.level]), 'level') : ''}
+          ${(m.tags ?? []).map(id => tagBtn('tag', id, tagTitle(id))).join('')}
         </div>
-        <a class="open" href="${href}">Открыть пространство →</a>
+        <a class="open" href="${href}">${H('catalog.open')}</a>
       </div>
     </article>`;
 }
@@ -83,57 +97,57 @@ function renderCatalog() {
     if (!list.length) return '';
     return `
       <section class="category" id="cat-${cat.id}">
-        <h2><span class="icon">${cat.icon}</span> ${escapeHtml(cat.title)} <span class="count">${list.length}</span></h2>
-        <p class="muted">${escapeHtml(cat.description)}</p>
+        <h2><span class="icon">${cat.icon}</span> ${H(cat.title)} <span class="count">${list.length}</span></h2>
+        <p class="muted">${H(cat.description)}</p>
         <div class="grid">${list.map(cardHtml).join('')}</div>
       </section>`;
   }).join('');
 
   root.innerHTML = sections || `
     <div class="empty">
-      <p>Ничего не найдено по текущим фильтрам.</p>
-      <button type="button" class="reset" data-reset>Сбросить фильтры</button>
+      <p>${H('catalog.nothingFound')}</p>
+      <button type="button" class="reset" data-reset>${H('catalog.resetFilters')}</button>
     </div>`;
 
   $('result-count').textContent = visible.length === spaces.length
-    ? `Показаны все ${spaces.length} ${plural(spaces.length, ['пространство', 'пространства', 'пространств'])}`
-    : `Найдено: ${visible.length} из ${spaces.length}`;
+    ? t('catalog.shownAll', { n: spaces.length })
+    : t('catalog.found', { n: visible.length, m: spaces.length });
 }
 
 function renderCategoryFilters() {
   // Счётчик у категории учитывает все остальные фильтры (тег, поиск…), но не саму категорию
   const base = spaces.filter(s => passes(s, 'cat'));
-  const chips = [{ id: 'all', title: 'Все', icon: '' }, ...CATEGORIES];
+  const chips = [{ id: 'all', title: t('catalog.all'), icon: '' }, ...CATEGORIES];
   $('filters').innerHTML = chips.map(c => {
     const n = c.id === 'all' ? base.length : base.filter(s => s.meta.category === c.id).length;
     const total = c.id === 'all' ? spaces.length : spaces.filter(s => s.meta.category === c.id).length;
     if (c.id !== 'all' && !total) return '';
     return `<button type="button" data-cat="${c.id}" aria-pressed="${c.id === state.cat}" ${n === 0 ? 'class="dim"' : ''}>
-      ${c.icon ? `<span class="icon">${c.icon}</span> ` : ''}${escapeHtml(c.title)} <span class="count">${n}</span></button>`;
+      ${c.icon ? `<span class="icon">${c.icon}</span> ` : ''}${escapeHtml(str(c.title))} <span class="count">${n}</span></button>`;
   }).join('');
 }
 
 function renderTagCloud() {
   const base = spaces.filter(s => passes(s, 'tag'));
   const counts = new Map();
-  for (const s of base) for (const t of s.meta.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+  for (const s of base) for (const id of s.meta.tags ?? []) counts.set(id, (counts.get(id) ?? 0) + 1);
   const all = [...new Set(spaces.flatMap(s => s.meta.tags ?? []))]
-    .sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b, 'ru'));
-  $('tag-cloud').innerHTML = all.map(t => `
-    <button type="button" class="tag" data-tag="${escapeHtml(t)}" aria-pressed="${state.tag === t}"
-      ${counts.get(t) ? '' : 'disabled'}>${escapeHtml(t)} <span class="count">${counts.get(t) ?? 0}</span></button>`).join('');
+    .sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || tagTitle(a).localeCompare(tagTitle(b), lang));
+  $('tag-cloud').innerHTML = all.map(id => `
+    <button type="button" class="tag" data-tag="${escapeHtml(id)}" aria-pressed="${state.tag === id}"
+      ${counts.get(id) ? '' : 'disabled'}>${escapeHtml(tagTitle(id))} <span class="count">${counts.get(id) ?? 0}</span></button>`).join('');
 }
 
 function renderActiveFilters() {
   const chips = [];
-  if (state.cat !== 'all') chips.push(['cat', `Категория: ${categoryById(state.cat)?.title}`]);
-  if (state.tag) chips.push(['tag', `Тег: ${state.tag}`]);
-  if (state.level) chips.push(['level', `Уровень: ${LEVELS[state.level]}`]);
-  if (state.fid) chips.push(['fid', FIDELITY[state.fid]?.title]);
-  if (state.q) chips.push(['q', `Поиск: «${state.q}»`]);
+  if (state.cat !== 'all') chips.push(['cat', t('catalog.chipCategory', { v: str(categoryById(state.cat)?.title) })]);
+  if (state.tag) chips.push(['tag', t('catalog.chipTag', { v: tagTitle(state.tag) })]);
+  if (state.level) chips.push(['level', t('catalog.chipLevel', { v: str(LEVELS[state.level]) })]);
+  if (state.fid) chips.push(['fid', str(FIDELITY[state.fid]?.title)]);
+  if (state.q) chips.push(['q', t('catalog.chipSearch', { v: state.q })]);
   $('active-filters').innerHTML = chips.length ? `
-    ${chips.map(([k, label]) => `<button type="button" class="active-chip" data-clear="${k}" title="Убрать фильтр">${escapeHtml(label)} <span aria-hidden="true">✕</span></button>`).join('')}
-    <button type="button" class="reset" data-reset>Сбросить всё</button>` : '';
+    ${chips.map(([k, label]) => `<button type="button" class="active-chip" data-clear="${k}" ${At('title', 'catalog.removeFilter')}>${escapeHtml(label)} <span aria-hidden="true">✕</span></button>`).join('')}
+    <button type="button" class="reset" data-reset>${H('catalog.resetAll')}</button>` : '';
 }
 
 function render() {
@@ -153,8 +167,8 @@ function syncUrl() {
   if (state.level) p.set('level', state.level);
   if (state.fid) p.set('fid', state.fid);
   if (state.q) p.set('q', state.q);
-  const theme = new URLSearchParams(location.search).get('theme');
-  if (theme) p.set('theme', theme);
+  const keep = new URLSearchParams(location.search);
+  for (const k of ['theme', 'lang']) if (keep.get(k)) p.set(k, keep.get(k));
   const qs = p.toString();
   history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
 }
@@ -172,9 +186,9 @@ function readUrl() {
 // ---------- События ----------
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('button');
-  if (!t) return;
-  const d = t.dataset;
+  const b = e.target.closest('button');
+  if (!b) return;
+  const d = b.dataset;
   if (d.cat) state.cat = d.cat;
   else if (d.tag) state.tag = state.tag === d.tag ? null : d.tag; // повторный клик снимает фильтр
   else if (d.level) state.level = state.level === d.level ? null : d.level;
@@ -200,6 +214,14 @@ search.addEventListener('keydown', e => {
   if (e.key === 'Escape') { search.value = ''; state.q = ''; render(); }
 });
 
+// Смена языка: тексты карточек, фильтров и «Мои» — на новом языке, фильтры и поиск сохраняются
+onLangChange(() => {
+  setTitle();
+  for (const s of spaces) s.searchText = searchText(s);
+  if (spaces.length) render();
+  renderMySpaces();
+});
+
 // ---------- Загрузка ----------
 
 async function init() {
@@ -208,7 +230,7 @@ async function init() {
     const results = await Promise.allSettled(ids.map(id => import(`../../spaces/${id}.js`)));
     spaces = results.flatMap((r, i) => {
       if (r.status === 'fulfilled' && r.value.default?.meta) return [r.value.default];
-      console.warn(`Пространство ${ids[i]} не загрузилось`, r.reason);
+      console.warn(`Space ${ids[i]} failed to load`, r.reason);
       return [];
     });
     for (const s of spaces) s.searchText = searchText(s);
@@ -218,8 +240,7 @@ async function init() {
     render();
   } catch (e) {
     console.error(e);
-    root.innerHTML = `<p class="empty">Не удалось загрузить список пространств. ${escapeHtml(e.message)}.
-      Если вы запускаете сайт локально, выполните <code>bash tools/build-manifest.sh</code>.</p>`;
+    root.innerHTML = `<p class="empty">${H('catalog.loadFailedHtml', { msg: e.message })}</p>`;
   }
 }
 

@@ -1,4 +1,6 @@
 // Двумерные наборы данных для учебной классификации (точки в квадрате [-1, 1]², метки 0/1).
+import { L } from '../../i18n/i18n.js';
+
 
 function gauss(rnd) {
   return Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
@@ -6,8 +8,8 @@ function gauss(rnd) {
 
 export const DATASETS_2D = {
   xor: {
-    name: 'XOR (четыре квадранта)',
-    note: 'Классы в противоположных углах — одной прямой их не разделить.',
+    name: L('ds2d.xor.name'),
+    note: L('ds2d.xor.note'),
     make(rnd, n = 160) {
       const X = [], Y = [];
       for (let i = 0; i < n; i++) {
@@ -19,8 +21,8 @@ export const DATASETS_2D = {
     },
   },
   circles: {
-    name: 'Круг внутри кольца',
-    note: 'Граница — окружность: сеть должна «свернуть» пространство.',
+    name: L('ds2d.circles.name'),
+    note: L('ds2d.circles.note'),
     make(rnd, n = 160) {
       const X = [], Y = [];
       for (let i = 0; i < n; i++) {
@@ -33,8 +35,8 @@ export const DATASETS_2D = {
     },
   },
   moons: {
-    name: 'Две луны',
-    note: 'Изогнутая граница между двумя полумесяцами.',
+    name: L('ds2d.moons.name'),
+    note: L('ds2d.moons.note'),
     make(rnd, n = 160) {
       const X = [], Y = [];
       for (let i = 0; i < n; i++) {
@@ -47,8 +49,8 @@ export const DATASETS_2D = {
     },
   },
   spiral: {
-    name: 'Две спирали (сложно)',
-    note: 'Классическая трудная задача: нужна глубокая сеть и много эпох.',
+    name: L('ds2d.spirals.name'),
+    note: L('ds2d.spirals.note'),
     make(rnd, n = 200) {
       const X = [], Y = [];
       for (let i = 0; i < n; i++) {

@@ -1,5 +1,7 @@
 // Генераторы синтетических картинок для классификаторов (работают только в браузере — нужен canvas).
 // Каждый генератор: (classIndex, rnd) → { w, h, c, data: Float32Array } (значения 0..1, каналы плоскостями).
+// Названия классов — в словаре (gen.*).
+import { L } from '../../i18n/i18n.js';
 
 function makeCanvas(w, h) {
   const cv = document.createElement('canvas');
@@ -106,7 +108,7 @@ export function generateDigit(d, rnd) {
 
 // ---------- Одежда (Fashion-MNIST-подобные силуэты 28×28) ----------
 
-export const FASHION_CLASSES = ['Футболка', 'Брюки', 'Свитер', 'Платье', 'Пальто', 'Сандалия', 'Рубашка', 'Кроссовок', 'Сумка', 'Ботинок'];
+export const FASHION_CLASSES = Array.from({ length: 10 }, (_, i) => L(`gen.fashion.${i}`));
 
 const fashionCanvas = makeCanvasLazy(28, 28);
 
@@ -210,7 +212,7 @@ export function generateFashion(cls, rnd) {
 
 // ---------- CIFAR-10-подобные цветные сцены 32×32 ----------
 
-export const CIFAR_CLASSES = ['Самолёт', 'Автомобиль', 'Птица', 'Кошка', 'Олень', 'Собака', 'Лягушка', 'Лошадь', 'Корабль', 'Грузовик'];
+export const CIFAR_CLASSES = Array.from({ length: 10 }, (_, i) => L(`gen.cifar.${i}`));
 
 const cifarCanvas = makeCanvasLazy(32, 32);
 const hsl = (h, s, l) => `hsl(${h},${s}%,${l}%)`;

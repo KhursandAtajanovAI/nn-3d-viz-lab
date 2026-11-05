@@ -5,7 +5,10 @@
 //   потянуть за занятый вход — отсоединить и переподключить; фон — панорама; колесо — масштаб;
 //   клик по связи — выбрать; Delete — удалить выбранное; Ctrl+D — копия блока.
 import { blockParams, PORT_TYPES } from '../blocks/index.js';
-import { el } from './view.js';
+import { el, joinL } from './view.js';
+import { L, isText, setAttrT } from '../../i18n/i18n.js';
+
+const portType = t => PORT_TYPES[t] ?? t;
 
 const NS = 'http://www.w3.org/2000/svg';
 const NODE_ID = /^n[0-9a-z]{1,16}$/;
@@ -28,7 +31,7 @@ export class GraphEditor {
 
     root.classList.add('ge-root');
     root.tabIndex = 0;
-    root.setAttribute('aria-label', 'Холст графа блоков');
+    setAttrT(root, 'aria-label', 'graph.canvasAria');
     this.world = el('div', 'ge-world');
     this.svg = document.createElementNS(NS, 'svg');
     this.svg.classList.add('ge-edges');
@@ -36,7 +39,7 @@ export class GraphEditor {
     this.tempPath.classList.add('ge-temp');
     this.svg.append(this.tempPath);
     this.world.append(this.svg);
-    this.hint = el('div', 'ge-hint', 'Перетащите блоки из палитры слева или нажмите «Пример графа»');
+    this.hint = el('div', 'ge-hint', L('graph.hint'));
     root.append(this.world, this.hint);
     this.bind();
   }
@@ -60,7 +63,7 @@ export class GraphEditor {
     }
     if (graph.view) this.view = { ...graph.view };
     this.renderAll();
-    if (dropped.length) this.hooks.onMessage(`Пропущено связей: ${dropped.length} (${dropped[0]})`, true);
+    if (dropped.length) this.hooks.onMessage(L('graph.msg.dropped', { n: dropped.length, first: dropped[0] }), true);
   }
 
   toJSON() {
@@ -82,7 +85,7 @@ export class GraphEditor {
   addNode(blockId, x, y, params) {
     const block = this.blocks.get(blockId);
     if (!block) return null;
-    if (this.nodes.length >= 200) { this.hooks.onMessage('Не больше 200 блоков', true); return null; }
+    if (this.nodes.length >= 200) { this.hooks.onMessage(L('graph.msg.max200'), true); return null; }
     const n = { id: this.newId(), block: blockId, x, y, params: blockParams(block, params) };
     this.nodes.push(n);
     this.renderNode(n);
@@ -138,16 +141,16 @@ export class GraphEditor {
   /** Почему нельзя соединить (или null) */
   checkEdge(from, to, { ignoreExisting = false } = {}) {
     const a = this.node(from[0]), b = this.node(to[0]);
-    if (!a || !b) return 'блок не найден';
-    if (a === b) return 'нельзя соединить блок сам с собой';
+    if (!a || !b) return L('graph.err.noBlock');
+    if (a === b) return L('graph.err.selfLoop');
     const bb = this.blocks.get(b.block), inPort = bb?.inputs.find(p => p.id === to[1]);
-    if (!inPort) return `у блока «${bb?.title ?? b.block}» нет такого входа`;
+    if (!inPort) return L('graph.err.noInPort', { title: bb?.title ?? b.block });
     const types = this.outTypes(from[0], from[1]);
-    if (!types.length) return 'нет такого выхода';
+    if (!types.length) return L('graph.err.noOutPort');
     if (!types.some(t => inPort.types.includes(t))) {
-      return `тип не подходит: выход даёт «${types.map(t => PORT_TYPES[t] ?? t).join(' / ')}», а вход «${inPort.title}» ждёт «${inPort.types.map(t => PORT_TYPES[t] ?? t).join(' / ')}»`;
+      return L('graph.err.typeMismatch', { out: joinL(types.map(portType), 'graph.slash'), title: inPort.title, want: joinL(inPort.types.map(portType), 'graph.slash') });
     }
-    if (!ignoreExisting && this.reaches(to[0], from[0])) return 'получился бы цикл';
+    if (!ignoreExisting && this.reaches(to[0], from[0])) return L('graph.err.cycle');
     return null;
   }
 
@@ -166,8 +169,8 @@ export class GraphEditor {
 
   connect(from, to) {
     const why = this.checkEdge(from, to);
-    if (why) { this.hooks.onMessage(`Нельзя соединить: ${why}`, true); return false; }
-    if (this.edges.length >= 600) { this.hooks.onMessage('Не больше 600 связей', true); return false; }
+    if (why) { this.hooks.onMessage(L('graph.msg.cantConnect', { why }), true); return false; }
+    if (this.edges.length >= 600) { this.hooks.onMessage(L('graph.msg.max600'), true); return false; }
     // Вход принимает одну связь — старая заменяется
     this.edges = this.edges.filter(e => !(e.to[0] === to[0] && e.to[1] === to[1]));
     this.edges.push({ from: [...from], to: [...to] });
@@ -197,12 +200,20 @@ export class GraphEditor {
     if (!elN) return;
     elN.dataset.state = state;
     const dot = elN.querySelector('.ge-state');
-    dot.title = { ok: 'Выполнен', error: `Ошибка: ${message}`, skipped: message, running: 'Выполняется…' }[state] ?? '';
+    const title = { ok: L('graph.st.ok'), error: L('graph.st.error', { message }), skipped: message, running: L('graph.st.running') }[state] ?? '';
+    if (isText(title)) setAttrT(dot, 'title', title);
+    else { dot.title = title; dot.removeAttribute('data-t-title'); dot.removeAttribute('data-tp-title'); }
   }
 
   clearStatus() {
     this.status.clear();
-    this.world.querySelectorAll('.ge-node').forEach(n => { delete n.dataset.state; n.querySelector('.ge-state').title = ''; });
+    this.world.querySelectorAll('.ge-node').forEach(n => {
+      delete n.dataset.state;
+      const dot = n.querySelector('.ge-state');
+      dot.title = '';
+      dot.removeAttribute('data-t-title');
+      dot.removeAttribute('data-tp-title');
+    });
   }
 
   // ---------- Отрисовка ----------
@@ -228,7 +239,7 @@ export class GraphEditor {
     elN.classList.toggle('selected', this.selected?.kind === 'node' && this.selected.id === n.id);
     elN.style.transform = `translate(${n.x}px, ${n.y}px)`;
     const head = el('div', 'ge-head');
-    head.append(el('span', 'ge-state'), el('span', 'ge-title', block ? block.title : `Неизвестный блок «${n.block}»`), el('span', 'ge-num', n.id.slice(1)));
+    head.append(el('span', 'ge-state'), el('span', 'ge-title', block ? block.title : L('graph.unknownBlock', { id: n.block })), el('span', 'ge-num', n.id.slice(1)));
     const sum = el('div', 'ge-sum', block?.summary ? block.summary(n.params, this.hooks.summaryCtx) : '');
     const ports = el('div', 'ge-ports');
     const ins = el('div', 'ge-ins'), outs = el('div', 'ge-outs');
@@ -236,17 +247,17 @@ export class GraphEditor {
       const row = el('div', 'ge-port in');
       row.dataset.port = p.id;
       row.dataset.types = p.types.join(' ');
-      row.title = `Вход «${p.title}»: ${p.types.map(t => PORT_TYPES[t] ?? t).join(' или ')}${p.optional ? ' (необязательный)' : ''}`;
+      setAttrT(row, 'title', 'graph.port.in', { title: p.title, types: joinL(p.types.map(portType), 'graph.or'), opt: p.optional ? L('graph.optionalNote') : '' });
       const dot = el('span', 'ge-dot');
       dot.dataset.type = p.types[0];
-      row.append(dot, el('span', '', p.title + (p.optional ? ' ?' : '')));
+      row.append(dot, el('span', '', p.optional ? L('graph.optionalMark', { t: p.title }) : p.title));
       ins.append(row);
     }
     for (const p of block?.outputs ?? []) {
       const row = el('div', 'ge-port out');
       row.dataset.port = p.id;
       const t = p.type.startsWith('same:') ? (block.inputs.find(i => i.id === p.type.slice(5))?.types[0] ?? 'data') : p.type;
-      row.title = `Выход «${p.title}»: ${PORT_TYPES[t] ?? t}${p.type.startsWith('same:') ? ' (как на входе)' : ''}`;
+      setAttrT(row, 'title', 'graph.port.out', { title: p.title, type: portType(t), same: p.type.startsWith('same:') ? L('graph.sameNote') : '' });
       const dot = el('span', 'ge-dot');
       dot.dataset.type = t;
       row.append(el('span', '', p.title), dot);

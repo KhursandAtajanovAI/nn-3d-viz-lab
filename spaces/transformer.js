@@ -1,49 +1,51 @@
 // Transformer (2017): «Attention is all you need» — энкодер и декодер на внимании, без рекуррентности.
+// Тексты — в словарях src/i18n/<язык>/spaces/transformer.js (там же фразы и варианты перевода).
 import { tokensIn, embedding, positions, block } from '../src/engine/models/transformerLayers.js';
 import { demoActivations } from '../src/engine/models/libraryHelpers.js';
+import { scope, str } from '../src/i18n/i18n.js';
+
+const S = scope('sp.transformer');
 
 const N = 8, D = 512;
 const encoder = block({ n: N, d: D, heads: 8, repeat: 6 });
-const decoder = block({ n: N, d: D, heads: 8, repeat: 6, masked: true, cross: true, label: ' (декодер)' });
+const decoder = block({ n: N, d: D, heads: 8, repeat: 6, masked: true, cross: true, label: S('decoderLabel') });
 const layers = [
-  tokensIn(N, 'Исходная фраза на русском, разрезанная на токены.'),
+  tokensIn(N, S('n.tokens')),
   embedding(N, D, 37000),
   positions(N, D),
   ...encoder,
   ...decoder,
-  { name: 'Linear + softmax', kind: 'output', shape: [37000], params: D * 37000, note: 'Вероятности следующего слова перевода по всему словарю.' },
+  { name: 'Linear + softmax', kind: 'output', shape: [37000], params: D * 37000, note: S('n.out') },
 ];
 
-const EXAMPLES = [
-  { name: 'я люблю кошек → «I love ___»', cands: [['cats', 0.78], ['kittens', 0.09], ['dogs', 0.03], ['my', 0.03], ['the', 0.02]] },
-  { name: 'сегодня хорошая погода → «The weather ___»', cands: [['is', 0.83], ['today', 0.06], ['was', 0.04], ['looks', 0.03], ['seems', 0.02]] },
-  { name: 'где находится вокзал? → «Where ___»', cands: [['is', 0.91], ['the', 0.03], ['can', 0.02], ['do', 0.01], ['station', 0.01]] },
-];
+// Вероятности вариантов; сами фразы и слова — ex.<i>.name и ex.<i>.c.<k> в словаре
+const PROBS = [[0.78, 0.09, 0.03, 0.03, 0.02], [0.83, 0.06, 0.04, 0.03, 0.02], [0.91, 0.03, 0.02, 0.01, 0.01]];
+const EXAMPLES = PROBS.map((ps, i) => ({ name: S(`ex.${i}.name`), cands: ps.map((p, k) => [S(`ex.${i}.c.${k}`), p]) }));
 
 export default {
   meta: {
     id: 'transformer',
-    title: 'Transformer: внимание — всё, что нужно (2017)',
+    title: S('title'),
     category: 'library',
     order: 100,
     level: 3,
     fidelity: 'demo',
-    fidelityNote: 'Архитектура «Transformer base» (6 + 6 блоков) точная. В оригинале ≈65 млн весов; в таблице выходной слой посчитан отдельно, поэтому сумма строк — около 82 млн. Варианты перевода — демонстрационные.',
-    summary: 'Энкодер из 6 блоков читает исходную фразу, декодер из 6 блоков пишет перевод слово за словом, «заглядывая» в энкодер через cross-attention.',
-    uses: 'Машинный перевод; архитектура стала основой GPT, BERT, моделей для изображений (ViT), речи, белков (AlphaFold) — почти всего современного ИИ.',
-    tags: ['NLP', 'Transformer', 'attention', 'перевод', 'энкодер-декодер'],
-    preview: { tokens: ['я', 'люблю', 'кошек', '→', 'I'] },
+    fidelityNote: S('fidelityNote'),
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['NLP', 'Transformer', 'attention', 'translation', 'encoder-decoder'],
+    preview: { tokens: S.list('preview', 5) },
   },
 
   type: 'stack',
   layers,
   totalParams: 65000000,
-  paramsNote: 'разница в основном из-за слоя «Linear + softmax» (18 944 000 весов): в оригинале он делит веса с таблицей эмбеддингов и отдельно не считается. Без него сумма строк — 63 064 064; оставшееся расхождение — сумма строк приближённая',
+  paramsNote: S('paramsNote'),
   groups: [
-    { from: 3, to: 3 + encoder.length - 1, label: 'Энкодер ×6', color: 0xff6fa3 },
-    { from: 3 + encoder.length, to: 3 + encoder.length + decoder.length - 1, label: 'Декодер ×6', color: 0xb48cff },
+    { from: 3, to: 3 + encoder.length - 1, label: S('groupEnc'), color: 0xff6fa3 },
+    { from: 3 + encoder.length, to: 3 + encoder.length + decoder.length - 1, label: S('groupDec'), color: 0xb48cff },
   ],
-  skips: [{ from: 3 + encoder.length - 1, to: 3 + encoder.length + 1, label: 'выход энкодера → cross-attention' }],
+  skips: [{ from: 3 + encoder.length - 1, to: 3 + encoder.length + 1, label: S('skip') }],
   inputs: EXAMPLES.map(e => ({ name: e.name })),
   resultClasses: EXAMPLES[0].cands.map(c => c[0]),
 
@@ -53,12 +55,8 @@ export default {
   },
 
   explainResult(r) {
-    return `<p>Следующее слово перевода: <b>«${r.example.cands[0][0]}»</b> (${Math.round(r.example.cands[0][1] * 100)}%).
-      Затем оно добавится к переводу, и декодер предскажет следующее — так, слово за словом, строится вся фраза.</p>
-      <p class="small muted">Как устроено само внимание — с настоящими весами и дугами — смотрите в пространстве <a href="space.html?id=next-word">«Автодополнение и внимание»</a>.</p>`;
+    return S.h('explainHtml', { word: str(r.example.cands[0][0]), p: Math.round(r.example.cands[0][1] * 100) });
   },
 
-  intro: `<p>До 2017 года перевод делали рекуррентными сетями, которые читают слова по одному. Трансформер обрабатывает все слова <b>одновременно</b>:
-    каждое слово через <b>self-attention</b> смотрит на все остальные. Это быстрее и лучше учитывает дальние связи.
-    Розовые блоки — внимание, фиолетовые — полносвязные слои, бирюзовые — нормализация с остаточной связью.</p>`,
+  intro: S('introHtml'),
 };

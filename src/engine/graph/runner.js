@@ -2,9 +2,11 @@
 // выходы передаются по связям. Долгие блоки уступают поток через ctx.tick() — так работают
 // индикатор прогресса и кнопка «Остановить». Пользовательский код не исполняется: только функции блоков из реестра.
 import { blockParams } from '../blocks/index.js';
+import { L, t } from '../../i18n/i18n.js';
+import { fail, errorText } from './fail.js';
 
 export class Cancelled extends Error {
-  constructor() { super('Остановлено'); this.name = 'Cancelled'; }
+  constructor() { super(t('graph.stopped')); this.name = 'Cancelled'; this.l = L('graph.stopped'); }
 }
 
 /** Порядок выполнения (Кан); при цикле — ошибка */
@@ -29,7 +31,7 @@ export function topoOrder(nodes, edges) {
       if (indeg.get(m) === 0) { queue.push(byId.get(m)); queue.sort(byPos); }
     }
   }
-  if (order.length !== nodes.length) throw new Error('В графе есть цикл — уберите связь, которая замыкает круг');
+  if (order.length !== nodes.length) throw fail('graph.err.graphCycle');
   return order;
 }
 
@@ -51,7 +53,7 @@ export async function runGraph(graph, blocks, hooks) {
     const block = blocks.get(node.block);
     const base = k / order.length, span = 1 / order.length;
     const report = (state, info = {}) => { results.set(node.id, { state, ...info }); hooks.onNode(node, state, info); };
-    if (!block) { report('error', { error: `Неизвестный блок «${node.block}»` }); continue; }
+    if (!block) { report('error', { error: L('graph.unknownBlock', { id: node.block }) }); continue; }
 
     // Входы: по связям от уже выполненных блоков
     const inputs = {};
@@ -65,8 +67,8 @@ export async function runGraph(graph, blocks, hooks) {
       if (v === undefined) { upstreamFailed = true; continue; }
       inputs[port.id] = v;
     }
-    if (upstreamFailed) { report('skipped', { error: 'Пропущен: предыдущий блок не выполнился' }); continue; }
-    if (missing) { report('skipped', { error: `Не подключён вход «${missing}»` }); continue; }
+    if (upstreamFailed) { report('skipped', { error: L('graph.err.upstream') }); continue; }
+    if (missing) { report('skipped', { error: L('graph.err.noInputConnected', { name: missing }) }); continue; }
 
     report('running');
     hooks.onProgress(base, block.title, block.long ? 0 : null);
@@ -76,11 +78,11 @@ export async function runGraph(graph, blocks, hooks) {
       saved: hooks.savedModel?.(node) ?? null,
       retrain: !!hooks.retrain,
       /** Уступить поток (не чаще ~30 мс), обновить прогресс и проверить отмену */
-      async tick(fraction = 0, text = '') {
+      async tick(fraction = 0, text = '') { // text — L(...) или строка
         if (hooks.isCancelled()) throw new Cancelled();
         const now = performance.now();
         if (now - lastYield < 30) return;
-        hooks.onProgress(base + span * Math.min(1, fraction), `${block.title}: ${text}`, Math.min(1, fraction));
+        hooks.onProgress(base + span * Math.min(1, fraction), L('graph.progress', { block: block.title, text }), Math.min(1, fraction));
         await new Promise(r => setTimeout(r));
         lastYield = performance.now();
         if (hooks.isCancelled()) throw new Cancelled();
@@ -90,15 +92,15 @@ export async function runGraph(graph, blocks, hooks) {
       const out = (await block.run({ inputs, params: blockParams(block, node.params), ctx })) ?? {};
       report('ok', { outputs: out.outputs ?? {}, view: out.view });
     } catch (e) {
-      if (e instanceof Cancelled) { report('skipped', { error: 'Остановлено' }); throw e; }
+      if (e instanceof Cancelled) { report('skipped', { error: L('graph.stopped') }); throw e; }
       console.error(e);
-      report('error', { error: e.message || String(e) });
+      report('error', { error: errorText(e) });
     }
     if (hooks.isCancelled()) throw new Cancelled();
     // Между блоками тоже отдаём поток, чтобы интерфейс успевал обновиться
     await new Promise(r => setTimeout(r));
     lastYield = performance.now();
   }
-  hooks.onProgress(1, 'Готово', null);
+  hooks.onProgress(1, L('graph.finished'), null);
   return results;
 }

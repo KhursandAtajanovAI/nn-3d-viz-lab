@@ -5,6 +5,8 @@
 //   У датасета картинок image задан, первый столбец — label, дальше пиксели 0…1 (по строкам).
 // Разбиение (тип порта «split»): { train: data, test: data }
 import { rng } from './nn.js';
+import { L, t } from '../../i18n/i18n.js';
+import { fail } from './fail.js';
 
 export const isNum = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -35,12 +37,12 @@ export function isNumericColumn(d, c) {
  */
 export function toXY(d, { classes: knownClasses = null } = {}) {
   const t = targetIndex(d);
-  if (t < 0) throw new Error(d.target ? `Нет столбца-цели «${d.target}»` : 'Не выбран столбец-цель (что предсказывать) — укажите его в блоке данных');
+  if (t < 0) throw d.target ? fail('graph.err.noTarget', { name: d.target }) : fail('graph.err.noTargetChosen');
   const feats = d.columns.map((_, c) => c).filter(c => c !== t);
   const warnings = [];
   for (const c of feats) {
     if (!isNumericColumn(d, c) && d.rows.some(r => r[c] !== null && r[c] !== '')) {
-      throw new Error(`Столбец «${d.columns[c]}» текстовый — добавьте блок «One-hot» перед обучением`);
+      throw fail('graph.err.textColumn', { name: d.columns[c] });
     }
   }
   let missing = 0;
@@ -49,7 +51,7 @@ export function toXY(d, { classes: knownClasses = null } = {}) {
     if (!isNum(v)) { missing++; return 0; }
     return v;
   }));
-  if (missing) warnings.push(`Пустых или нечисловых ячеек в признаках: ${missing} — заменены нулями`);
+  if (missing) warnings.push(L('graph.warn.missing', { n: missing }));
 
   // Классификация: текстовая цель или немного целых значений; иначе регрессия
   const tv = d.rows.map(r => r[t]);
@@ -62,14 +64,14 @@ export function toXY(d, { classes: knownClasses = null } = {}) {
     const idx = new Map(classes.map((c, i) => [c, i]));
     y = tv.map(v => idx.get(String(v)) ?? -1);
     const unknown = y.filter(v => v < 0).length;
-    if (unknown) warnings.push(`Строк с пустой или незнакомой целью: ${unknown} — пропущены`);
+    if (unknown) warnings.push(L('graph.warn.unknownTarget', { n: unknown }));
   } else {
     y = tv.map(v => Float32Array.of(isNum(v) ? v : NaN));
   }
   // Пропускаем строки без ответа
   const keep = y.map(v => (isClass ? v >= 0 : Number.isFinite(v[0])));
   const Xk = X.filter((_, i) => keep[i]), yk = y.filter((_, i) => keep[i]);
-  if (!Xk.length) throw new Error('Нет строк с заполненной целью');
+  if (!Xk.length) throw fail('graph.err.noRows');
   return {
     X: Xk, y: yk, task: isClass ? 'class' : 'regression', classes,
     featureNames: feats.map(c => d.columns[c]),
@@ -117,7 +119,7 @@ export function oneHot(d, maxValues = 30) {
   const plan = d.columns.map((name, c) => {
     if (c === t || isNumericColumn(d, c)) return null;
     const values = [...new Set(d.rows.map(r => r[c]).filter(v => v !== null && v !== ''))].map(String).sort();
-    if (values.length > maxValues) throw new Error(`В столбце «${name}» ${values.length} разных значений — для one-hot допустимо до ${maxValues}`);
+    if (values.length > maxValues) throw fail('graph.err.oneHotMany', { name, n: values.length, max: maxValues });
     return values;
   });
   if (plan.every(p => !p)) return { data: d, expanded: [] };
@@ -158,13 +160,13 @@ export function datasetToData(ds, target) {
 // ---------- Встроенные примеры ----------
 
 export const EXAMPLES = [
-  ['moons', 'Две луны (2 класса)'],
-  ['circles', 'Круг в кольце (2 класса)'],
-  ['spirals', 'Две спирали (2 класса)'],
-  ['xor', 'XOR-облака (2 класса)'],
-  ['blobs', 'Три облака (3 класса)'],
-  ['sine', 'Синусоида (регрессия)'],
-  ['digits', 'Цифры 12×12 (картинки, 10 классов)'],
+  ['moons', L('graph.ex.moons')],
+  ['circles', L('graph.ex.circles')],
+  ['spirals', L('graph.ex.spirals')],
+  ['xor', L('graph.ex.xor')],
+  ['blobs', L('graph.ex.blobs')],
+  ['sine', L('graph.ex.sine')],
+  ['digits', L('graph.ex.digits')],
 ];
 
 export function makeExample(kind, n, seed, noise) {
@@ -172,54 +174,55 @@ export function makeExample(kind, n, seed, noise) {
   const g = () => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
   const rows = [];
   const pt = (x, y, cls) => rows.push([+(x + g() * noise).toFixed(4), +(y + g() * noise).toFixed(4), cls]);
-  const table = (columns, title) => ({ name: title, columns, rows, target: columns.at(-1), image: null });
+  const cls = t('graph.ex.classCol'); // имя столбца-цели берётся на языке интерфейса в момент запуска
+  const table = (columns, title) => ({ name: L(`graph.ex.${title}Name`), columns, rows, target: columns.at(-1), image: null });
   switch (kind) {
     case 'moons':
       for (let i = 0; i < n; i++) {
         const a = Math.PI * r(), c = i % 2;
         if (c === 0) pt(Math.cos(a), Math.sin(a), 0); else pt(1 - Math.cos(a), 0.5 - Math.sin(a), 1);
       }
-      return table(['x', 'y', 'класс'], 'Две луны');
+      return table(['x', 'y', cls], 'moons');
     case 'circles':
       for (let i = 0; i < n; i++) {
         const a = 2 * Math.PI * r(), c = i % 2, rad = c ? 1 : 0.45;
         pt(rad * Math.cos(a), rad * Math.sin(a), c);
       }
-      return table(['x', 'y', 'класс'], 'Круг в кольце');
+      return table(['x', 'y', cls], 'circles');
     case 'spirals':
       for (let i = 0; i < n; i++) {
         const c = i % 2, t = 0.25 + 3 * r(), a = t * 2.2 + c * Math.PI;
         pt(t * Math.cos(a) / 3.3, t * Math.sin(a) / 3.3, c);
       }
-      return table(['x', 'y', 'класс'], 'Две спирали');
+      return table(['x', 'y', cls], 'spirals');
     case 'xor':
       for (let i = 0; i < n; i++) {
         const sx = r() < 0.5 ? -1 : 1, sy = r() < 0.5 ? -1 : 1;
         pt(sx * 0.5, sy * 0.5, sx * sy > 0 ? 0 : 1);
       }
-      return table(['x', 'y', 'класс'], 'XOR');
+      return table(['x', 'y', cls], 'xor');
     case 'blobs': {
       const centers = [[-1, -0.6], [1, -0.6], [0, 1]];
       for (let i = 0; i < n; i++) { const c = i % 3; pt(centers[c][0], centers[c][1], ['A', 'B', 'C'][c]); }
-      return table(['x', 'y', 'класс'], 'Три облака');
+      return table(['x', 'y', cls], 'blobs');
     }
     case 'sine':
       for (let i = 0; i < n; i++) {
         const x = -3 + 6 * r();
         rows.push([+x.toFixed(4), +(Math.sin(x) + g() * noise * 0.5).toFixed(4)]);
       }
-      return table(['x', 'y'], 'Синусоида');
+      return table(['x', 'y'], 'sine');
     case 'digits':
       return makeDigits(Math.min(n, 2000), r, noise);
     default:
-      throw new Error(`Неизвестный пример «${kind}»`);
+      throw fail('graph.err.unknownExample', { kind });
   }
 }
 
 /** Картинки цифр 12×12: цифра рисуется шрифтом с небольшими сдвигами, поворотом и шумом */
 function makeDigits(n, r, noise) {
   const S = 12, big = 48;
-  if (typeof document === 'undefined') throw new Error('Пример с картинками доступен только в браузере');
+  if (typeof document === 'undefined') throw fail('graph.err.digitsBrowser');
   const cnv = document.createElement('canvas');
   cnv.width = cnv.height = big;
   const c2 = cnv.getContext('2d', { willReadFrequently: true });
@@ -248,7 +251,7 @@ function makeDigits(n, r, noise) {
     rows.push([String(digit), ...pixels]);
   }
   return {
-    name: 'Цифры 12×12',
+    name: L('graph.ex.digitsName'),
     columns: ['label', ...Array.from({ length: S * S }, (_, i) => `p${i}`)],
     rows, target: 'label', image: { width: S, height: S },
   };

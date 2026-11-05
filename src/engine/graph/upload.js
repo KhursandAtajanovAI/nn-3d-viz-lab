@@ -1,18 +1,20 @@
 // Загрузка датасетов пользователем: CSV, JSON, картинки → объект датасета (как cleanDataset в spaceFormat.js).
 // Файлы только читаются как текст или декодируются как изображения; ничего из них не исполняется.
 import { LIMITS, cleanDataset, newId } from '../spaceFormat.js';
+import { L, t as tl } from '../../i18n/i18n.js';
+import { fail } from './fail.js';
 
 export const UPLOAD_LIMITS = {
   tableBytes: 5 * 1024 * 1024, // CSV / JSON
   imageBytes: 2 * 1024 * 1024, // одна картинка
 };
 
-const baseName = f => f.name.replace(/\.[^.]+$/, '').slice(0, LIMITS.name) || 'Датасет';
+const baseName = f => f.name.replace(/\.[^.]+$/, '').slice(0, LIMITS.name) || tl('graph.up.datasetName');
 
 function finish(raw) {
   const errors = [];
-  const ds = cleanDataset(raw, errors, 'Файл');
-  if (!ds) throw new Error(errors[0] ?? 'Датасет не прошёл проверку');
+  const ds = cleanDataset(raw, errors, tl('graph.up.fileWhere'));
+  if (!ds) throw errors[0] ? new Error(errors[0]) : fail('graph.err.datasetInvalid');
   return ds;
 }
 
@@ -37,14 +39,14 @@ export function parseCsv(text) {
       row.push(cell); cell = '';
       if (row.some(c => c.trim() !== '')) rows.push(row);
       row = [];
-      if (rows.length > LIMITS.datasetRows + 1) throw new Error(`В файле больше ${LIMITS.datasetRows} строк — уменьшите его`);
+      if (rows.length > LIMITS.datasetRows + 1) throw fail('graph.err.fileRows', { max: LIMITS.datasetRows });
     } else cell += ch;
   }
   row.push(cell);
   if (row.some(c => c.trim() !== '')) rows.push(row);
-  if (rows.length < 2) throw new Error('В CSV нужны заголовок и хотя бы одна строка данных');
-  const columns = rows[0].map((c, i) => c.trim() || `столбец ${i + 1}`);
-  if (columns.length > LIMITS.datasetColumns) throw new Error(`Столбцов ${columns.length} — допустимо до ${LIMITS.datasetColumns}`);
+  if (rows.length < 2) throw fail('graph.err.csvMin');
+  const columns = rows[0].map((c, i) => c.trim() || tl('graph.up.columnN', { n: i + 1 }));
+  if (columns.length > LIMITS.datasetColumns) throw fail('graph.err.fileCols', { n: columns.length, max: LIMITS.datasetColumns });
   const num = s => {
     const t = s.trim();
     if (t === '') return null;
@@ -59,18 +61,18 @@ export function parseCsv(text) {
 /** JSON: массив объектов [{a: 1, b: 2}, …] или { columns: [...], rows: [[...]] } */
 export function parseJsonTable(text) {
   let data;
-  try { data = JSON.parse(text); } catch (e) { throw new Error(`JSON не читается: ${e.message}`); }
+  try { data = JSON.parse(text); } catch (e) { throw fail('graph.err.jsonBad', { msg: e.message }); }
   if (Array.isArray(data)) {
-    if (!data.length || typeof data[0] !== 'object' || data[0] === null) throw new Error('Ожидался массив объектов: [{"x": 1, "класс": "A"}, …]');
+    if (!data.length || typeof data[0] !== 'object' || data[0] === null) throw fail('graph.err.jsonArray');
     const columns = [...new Set(data.slice(0, 1000).flatMap(o => (o && typeof o === 'object' ? Object.keys(o) : [])))];
     return { columns, rows: data.map(o => columns.map(c => o?.[c] ?? null)) };
   }
   if (data && Array.isArray(data.columns) && Array.isArray(data.rows)) return { columns: data.columns, rows: data.rows };
-  throw new Error('Ожидался массив объектов или { "columns": [...], "rows": [[...]] }');
+  throw fail('graph.err.jsonShape');
 }
 
 export async function readTableFile(f) {
-  if (f.size > UPLOAD_LIMITS.tableBytes) throw new Error(`Файл ${(f.size / 1048576).toFixed(1)} МБ — допустимо до ${UPLOAD_LIMITS.tableBytes / 1048576} МБ`);
+  if (f.size > UPLOAD_LIMITS.tableBytes) throw fail('graph.err.fileBig', { size: { num: f.size / 1048576, d: 1 }, max: UPLOAD_LIMITS.tableBytes / 1048576 });
   const text = await f.text();
   const t = /\.json$/i.test(f.name) ? parseJsonTable(text) : parseCsv(text);
   return finish({ id: newId('d'), name: baseName(f), kind: 'table', columns: t.columns, rows: t.rows });
@@ -90,8 +92,8 @@ export const labelFromName = name => name.replace(/\.[^.]+$/, '').split(/[_\-\s.
 export async function readImageFiles(files, side, name, onProgress) {
   side = Math.max(4, Math.min(LIMITS.imageSide, Math.round(side)));
   const list = [...files].filter(f => /^image\//.test(f.type));
-  if (!list.length) throw new Error('Не выбрано ни одной картинки (PNG, JPEG, GIF, WebP)');
-  if (list.length > LIMITS.images) throw new Error(`Картинок ${list.length} — допустимо до ${LIMITS.images}`);
+  if (!list.length) throw fail('graph.err.noImages');
+  if (list.length > LIMITS.images) throw fail('graph.err.manyImages', { n: list.length, max: LIMITS.images });
   const cnv = document.createElement('canvas');
   cnv.width = cnv.height = side;
   const ctx = cnv.getContext('2d', { willReadFrequently: true });
@@ -99,9 +101,9 @@ export async function readImageFiles(files, side, name, onProgress) {
   const skipped = [];
   for (let k = 0; k < list.length; k++) {
     const f = list[k];
-    if (f.size > UPLOAD_LIMITS.imageBytes) { skipped.push(`${f.name}: больше ${UPLOAD_LIMITS.imageBytes / 1048576} МБ`); continue; }
+    if (f.size > UPLOAD_LIMITS.imageBytes) { skipped.push(L('graph.up.skipBig', { name: f.name, mb: UPLOAD_LIMITS.imageBytes / 1048576 })); continue; }
     let bmp;
-    try { bmp = await createImageBitmap(f); } catch { skipped.push(`${f.name}: не удалось декодировать`); continue; }
+    try { bmp = await createImageBitmap(f); } catch { skipped.push(L('graph.up.skipDecode', { name: f.name })); continue; }
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, side, side);
     // Вписываем с сохранением пропорций
@@ -115,7 +117,7 @@ export async function readImageFiles(files, side, name, onProgress) {
     items.push({ label: labelFromName(f.name), pixels });
     if (k % 20 === 0) { onProgress?.(k + 1, list.length); await new Promise(r => setTimeout(r)); }
   }
-  if (!items.length) throw new Error(`Ни одна картинка не прочитана:\n${skipped.slice(0, 5).join('\n')}`);
-  const ds = finish({ id: newId('d'), name: name || 'Картинки', kind: 'images', width: side, height: side, items });
+  if (!items.length) throw fail('graph.err.noneRead', { list: skipped.slice(0, 5).map(s => tl(s.k, s.p)).join('\n') });
+  const ds = finish({ id: newId('d'), name: name || tl('graph.up.imagesName'), kind: 'images', width: side, height: side, items });
   return { ds, skipped };
 }

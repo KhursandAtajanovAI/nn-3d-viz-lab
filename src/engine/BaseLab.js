@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SceneKit } from './SceneKit.js';
 import { headerHtml, detailsCardHtml } from './sidebar.js';
+import { T, Tx, Hx, At, L, isText, setT, setText, onLangChange } from '../i18n/i18n.js';
 
 /**
  * Общая основа визуализаторов: боковая панель (шапка, «Управление», «Под курсором», «Результат»,
@@ -18,6 +19,14 @@ export class BaseLab {
     this.hovered = null;
     this.pointerEvent = null;
     this.keys = new Map();
+    // Смена языка: помеченные тексты переводятся сами (relabel), здесь — то, что собрано из данных
+    onLangChange(() => {
+      if (!this.kit) return;
+      if (this.resultFn) this.setResult(this.resultFn);
+      if (this.sceneInfoFn) this.setSceneInfo(this.sceneInfoFn);
+      this.refreshHover();
+      this.onLang?.();
+    });
     addEventListener('keydown', e => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
       const fn = this.keys.get(e.code);
@@ -28,37 +37,37 @@ export class BaseLab {
   /**
    * @param {object} o
    * @param {string} o.controls — HTML карточки «Управление» (без заголовка)
-   * @param {string} [o.resultTitle]
+   * @param {string|object} [o.resultTitle] — L(...) или строка
    * @param {object[]} [o.cards] — дополнительные карточки после пояснений пространства: { title, html, open }
    * @param {string} [o.hint] — подсказка внизу панели
    * @param {string} [o.hoverHint] — текст «Под курсором», пока ничего не выбрано
    */
-  mount({ controls, resultTitle = 'Результат', cards = [], hint = '', hoverHint = 'Наведите курсор на объект в сцене, чтобы увидеть подробности.' }) {
+  mount({ controls, resultTitle = L('lab.result'), cards = [], hint = '', hoverHint = L('lab.hoverHint') }) {
     const s = this.space;
     this.hoverHint = hoverHint;
     this.sidebar.innerHTML = `
       ${headerHtml(s.meta)}
       <section class="card">
-        <h2>Управление</h2>
+        <h2>${T('lab.controls')}</h2>
         ${controls}
         <p id="status" role="status"></p>
       </section>
       <section class="card" id="hover-card">
-        <h2>Под курсором</h2>
-        <div id="hover-info"><p class="muted">${hoverHint}</p></div>
+        <h2>${T('lab.underCursor')}</h2>
+        <div id="hover-info"><p class="muted">${Hx(hoverHint)}</p></div>
       </section>
       <section class="card" id="result-card" hidden>
-        <h2 id="result-title">${resultTitle}</h2>
+        <h2 id="result-title">${Tx(resultTitle)}</h2>
         <div id="result"></div>
       </section>
       <section class="card">
-        <h2>Сцена</h2>
-        ${s.intro ?? ''}
+        <h2>${T('lab.scene')}</h2>
+        ${Hx(s.intro)}
         <div id="scene-info"></div>
       </section>
       ${(s.sections ?? []).map(detailsCardHtml).join('')}
       ${cards.map(detailsCardHtml).join('')}
-      ${hint ? `<p class="hint muted">${hint}</p>` : ''}`;
+      ${hint ? `<p class="hint muted">${Hx(hint)}</p>` : ''}`;
 
     this.tooltip = document.createElement('div');
     this.tooltip.id = 'tooltip';
@@ -71,19 +80,26 @@ export class BaseLab {
 
   $(id) { return this.sidebar.querySelector(`#${id}`); }
 
+  /** text — L(...) (переводится при смене языка) или готовая строка */
   setStatus(text, isError = false) {
     const el = this.$('status');
-    el.textContent = text;
+    if (isText(text)) setT(el, text); else setText(el, text);
     el.classList.toggle('error', isError);
   }
 
+  /** html — строка или функция () => html (тогда при смене языка результат перерисуется); title — L(...) или строка */
   setResult(html, title) {
-    this.$('result').innerHTML = html;
-    if (title) this.$('result-title').textContent = title;
-    this.$('result-card').hidden = !html;
+    this.resultFn = typeof html === 'function' ? html : null;
+    const out = this.resultFn ? this.resultFn() : html;
+    this.$('result').innerHTML = out;
+    if (title) { const el = this.$('result-title'); if (isText(title)) setT(el, title); else setText(el, title); }
+    this.$('result-card').hidden = !out;
   }
 
-  setSceneInfo(html) { this.$('scene-info').innerHTML = html; }
+  setSceneInfo(html) {
+    this.sceneInfoFn = typeof html === 'function' ? html : null;
+    this.$('scene-info').innerHTML = this.sceneInfoFn ? this.sceneInfoFn() : html;
+  }
 
   onKey(code, fn) { this.keys.set(code, fn); }
 
@@ -145,11 +161,11 @@ export class BaseLab {
   /** Перерисовать «Под курсором» и подсказку (например, когда значения изменились во время анимации) */
   refreshHover() {
     const info = this.hovered?.userData.info?.(this.hovered.userData.hit);
-    this.$('hover-info').innerHTML = info?.html ?? `<p class="muted">${this.hoverHint}</p>`;
+    this.$('hover-info').innerHTML = info?.html ?? `<p class="muted">${Hx(this.hoverHint)}</p>`;
     const ev = this.pointerEvent;
     if (info?.tooltip && ev) {
       const t = this.tooltip;
-      t.textContent = info.tooltip;
+      t.textContent = String(info.tooltip);
       t.hidden = false;
       const rect = this.container.getBoundingClientRect();
       const x = ev.clientX - rect.left, y = ev.clientY - rect.top;
@@ -164,11 +180,11 @@ export class BaseLab {
 }
 
 /** Переключатель «Визуальный / Детальный · числа» — общий HTML */
-export const MODE_TOGGLE_HTML = `
-  <label>Режим отображения</label>
-  <div class="segmented" role="group" aria-label="Режим отображения">
-    <button id="mode-visual" aria-pressed="true">Визуальный</button>
-    <button id="mode-detail" aria-pressed="false">Детальный · числа</button>
+export const modeToggleHtml = () => `
+  <label>${T('lab.viewMode')}</label>
+  <div class="segmented" role="group" ${At('aria-label', 'lab.viewMode')}>
+    <button id="mode-visual" aria-pressed="true">${T('lab.modeVisual')}</button>
+    <button id="mode-detail" aria-pressed="false">${T('lab.modeDetail')}</button>
   </div>`;
 
 export function bindModeToggle(lab, apply) {
@@ -186,6 +202,6 @@ export function bindModeToggle(lab, apply) {
   return set;
 }
 
-export const SPEED_HTML = `
-  <label for="speed">Скорость анимации</label>
+export const speedHtml = () => `
+  <label for="speed">${T('lab.speed')}</label>
   <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />`;

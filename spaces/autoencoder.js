@@ -1,15 +1,19 @@
 // Автоэнкодер: сеть сжимает картинку 3×3 до трёх чисел и восстанавливает обратно.
 import { MLP, seededRandom } from '../src/engine/models/mlp.js';
+import { scope, fmtNum, str } from '../src/i18n/i18n.js';
+
+// Тексты — в словарях src/i18n/<язык>/spaces/autoencoder.js; ключи узоров — идентификаторы (p.<id>)
+const S = scope('sp.autoencoder');
 
 const PATTERNS = {
-  'Горизонталь': [0, 0, 0, 1, 1, 1, 0, 0, 0],
-  'Вертикаль': [0, 1, 0, 0, 1, 0, 0, 1, 0],
-  'Диагональ ↘': [1, 0, 0, 0, 1, 0, 0, 0, 1],
-  'Диагональ ↗': [0, 0, 1, 0, 1, 0, 1, 0, 0],
-  'Крест': [0, 1, 0, 1, 1, 1, 0, 1, 0],
-  'Рамка': [1, 1, 1, 1, 0, 1, 1, 1, 1],
-  'Уголок': [1, 1, 1, 1, 0, 0, 1, 0, 0],
-  'Точка': [0, 0, 0, 0, 1, 0, 0, 0, 0],
+  horizontal: [0, 0, 0, 1, 1, 1, 0, 0, 0],
+  vertical: [0, 1, 0, 0, 1, 0, 0, 1, 0],
+  diagDown: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+  diagUp: [0, 0, 1, 0, 1, 0, 1, 0, 0],
+  cross: [0, 1, 0, 1, 1, 1, 0, 1, 0],
+  frame: [1, 1, 1, 1, 0, 1, 1, 1, 1],
+  corner: [1, 1, 1, 1, 0, 0, 1, 0, 0],
+  dot: [0, 0, 0, 0, 1, 0, 0, 0, 0],
 };
 const NAMES = Object.keys(PATTERNS);
 const PIX = ['↖', '↑', '↗', '←', '•', '→', '↙', '↓', '↘'];
@@ -22,14 +26,14 @@ const grid = v => `<div class="pix-grid">${v.map(x => `<span style="--v:${Math.m
 export default {
   meta: {
     id: 'autoencoder',
-    title: 'Автоэнкодер: «бутылочное горлышко»',
+    title: S('title'),
     category: 'tasks',
     order: 20,
     level: 2,
     fidelity: 'trained',
-    summary: 'Сеть 9 → 6 → 3 → 6 → 9 учится сжимать картинку 3×3 в три числа и восстанавливать её. Всё знание о картинке проходит через три нейрона.',
-    uses: 'Сжатие и очистка изображений от шума, поиск аномалий (брак на производстве, мошеннические транзакции), генерация данных (VAE).',
-    tags: ['MLP', 'автоэнкодер', 'сжатие', 'без учителя', 'латентное пространство'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['MLP', 'autoencoder', 'compression', 'unsupervised', 'latent-space'],
     preview: [9, 6, 3, 6, 9],
   },
 
@@ -49,8 +53,8 @@ export default {
     return net;
   },
   names: { input: PIX, output: PIX },
-  randomInputNote: 'Случайный вход: значения пикселей берутся случайно из [−1, 1] (в том числе отрицательные — у настоящих картинок такого не бывает). Это «необычные» данные, которых сеть не видела, — они нужны, чтобы показать большую ошибку восстановления.',
-  inputs: NAMES.map(n => ({ name: n, values: PATTERNS[n] })),
+  randomInputNote: S('randomNote'),
+  inputs: NAMES.map(n => ({ name: S(`p.${n}`), values: PATTERNS[n] })),
 
   explainResult(ctx, acts) {
     const input = acts[0], out = acts.at(-1), code = acts[2];
@@ -61,38 +65,22 @@ export default {
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const X = v => 20 + ((v - x0) / (x1 - x0 || 1)) * 230, Y = v => 150 - ((v - y0) / (y1 - y0 || 1)) * 130;
     const map = `<svg class="chart" viewBox="0 0 320 170">
-      ${all.map(([n, c]) => `<circle cx="${X(c[0])}" cy="${Y(c[1])}" r="4" style="fill:var(--neg)" /><text x="${X(c[0]) + 6}" y="${Y(c[1]) + 4}" class="tick">${n}</text>`).join('')}
+      ${all.map(([n, c]) => `<circle cx="${X(c[0])}" cy="${Y(c[1])}" r="4" style="fill:var(--neg)" /><text x="${X(c[0]) + 6}" y="${Y(c[1]) + 4}" class="tick">${S.h(`p.${n}`)}</text>`).join('')}
       <circle cx="${X(code[0])}" cy="${Y(code[1])}" r="7" fill="none" style="stroke:var(--pos)" stroke-width="2.5" />
     </svg>`;
     return `
       <div class="ae-compare">
-        <div><p class="list-title">Вход</p>${grid(input)}</div>
-        <div class="arrow">→ <b class="num">(${code.map(v => v.toFixed(2)).join('; ')})</b> →</div>
-        <div><p class="list-title">Восстановлено</p>${grid(out)}</div>
+        <div><p class="list-title">${S.h('input')}</p>${grid(input)}</div>
+        <div class="arrow">→ <b class="num">(${code.map(v => fmtNum(v, 2)).join('; ')})</b> →</div>
+        <div><p class="list-title">${S.h('restored')}</p>${grid(out)}</div>
       </div>
-      <p>9 пикселей сжаты до <b>трёх чисел</b> и восстановлены с ошибкой MSE = ${mse.toFixed(3)}
-        (${mse < 0.02 ? 'почти идеально' : mse < 0.06 ? 'хорошо, детали слегка размыты' : 'заметно хуже — такой узор сеть не видела'}).</p>
-      <p class="list-title">Латентное пространство (первые два числа кода из трёх)</p>
+      <p>${S.t('mseHtml', { mse: fmtNum(mse, 3), verdict: S.t(mse < 0.02 ? 'v.great' : mse < 0.06 ? 'v.good' : 'v.bad') })}</p>
+      <p class="list-title">${S.h('latentTitle')}</p>
       ${map}
-      <p class="small muted">Оранжевый круг — код текущего входа. Каждый узор получил свою точку — по ней декодер и восстанавливает картинку.
-        Средняя ошибка на обучающих данных: ${finalLoss.toFixed(3)}.</p>`;
+      <p class="small muted">${S.h('latentNote', { loss: fmtNum(finalLoss, 3) })}</p>`;
   },
 
-  intro: `<p>Автоэнкодер учится <b>без учителя</b>: ответом служит сам вход. Левая половина сети (<b>энкодер</b>) сжимает 9 пикселей до 3 чисел —
-    самого узкого слоя, «бутылочного горлышка». Правая половина (<b>декодер</b>) по этим трём числам восстанавливает картинку.
-    Сеть обучилась при открытии страницы на 160 зашумлённых узорах (1500 эпох).</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Зачем сжимать',
-      open: false,
-      html: `<ul class="steps">
-          <li><b>Сжатие:</b> три числа вместо девяти — сеть сама нашла, какие признаки важны.</li>
-          <li><b>Поиск аномалий:</b> «обычные» данные восстанавливаются хорошо, а необычные — с большой ошибкой. Так ищут брак и мошенничество.
-            Попробуйте «Случайный вход» — ошибка будет заметно выше.</li>
-          <li><b>Генерация:</b> если взять точку в латентном пространстве и пропустить через декодер, получится новая картинка (так работают VAE).</li>
-        </ul>
-        <p class="muted small">Почему три нейрона, а не два: с двумя эти восемь узоров обучаются ненадёжно — результат сильно зависит от случайного начала обучения.</p>`,
-    },
-  ],
+  sections: [{ title: S('whyTitle'), open: false, html: S('whyHtml') }],
 };

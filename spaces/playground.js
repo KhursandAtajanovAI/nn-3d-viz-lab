@@ -1,15 +1,19 @@
 // Конструктор: полносвязная сеть с настраиваемой архитектурой (бывшая главная страница лаборатории).
+import { scope } from '../src/i18n/i18n.js';
+
+const S = scope('sp.playground');
+
 export default {
   meta: {
     id: 'playground',
-    title: 'Конструктор полносвязной сети',
+    title: S('title'),
     category: 'basics',
     order: 30,
     level: 1,
     fidelity: 'real',
-    summary: 'Задайте любое число слоёв и нейронов, выберите функцию активации и посмотрите, как меняется прохождение сигнала.',
-    uses: 'Песочница для экспериментов: так подбирают архитектуру небольших сетей для табличных данных.',
-    tags: ['MLP', 'песочница', 'tanh / ReLU / sigmoid'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['MLP', 'sandbox', 'tanh / ReLU / sigmoid'],
     preview: [4, 6, 6, 3],
   },
 
@@ -18,19 +22,7 @@ export default {
   editable: true,
   model: { layers: [4, 6, 6, 3], activation: 'tanh', outputActivation: 'sigmoid' },
 
-  intro: `<p class="muted">Введите архитектуру через запятую (например, <code>2, 8, 8, 1</code>) и нажмите «Построить».
-    Слои больше 8 нейронов раскладываются сеткой.</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Что попробовать',
-      open: false,
-      html: `
-        <ul class="steps">
-          <li>Переключите активацию на <b>ReLU</b>: многие нейроны скрытых слоёв станут ровно 0 и останутся серыми — это «выключенные» нейроны.</li>
-          <li>Сделайте сеть глубокой и узкой (<code>4, 3, 3, 3, 3, 2</code>) — сигнал может «затухать» от слоя к слою.</li>
-          <li>Сделайте один слой широким (<code>4, 32, 3</code>) — наведите на выходной нейрон и посмотрите, сколько связей в него входит.</li>
-        </ul>`,
-    },
-  ],
+  sections: [{ title: S('tryTitle'), open: false, html: S('tryHtml') }],
 };

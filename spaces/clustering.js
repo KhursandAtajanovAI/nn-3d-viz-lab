@@ -1,6 +1,11 @@
 // Кластеризация самоорганизующейся картой Кохонена (SOM): сетка нейронов «натягивается» на облако данных.
 import { seededRandom } from '../src/engine/models/mlp.js';
 import { lineChartSvg } from '../src/engine/chart.js';
+import { scope, fmtNum } from '../src/i18n/i18n.js';
+
+// Тексты — в словарях src/i18n/<язык>/spaces/clustering.js
+const S = scope('sp.clustering');
+const vec = (a, d) => a.map(v => fmtNum(v, d)).join('; ');
 
 const N = 6; // сетка нейронов N×N
 
@@ -81,21 +86,17 @@ function view(state, extra = {}) {
   const markers = state.W.map((w, k) => ({
     id: `n${k}`, pos: w, color: neuronColor(Math.floor(k / N), k % N),
     info: {
-      tooltip: `Нейрон (${Math.floor(k / N) + 1}, ${(k % N) + 1}) · точек: ${counts[k]}`,
-      html: `<h3>Нейрон карты (${Math.floor(k / N) + 1}, ${(k % N) + 1})</h3>
-        <p>Вес (положение в пространстве данных): <b class="num">(${w.map(v => v.toFixed(2)).join('; ')})</b></p>
-        <p>Ближайших точек данных: <b>${counts[k]}</b></p>
-        <p class="muted small">Нейрон «отвечает» за точки, к которым он ближе всех. Соседи по сетке тянутся вместе с ним.</p>`,
+      get tooltip() { return S.t('neuronTip', { r: Math.floor(k / N) + 1, c: (k % N) + 1, n: counts[k] }); },
+      get html() { return S.h('neuronHtml', { r: Math.floor(k / N) + 1, c: (k % N) + 1, w: vec(w, 2), n: counts[k] }); },
     },
   }));
   const used = counts.filter(Boolean).length;
   return {
     points, lines, markers,
-    html: `<p>Шагов обучения: <b>${state.t}</b> примеров. Задействовано нейронов: ${used} из ${N * N}.</p>
-      <p class="list-title">Средняя ошибка квантования (расстояние до ближайшего нейрона)</p>
-      ${lineChartSvg([{ values: state.errors, color: '#ff9f1c' }], { xLabel: 'шаг (по 60 примеров)', yLabel: 'ошибка' })}
-      <p class="small muted">Цвет точки = цвет ближайшего нейрона. Соседние нейроны сетки окрашены в близкие цвета —
-        поэтому видно, что карта сохраняет «топологию»: близкие данные попадают на соседние нейроны.</p>`,
+    html: () => `<p>${S.h('trainedHtml', { t: state.t, used, total: N * N })}</p>
+      <p class="list-title">${S.h('qeTitle')}</p>
+      ${lineChartSvg([{ values: state.errors, color: '#ff9f1c' }], { xLabel: S.t('xAxis'), yLabel: S.t('yAxis') })}
+      <p class="small muted">${S.h('colorNote')}</p>`,
     ...extra,
   };
 }
@@ -103,68 +104,56 @@ function view(state, extra = {}) {
 export default {
   meta: {
     id: 'clustering',
-    title: 'Кластеризация: карта Кохонена',
+    title: S('title'),
     category: 'tasks',
     order: 40,
     level: 2,
     fidelity: 'real',
-    summary: 'Самоорганизующаяся карта: сетка из 36 нейронов сама «натягивается» на облако точек и делит его на группы — без учителя и без правильных ответов.',
-    uses: 'Сегментация клиентов, группировка документов и новостей, анализ генов, сжатие цветов изображения, поиск похожих товаров.',
-    tags: ['кластеризация', 'SOM', 'без учителя', 'нейросеть Кохонена'],
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['clustering', 'SOM', 'unsupervised', 'kohonen'],
     preview: { scatter: 4 },
   },
 
   type: 'scatter',
   hideLabels: true,
-  resultTitle: 'Обучение карты',
+  resultTitle: S('resultTitle'),
 
   async setup() {
     const state = { rnd: seededRandom(3) };
     init(state, 'blobs');
-    state.groups = { none: { label: 'не распределено', color: '#6b7385' } };
-    for (let k = 0; k < N * N; k++) state.groups[`n${k}`] = { label: `нейрон ${k + 1}`, color: neuronColor(Math.floor(k / N), k % N) };
-    state.status = 'Нажмите «Обучать» — нейроны начнут двигаться к данным';
+    state.groups = { none: { label: S('unassigned'), color: '#6b7385' } };
+    for (let k = 0; k < N * N; k++) state.groups[`n${k}`] = { label: S('neuron', { n: k + 1 }), color: neuronColor(Math.floor(k / N), k % N) };
+    state.status = S('pressTrain');
     return state;
   },
 
   initialView: state => view(state),
 
   controls: [
-    { id: 'auto', kind: 'auto', label: '▶ Обучать', stopLabel: '⏸ Пауза', primary: true, interval: 350,
+    { id: 'auto', kind: 'auto', label: S('train'), stopLabel: S('pause'), primary: true, interval: 350,
       run(state) {
         trainStep(state);
-        return view(state, { done: state.t >= 3000, status: state.t >= 3000 ? 'Обучение завершено: скорость и радиус соседства уменьшились до минимума' : `Обучение: ${state.t} примеров` });
+        return view(state, { done: state.t >= 3000, status: state.t >= 3000 ? S('done') : S('progress', { n: state.t }) });
       } },
-    { id: 'step', kind: 'button', label: 'Один шаг (60 примеров)', run(state) { trainStep(state); return view(state, { status: `Обучение: ${state.t} примеров` }); } },
+    { id: 'step', kind: 'button', label: S('step'), run(state) { trainStep(state); return view(state, { status: S('progress', { n: state.t }) }); } },
     {
-      id: 'data', kind: 'select', label: 'Данные',
-      options: [{ value: 'blobs', label: '4 облака точек' }, { value: 'spiral', label: 'Спираль (лента)' }],
+      id: 'data', kind: 'select', label: S('data'),
+      options: [{ value: 'blobs', label: S('blobs') }, { value: 'spiral', label: S('spiral') }],
       run(state, v) {
         init(state, v);
-        return { ...view(state), rebuild: true, status: 'Новые данные — карта сброшена' };
+        return { ...view(state), rebuild: true, status: S('newData') };
       },
     },
   ],
 
   describe(p) {
-    return { tooltip: `Точка (${p.pos.map(v => v.toFixed(1)).join('; ')})`, html: `<h3>Точка данных</h3><p>Координаты: <b class="num">(${p.pos.map(v => v.toFixed(2)).join('; ')})</b></p>` };
+    return { tooltip: S.t('pointTip', { pos: vec(p.pos, 1) }), html: S.h('pointHtml', { pos: vec(p.pos, 2) }) };
   },
 
-  legendHtml: `<ul class="legend">
-      <li><span class="dot idle"></span><span><b>Шарики — данные</b> (серые — ещё не распределены).</span></li>
-      <li><span class="dot glow-pos"></span><span><b>Ромбы — нейроны карты</b>, линии соединяют соседей по сетке 6×6.</span></li>
-    </ul>`,
+  legendHtml: S('legendHtml'),
 
-  intro: `<p>Карта Кохонена — нейросеть <b>без учителя</b>. Каждый нейрон — это точка в пространстве данных.
-    На каждом шаге берётся пример, находится ближайший нейрон («победитель»), и он вместе со <b>своими соседями по сетке</b>
-    сдвигается к примеру. Постепенно сетка расправляется и покрывает данные, а группы точек достаются разным участкам карты.</p>`,
+  intro: S('introHtml'),
 
-  sections: [
-    {
-      title: 'Чем это отличается от k-means',
-      open: false,
-      html: `<p>В k-means центры кластеров независимы. В карте Кохонена нейроны связаны сеткой: соседи двигаются вместе,
-        поэтому похожие данные оказываются на соседних нейронах. Карту можно «развернуть» в плоскую картинку 6×6 и увидеть структуру многомерных данных.</p>`,
-    },
-  ],
+  sections: [{ title: S('kmeansTitle'), open: false, html: S('kmeansHtml') }],
 };

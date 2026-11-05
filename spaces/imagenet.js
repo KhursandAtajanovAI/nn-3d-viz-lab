@@ -1,19 +1,12 @@
 // ImageNet: идея классификации на 1000 классов на примере ResNet-50 (упрощённая иллюстрация).
+// Тексты — в словарях src/i18n/<язык>/spaces/imagenet.js.
 import { generateCifar, CIFAR_CLASSES } from '../src/engine/models/generators.js';
+import { scope, str } from '../src/i18n/i18n.js';
 
-// По три «узких» класса ImageNet на каждую крупную категорию картинок-примеров
-const FINE = [
-  ['авиалайнер', 'военный самолёт', 'дирижабль'],
-  ['спортивный автомобиль', 'такси', 'кабриолет'],
-  ['щегол', 'воробей', 'синица'],
-  ['полосатая кошка', 'египетская кошка', 'сиамская кошка'],
-  ['импала', 'газель', 'лось'],
-  ['золотистый ретривер', 'бигль', 'лабрадор'],
-  ['древесная лягушка', 'жаба', 'лягушка-бык'],
-  ['гнедая лошадь', 'пони', 'зебра'],
-  ['контейнеровоз', 'круизный лайнер', 'шлюпка'],
-  ['фургон', 'пожарная машина', 'самосвал'],
-];
+const S = scope('sp.imagenet');
+
+// По три «узких» класса ImageNet на каждую крупную категорию картинок-примеров (названия — fine.<категория>.<k>)
+const FINE = Array.from({ length: 10 }, (_, g) => [0, 1, 2].map(k => S(`fine.${g}.${k}`)));
 // Похожие категории — с ними демо-«сеть» чаще всего путает
 const CONFUSED = { 0: [2, 8], 1: [9, 8], 2: [0, 6], 3: [5, 4], 4: [7, 5], 5: [3, 7], 6: [2, 3], 7: [4, 5], 8: [0, 1], 9: [1, 8] };
 const RESULT_CLASSES = FINE.flat();
@@ -21,29 +14,29 @@ const RESULT_CLASSES = FINE.flat();
 export default {
   meta: {
     id: 'imagenet',
-    title: 'ImageNet: 1000 классов и ResNet-50',
+    title: S('title'),
     category: 'vision',
     order: 40,
     level: 2,
     fidelity: 'demo',
-    fidelityNote: 'Архитектура ResNet-50 показана точно, но ответ демонстрационный: 25 млн весов слишком тяжелы для страницы.',
-    summary: 'Как устроена «большая» классификация: картинка 224×224 проходит через 50 слоёв ResNet и превращается в вероятности 1000 классов.',
-    uses: 'Поиск по фото, распознавание товаров и растений, «предобученные» сети-основы для медицины, беспилотников и робототехники.',
-    tags: ['CNN', 'ResNet', 'ImageNet', 'классификация', 'transfer learning'],
+    fidelityNote: S('fidelityNote'),
+    summary: S('summary'),
+    uses: S('uses'),
+    tags: ['CNN', 'ResNet', 'ImageNet', 'classification', 'transfer learning'],
     preview: { blocks: [[1, 0.2], [0.75, 0.45], [0.6, 0.45], [0.6, 0.65], [0.42, 0.75], [0.3, 0.85], [0.18, 0.95], [0.45, 0.12], [0.35, 0.12]], skips: [[3, 4], [4, 5], [5, 6]] },
   },
 
   type: 'stack',
   layers: [
-    { name: 'Вход 224×224', kind: 'input', shape: [224, 224, 3], maps: true, slices: 1, note: 'Фотография, уменьшенная до 224×224. Здесь — упрощённая синтетическая картинка.' },
-    { name: 'Свёртка 7×7, шаг 2', kind: 'conv', kernel: 7, shape: [112, 112, 64], params: 9472 },
+    { name: S('l.input'), kind: 'input', shape: [224, 224, 3], maps: true, slices: 1, note: S('n.input') },
+    { name: S('l.conv'), kind: 'conv', kernel: 7, shape: [112, 112, 64], params: 9472 },
     { name: 'Max-pooling', kind: 'pool', shape: [56, 56, 64] },
-    { name: 'Стадия 1', kind: 'conv', repeat: 3, shape: [56, 56, 256], params: 215808, note: '3 «бутылочных» блока: свёртки 1×1 → 3×3 → 1×1 и остаточная связь вокруг каждого.' },
-    { name: 'Стадия 2', kind: 'conv', repeat: 4, shape: [28, 28, 512], params: 1219584, note: '4 блока; в начале стадии размер карты уменьшается вдвое, а каналов становится вдвое больше.' },
-    { name: 'Стадия 3', kind: 'conv', repeat: 6, shape: [14, 14, 1024], params: 7098368, note: '6 блоков — самая «глубокая» часть сети.' },
-    { name: 'Стадия 4', kind: 'conv', repeat: 3, shape: [7, 7, 2048], params: 14964736 },
-    { name: 'Global average pooling', kind: 'pool', shape: [2048], note: 'Каждая из 2048 карт 7×7 усредняется в одно число.' },
-    { name: 'Softmax, 1000 классов', kind: 'output', shape: [1000], params: 2049000 },
+    { name: S('l.stage', { n: 1 }), kind: 'conv', repeat: 3, shape: [56, 56, 256], params: 215808, note: S('n.stage1') },
+    { name: S('l.stage', { n: 2 }), kind: 'conv', repeat: 4, shape: [28, 28, 512], params: 1219584, note: S('n.stage2') },
+    { name: S('l.stage', { n: 3 }), kind: 'conv', repeat: 6, shape: [14, 14, 1024], params: 7098368, note: S('n.stage3') },
+    { name: S('l.stage', { n: 4 }), kind: 'conv', repeat: 3, shape: [7, 7, 2048], params: 14964736 },
+    { name: 'Global average pooling', kind: 'pool', shape: [2048], note: S('n.gap') },
+    { name: S('l.out'), kind: 'output', shape: [1000], params: 2049000 },
   ],
   totalParams: 25557032,
   skips: [
@@ -76,31 +69,16 @@ export default {
     };
   },
 
-  intro: `
-    <p>ImageNet — 1,28 млн фотографий 1000 классов (от «золотистого ретривера» до «контейнеровоза»).
-    Ежегодный конкурс ILSVRC на этом наборе стал «олимпиадой» компьютерного зрения:
-    AlexNet (2012) ошибалась в топ-5 в 15,3% случаев, ResNet (2015) — уже в 3,6%, лучше среднего человека.</p>`,
+  intro: S('introHtml'),
 
   sections: [
-    {
-      title: 'Что здесь настоящее',
-      html: `<p><b>Настоящее:</b> архитектура ResNet-50 — размеры всех стадий, число блоков и параметров (25,6 млн), остаточные связи.</p>
-        <p><b>Упрощено:</b> 25 миллионов весов и вычисления на 224×224 слишком тяжелы для страницы, поэтому ответ
-        демонстрационный — правдоподобное распределение вероятностей, согласованное с категорией картинки.
-        Показано 30 из 1000 классов. Как по-настоящему работают свёртки, смотрите в пространствах MNIST и CIFAR-10.</p>`,
-    },
-    {
-      title: 'Top-1 и top-5',
-      open: false,
-      html: `<p>В ImageNet часто считают <b>top-5 accuracy</b>: ответ засчитывается, если правильный класс есть среди пяти самых вероятных.
-        Это честно для похожих классов — отличить «египетскую кошку» от «полосатой» трудно даже человеку.</p>`,
-    },
+    { title: S('realTitle'), html: S('realHtml') },
+    { title: S('topTitle'), open: false, html: S('topHtml') },
   ],
 
   explainResult(result, { classes }) {
     const order = result.probs.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]).slice(0, 5);
-    return `<p>Top-5: ${order.map(([p, i]) => `«${classes[i]}» ${Math.round(p * 100)}%`).join(', ')}.
-      Обратите внимание: соседние по смыслу классы получают заметные вероятности — сеть уверена в категории,
-      но сомневается в породе или модели. <span class="muted">(Демонстрационные числа.)</span></p>`;
+    const list = order.map(([p, i]) => S.t('item', { name: str(classes[i]), p: Math.round(p * 100) })).join(', ');
+    return S.h('explainHtml', { list });
   },
 };

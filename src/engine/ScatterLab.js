@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { BaseLab, MODE_TOGGLE_HTML, bindModeToggle } from './BaseLab.js';
+import { BaseLab, modeToggleHtml, bindModeToggle } from './BaseLab.js';
 import { makeLabel, makeLines, setLineResolution, GROUP_COLORS, disposeTree } from './three-utils.js';
 import { escapeHtml } from './format.js';
+import { L, Tx, TA, str, isText, setT, setText } from '../i18n/i18n.js';
 import { seededRandom } from './models/mlp.js';
 import { PALETTE } from './palette.js';
 
@@ -13,21 +14,23 @@ import { PALETTE } from './palette.js';
  *   controls: [{ id, kind: 'select' | 'button' | 'auto', label, options?, run(state, value) → view }]
  *   initialView?(state) → view
  *   describe(point, state) → { tooltip, html }
- *   axes?: ['подпись X', 'подпись Y', 'подпись Z']
+ *   axes?: [X, Y, Z] — подписи осей (строки или L(...)); все подписи и тексты view тоже могут быть L(...), view.html — строка или () => html
  *
  * view: { points?: { id: { pos?, group? } }, highlight?: [ids], lines?: [{ from, to, color?, width?, label?, arrow? }],
  *         markers?: [{ id, pos, label, color?, info? }], html?, status? }
  */
+const setLabel = (el, x) => (isText(x) ? setT(el, x) : setText(el, x));
+
 export class ScatterLab extends BaseLab {
   constructor(space, dom) {
     super(space, dom);
     const s = space;
     this.mount({
-      controls: `${(s.controls ?? []).map(c => this.controlHtml(c)).join('')}${MODE_TOGGLE_HTML}`,
-      resultTitle: s.resultTitle ?? 'Результат',
-      hoverHint: 'Наведите курсор на точку, чтобы увидеть подробности.',
-      cards: s.legendHtml ? [{ title: 'Как читать сцену', open: !(s.sections?.length), html: s.legendHtml }] : [],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг. N — показать/скрыть координаты.',
+      controls: `${(s.controls ?? []).map(c => this.controlHtml(c)).join('')}${modeToggleHtml()}`,
+      resultTitle: s.resultTitle ?? L('lab.result'),
+      hoverHint: L('scatter.hoverHint'),
+      cards: s.legendHtml ? [{ title: L('tl.howToRead'), open: !(s.sections?.length), html: s.legendHtml }] : [],
+      hint: L('scatter.hint'),
     });
     this.group = new THREE.Group();
     this.overlay = new THREE.Group();
@@ -46,30 +49,30 @@ export class ScatterLab extends BaseLab {
 
   controlHtml(c) {
     if (c.kind === 'select') {
-      return `<label for="c-${c.id}">${escapeHtml(c.label)}</label>
-        <select id="c-${c.id}">${c.options.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('')}</select>`;
+      return `<label for="c-${c.id}">${Tx(c.label)}</label>
+        <select id="c-${c.id}">${c.options.map(o => `<option value="${escapeHtml(o.value)}" ${isText(o.label) ? TA(o.label) : ''}>${escapeHtml(str(o.label))}</option>`).join('')}</select>`;
     }
     if (c.kind === 'range') {
-      return `<label for="c-${c.id}">${escapeHtml(c.label)}: <b id="c-${c.id}-v">${c.value}</b></label>
+      return `<label for="c-${c.id}">${Tx(c.label)}: <b id="c-${c.id}-v">${c.value}</b></label>
         <input id="c-${c.id}" type="range" min="${c.min}" max="${c.max}" step="${c.step ?? 1}" value="${c.value}" />`;
     }
-    return `<button id="c-${c.id}" class="${c.primary ? 'primary' : ''}" style="width:100%;margin-top:8px">${escapeHtml(c.label)}</button>`;
+    return `<button id="c-${c.id}" class="${c.primary ? 'primary' : ''}" style="width:100%;margin-top:8px">${Tx(c.label)}</button>`;
   }
 
   async init() {
     const s = this.space;
-    this.setStatus('Подготовка…');
+    this.setStatus(L('scatter.preparing'));
     try {
       this.state = await s.setup({ rnd: seededRandom(7), onProgress: t => this.setStatus(t) });
     } catch (e) {
       console.error(e);
-      this.setStatus(`Ошибка подготовки: ${e.message}`, true);
+      this.setStatus(L('scatter.prepareFailed', { msg: e.message }), true);
       return;
     }
     this.buildPoints();
     this.bindControls();
     this.apply(s.initialView?.(this.state) ?? {});
-    if (!this.$('status').textContent.startsWith('Ошибка')) this.setStatus(this.state.status ?? 'Готово');
+    if (!this.$('status').classList.contains('error')) this.setStatus(this.state.status ?? L('stack.ready'));
   }
 
   groupColor(g) {
@@ -91,7 +94,7 @@ export class ScatterLab extends BaseLab {
       }));
       m.position.set(...p.pos);
       m.userData.point = p;
-      m.userData.info = () => this.space.describe?.(p, this.state) ?? { tooltip: p.label, html: `<h3>${escapeHtml(p.label)}</h3>` };
+      m.userData.info = () => this.space.describe?.(p, this.state) ?? { tooltip: str(p.label), html: `<h3>${escapeHtml(str(p.label))}</h3>` };
       if (p.label && !this.space.hideLabels) {
         // labelOffset: [dx, dy] — сдвиг подписи, чтобы соседние не слипались; dx < 0 — подпись слева от точки
         const [dx, dy] = p.labelOffset ?? [0, 0];
@@ -223,7 +226,7 @@ export class ScatterLab extends BaseLab {
         l.position.set(0, 0.3, 0);
         m.add(l);
       }
-      m.userData.info = mk.info ? () => mk.info : null;
+      m.userData.info = mk.info ? (typeof mk.info === 'function' ? mk.info : () => mk.info) : null;
       this.overlay.add(m);
       this.markerMeshes.push(m);
     }
@@ -263,7 +266,7 @@ export class ScatterLab extends BaseLab {
         // Кнопка-переключатель: повторяет run каждые interval мс, пока run не вернёт done
         el.addEventListener('click', () => {
           if (this.autoTimer) return this.stopAuto(c, el);
-          el.textContent = c.stopLabel ?? '⏸ Пауза';
+          setLabel(el, c.stopLabel ?? L('grid.pause'));
           this.autoTimer = setInterval(() => {
             const v = c.run(this.state);
             this.apply(v);
@@ -279,6 +282,6 @@ export class ScatterLab extends BaseLab {
   stopAuto(c, el) {
     clearInterval(this.autoTimer);
     this.autoTimer = null;
-    el.textContent = c.label;
+    setLabel(el, c.label);
   }
 }

@@ -1,16 +1,17 @@
 import * as THREE from 'three';
-import { BaseLab, MODE_TOGGLE_HTML, bindModeToggle } from './BaseLab.js';
+import { BaseLab, modeToggleHtml, bindModeToggle } from './BaseLab.js';
 import { makeLabel, makeLines, setLineResolution, paintValue, valueMaterial } from './three-utils.js';
 import { lineChartSvg } from './chart.js';
 import { seededRandom } from './models/mlp.js';
 import { PALETTE } from './palette.js';
-import { formatValue } from './format.js';
+import { formatValue, fmtSigned } from './format.js';
+import { L, T, t, t as t_, H, setT } from '../i18n/i18n.js';
 
 const ACTIONS = [
-  { name: 'вверх', dr: -1, dc: 0, arrow: '↑' },
-  { name: 'вправо', dr: 0, dc: 1, arrow: '→' },
-  { name: 'вниз', dr: 1, dc: 0, arrow: '↓' },
-  { name: 'влево', dr: 0, dc: -1, arrow: '←' },
+  { name: L('grid.act.up'), dr: -1, dc: 0, arrow: '↑' },
+  { name: L('grid.act.right'), dr: 0, dc: 1, arrow: '→' },
+  { name: L('grid.act.down'), dr: 1, dc: 0, arrow: '↓' },
+  { name: L('grid.act.left'), dr: 0, dc: -1, arrow: '←' },
 ];
 
 /**
@@ -22,32 +23,32 @@ export class GridLab extends BaseLab {
     super(space, dom);
     const s = space;
     const P = s.params ?? {};
-    const slider = (id, label, v, min, max, step) => `<label for="${id}">${label}: <b id="${id}-v">${v}</b></label>
+    const slider = (id, label, v, min, max, step) => `<label for="${id}">${T(label)}: <b id="${id}-v">${v}</b></label>
       <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}" />`;
     this.mount({
       controls: `
         <div class="row">
-          <button id="step">Шаг агента</button>
-          <button id="play" class="primary">▶ Авто</button>
+          <button id="step">${T('grid.step')}</button>
+          <button id="play" class="primary">${T('grid.auto')}</button>
         </div>
         <div class="row">
-          <button id="fast">+100 эпизодов быстро</button>
-          <button id="best">Показать лучший путь</button>
+          <button id="fast">${T('grid.fast')}</button>
+          <button id="best">${T('grid.best')}</button>
         </div>
-        ${slider('epsilon', 'ε — доля случайных ходов (исследование)', P.epsilon ?? 0.2, 0, 1, 0.05)}
-        ${slider('alpha', 'α — скорость обучения', P.alpha ?? 0.5, 0.05, 1, 0.05)}
-        ${slider('gamma', 'γ — важность будущих наград', P.gamma ?? 0.9, 0, 0.99, 0.01)}
-        <button id="reset" style="width:100%;margin-top:8px">Сбросить знания агента</button>
-        ${MODE_TOGGLE_HTML}`,
-      resultTitle: 'Обучение агента',
-      hoverHint: 'Наведите курсор на клетку, чтобы увидеть Q-значения её действий.',
-      cards: [{ title: 'Как читать сцену', open: !(s.sections?.length), html: `
+        ${slider('epsilon', 'grid.epsilon', P.epsilon ?? 0.2, 0, 1, 0.05)}
+        ${slider('alpha', 'grid.alpha', P.alpha ?? 0.5, 0.05, 1, 0.05)}
+        ${slider('gamma', 'grid.gamma', P.gamma ?? 0.9, 0, 0.99, 0.01)}
+        <button id="reset" style="width:100%;margin-top:8px">${T('grid.reset')}</button>
+        ${modeToggleHtml()}`,
+      resultTitle: L('grid.resultTitle'),
+      hoverHint: L('grid.hoverHint'),
+      cards: [{ title: L('tl.howToRead'), open: !(s.sections?.length), html: `
         <ul class="legend">
-          <li><span class="dot" style="background:#2f9bff;box-shadow:0 0 8px #2f9bff"></span><span><b>Синий шар — агент.</b> Он ходит по клеткам и получает награды.</span></li>
-          <li><span class="dot" style="background:#ffd166"></span><span><b>Золотая клетка — цель</b> (+${s.rewards.goal}), <b class="bad">красные — ямы</b> (${s.rewards.pit}), серые блоки — стены. Каждый шаг стоит ${s.rewards.step}.</span></li>
-          <li><span class="dot glow-pos"></span><span><b>Стрелки в клетке</b> — четыре действия. Цвет — Q-значение: <b class="pos">тёплый</b> — действие ведёт к награде, <b class="neg">холодный</b> — к штрафу. Самая большая стрелка — лучшее действие.</span></li>
+          <li><span class="dot" style="background:#2f9bff;box-shadow:0 0 8px #2f9bff"></span><span>${T('grid.legendAgentHtml')}</span></li>
+          <li><span class="dot" style="background:#ffd166"></span><span>${T('grid.legendCellsHtml', { goal: s.rewards.goal, pit: s.rewards.pit, step: s.rewards.step })}</span></li>
+          <li><span class="dot glow-pos"></span><span>${T('grid.legendArrowsHtml')}</span></li>
         </ul>` }],
-      hint: 'Мышь: ЛКМ — вращать · колесо — масштаб · ПКМ — сдвиг. Пробел — авто, N — Q-значения.',
+      hint: L('grid.hint'),
     });
 
     this.parse();
@@ -91,9 +92,9 @@ export class GridLab extends BaseLab {
         this.group.add(tile);
         this.tiles[r][c] = tile;
         const tag = (cls, text, x, y, z) => { const l = makeLabel(cls, text); l.position.set(x, y, z); tile.add(l); };
-        if (t === 'G') tag('name-label', `цель +${this.space.rewards.goal}`, 0, 0.35, 0);
-        if (t === 'X') tag('name-label', `яма ${this.space.rewards.pit}`, 0, 0.35, 0);
-        if (t === 'S') tag('dim-label', 'старт', 0, -0.25, 0.42);
+        if (t === 'G') tag('name-label', L('grid.goalTag', { v: this.space.rewards.goal }), 0, 0.35, 0);
+        if (t === 'X') tag('name-label', L('grid.pitTag', { v: this.space.rewards.pit }), 0, 0.35, 0);
+        if (t === 'S') tag('dim-label', L('grid.start'), 0, -0.25, 0.42);
         if (wall || this.isTerminal(r, c)) continue;
         this.arrows[r][c] = ACTIONS.map(a => {
           const m = new THREE.Mesh(coneGeo, valueMaterial());
@@ -127,7 +128,7 @@ export class GridLab extends BaseLab {
     this.startEpisode();
     this.refreshQ();
     this.render();
-    this.setStatus('Агент ничего не знает: все Q = 0. Нажмите «Авто» или «Шаг агента».');
+    this.setStatus(L('grid.fresh'));
   }
 
   startEpisode() {
@@ -174,7 +175,7 @@ export class GridLab extends BaseLab {
       this.rewards.push(this.epReward);
       this.stepsHist.push(this.epSteps);
       this.episode++;
-      this.lastEnd = t === 'G' ? 'дошёл до цели' : t === 'X' ? 'упал в яму' : 'не успел за 80 шагов';
+      this.lastEnd = L(t === 'G' ? 'grid.endGoal' : t === 'X' ? 'grid.endPit' : 'grid.endTimeout');
       if (animate) this.pendingRestart = true;
       else this.startEpisode();
     }
@@ -203,29 +204,31 @@ export class GridLab extends BaseLab {
       return w.reduce((a, b) => a + b, 0) / w.length;
     });
     const u = this.lastUpdate;
-    this.setResult(`
-      <p>Эпизод <b>${this.episode + 1}</b>, шаг ${this.epSteps} · награда за эпизод ${formatValue(this.epReward, 2)}
-        ${this.lastEnd ? `<br /><span class="muted small">Прошлый эпизод: агент ${this.lastEnd}.</span>` : ''}</p>
-      ${u ? `<p class="small">Последнее обновление в клетке (${u.r + 1}, ${u.c + 1}), действие «${ACTIONS[u.a].name}»:<br />
-        Q ← ${formatValue(u.old, 3)} + ${u.alpha} · (${formatValue(u.reward, 2)} + ${u.gamma} · ${formatValue(u.maxNext, 3)} − ${formatValue(u.old, 3)}) = <b class="num">${formatValue(u.value, 3)}</b></p>` : ''}
-      <p class="list-title">Награда за эпизод (линия — среднее за 10)</p>
-      ${lineChartSvg([{ values: this.rewards, color: 'rgba(var(--line), .6)' }, { values: avg, color: '#ffd166' }], { xLabel: 'эпизод', yLabel: 'награда' })}
-      <p class="list-title">Шагов до конца эпизода</p>
-      ${lineChartSvg([{ values: this.stepsHist, color: '#2f9bff' }], { xLabel: 'эпизод', yLabel: 'шаги', height: 110 })}`);
+    const f = fmtSigned;
+    this.setResult(() => `
+      <p>${t('grid.episodeHtml', { ep: this.episode + 1, step: this.epSteps, r: f(this.epReward, 2) })}
+        ${this.lastEnd ? `<br /><span class="muted small">${H('grid.lastEpisode', { end: this.lastEnd })}</span>` : ''}</p>
+      ${u ? `<p class="small">${H('grid.lastUpdate', { r: u.r + 1, c: u.c + 1, a: ACTIONS[u.a].name })}<br />
+        Q ← ${f(u.old, 3)} + ${u.alpha} · (${f(u.reward, 2)} + ${u.gamma} · ${f(u.maxNext, 3)} − ${f(u.old, 3)}) = <b class="num">${f(u.value, 3)}</b></p>` : ''}
+      <p class="list-title">${H('grid.rewardChart')}</p>
+      ${lineChartSvg([{ values: this.rewards, color: 'rgba(var(--line), .6)' }, { values: avg, color: '#ffd166' }], { xLabel: t('grid.episode'), yLabel: t('grid.reward') })}
+      <p class="list-title">${H('grid.stepsChart')}</p>
+      ${lineChartSvg([{ values: this.stepsHist, color: '#2f9bff' }], { xLabel: t('grid.episode'), yLabel: t('grid.steps'), height: 110 })}`);
     if (this.hovered) this.refreshHover();
   }
 
   cellInfo(r, c) {
     const t = this.cellType(r, c);
-    if (t === '#') return { tooltip: 'Стена', html: '<h3>Стена</h3><p>Сюда нельзя пройти: агент остаётся на месте и получает штраф за шаг.</p>' };
-    if (t === 'G') return { tooltip: 'Цель', html: `<h3>Цель</h3><p>Награда <b class="pos">+${this.space.rewards.goal}</b>, эпизод заканчивается.</p>` };
-    if (t === 'X') return { tooltip: 'Яма', html: `<h3>Яма</h3><p>Штраф <b class="neg">${this.space.rewards.pit}</b>, эпизод заканчивается.</p>` };
+    if (t === '#') return { tooltip: t_('grid.wall'), html: `<h3>${H('grid.wall')}</h3><p>${H('grid.wallInfo')}</p>` };
+    if (t === 'G') return { tooltip: t_('grid.goal'), html: `<h3>${H('grid.goal')}</h3><p>${t_('grid.goalInfoHtml', { v: this.space.rewards.goal })}</p>` };
+    if (t === 'X') return { tooltip: t_('grid.pit'), html: `<h3>${H('grid.pit')}</h3><p>${t_('grid.pitInfoHtml', { v: this.space.rewards.pit })}</p>` };
     const q = this.Q[r][c], best = Math.max(...q);
+    const cell = t_('grid.cell', { r: r + 1, c: c + 1 });
     return {
-      tooltip: `Клетка (${r + 1}, ${c + 1}) · лучшее: ${ACTIONS[q.indexOf(best)].arrow} ${formatValue(best, 2)}`,
-      html: `<h3>Клетка (${r + 1}, ${c + 1})</h3>
-        <table class="arch-table"><tbody>${ACTIONS.map((a, i) => `<tr><td>${a.arrow} ${a.name}</td><td class="num ${q[i] > 0 ? 'pos' : q[i] < 0 ? 'neg' : 'muted'}">${formatValue(q[i], 3)}</td><td>${q[i] === best && best !== 0 ? '<b>лучшее</b>' : ''}</td></tr>`).join('')}</tbody></table>
-        <p class="small muted">Q(s, a) — ожидаемая суммарная награда, если сделать это действие и дальше действовать наилучшим образом. Агент был здесь ${this.visits[r][c]} раз.</p>`,
+      tooltip: `${cell} · ${t_('grid.bestShort')}: ${ACTIONS[q.indexOf(best)].arrow} ${fmtSigned(best, 2)}`,
+      html: `<h3>${cell}</h3>
+        <table class="arch-table"><tbody>${ACTIONS.map((a, i) => `<tr><td>${a.arrow} ${H(a.name)}</td><td class="num ${q[i] > 0 ? 'pos' : q[i] < 0 ? 'neg' : 'muted'}">${fmtSigned(q[i], 3)}</td><td>${q[i] === best && best !== 0 ? `<b>${H('grid.bestShort')}</b>` : ''}</td></tr>`).join('')}</tbody></table>
+        <p class="small muted">${H('grid.qInfo', { n: this.visits[r][c] })}</p>`,
     };
   }
 
@@ -250,7 +253,7 @@ export class GridLab extends BaseLab {
     setLineResolution(this.bestPath, this.kit.width, this.kit.height);
     this.group.add(this.bestPath);
     const reached = this.cellType(...cell) === 'G';
-    this.setStatus(reached ? `Лучший путь (по максимуму Q) доходит до цели за ${segs.length} шагов` : 'Агент пока не знает пути до цели — обучите его дольше');
+    this.setStatus(reached ? L('grid.pathFound', { n: segs.length }) : L('grid.pathUnknown'));
   }
 
   frame(dt) {
@@ -267,7 +270,7 @@ export class GridLab extends BaseLab {
     this.step(true);
     this.refreshQ();
     this.render();
-    this.setStatus(`Эпизод ${this.episode + 1}, шаг ${this.epSteps}`);
+    this.setStatus(L('grid.progress', { ep: this.episode + 1, step: this.epSteps }));
   }
 
   bindControls() {
@@ -276,7 +279,7 @@ export class GridLab extends BaseLab {
     }
     const togglePlay = () => {
       this.playing = !this.playing;
-      this.$('play').textContent = this.playing ? '⏸ Пауза' : '▶ Авто';
+      setT(this.$('play'), this.playing ? 'grid.pause' : 'grid.auto');
     };
     this.$('play').addEventListener('click', togglePlay);
     this.onKey('Space', togglePlay);
@@ -294,7 +297,7 @@ export class GridLab extends BaseLab {
       this.startEpisode();
       this.refreshQ();
       this.render();
-      this.setStatus(`Сыграно ещё 100 эпизодов (всего ${this.episode})`);
+      this.setStatus(L('grid.played100', { n: this.episode }));
     });
     this.$('best').addEventListener('click', () => this.showBestPath());
     this.$('reset').addEventListener('click', () => this.reset());

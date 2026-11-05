@@ -1,13 +1,15 @@
 // Отдельная функция активации (если слою она не задана).
+import { L } from '../../i18n/i18n.js';
+
 export default {
   id: 'activation',
-  title: 'Активация',
+  title: L('blk.activation.title'),
   group: 'model',
-  info: 'Применяет функцию к каждому выходу предыдущего слоя: ReLU, tanh, sigmoid или softmax (вероятности классов).',
-  inputs: [{ id: 'model', title: 'Модель', types: ['model'] }],
-  outputs: [{ id: 'model', title: 'Модель', type: 'model' }],
+  info: L('blk.activation.info'),
+  inputs: [{ id: 'model', title: L('blk.port.model'), types: ['model'] }],
+  outputs: [{ id: 'model', title: L('blk.port.model'), type: 'model' }],
   params: [
-    { id: 'fn', title: 'Функция', kind: 'select', options: [['relu', 'ReLU'], ['tanh', 'tanh'], ['sigmoid', 'sigmoid'], ['softmax', 'softmax']], default: 'relu' },
+    { id: 'fn', title: L('blk.activation.p.fn'), kind: 'select', options: [['relu', 'ReLU'], ['tanh', 'tanh'], ['sigmoid', 'sigmoid'], ['softmax', 'softmax']], default: 'relu' },
   ],
   summary: p => p.fn,
   run({ inputs, params: p }) {

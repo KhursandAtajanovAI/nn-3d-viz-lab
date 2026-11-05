@@ -5,6 +5,9 @@
 //
 // Форма данных: [n] — вектор, [h, w, c] — картинка (хранится плоско, порядок HWC).
 
+import { L as Lt } from '../../i18n/i18n.js';
+import { fail } from './fail.js';
+
 const size = shape => shape.reduce((a, b) => a * b, 1);
 
 /** Детерминированный генератор (mulberry32) */
@@ -72,7 +75,7 @@ export const ACTIVATION_NAMES = ['relu', 'tanh', 'sigmoid', 'softmax', 'linear']
 
 class Activation {
   constructor(inShape, fn) {
-    if (!ACT[fn] && fn !== 'softmax') throw new Error(`Неизвестная активация «${fn}»`);
+    if (!ACT[fn] && fn !== 'softmax') throw fail('graph.err.unknownActivation', { fn });
     this.type = 'activation';
     this.fn = fn;
     this.outShape = inShape;
@@ -108,9 +111,9 @@ class Activation {
 
 class Conv2D {
   constructor(inShape, filters, k, r) {
-    if (inShape.length !== 3) throw new Error('Свёртке нужен вход-картинка (h × w × каналы) — подключите датасет изображений');
+    if (inShape.length !== 3) throw fail('graph.err.convNeedsImage');
     const [h, w, c] = inShape;
-    if (k > h || k > w) throw new Error(`Ядро ${k}×${k} больше картинки ${h}×${w}`);
+    if (k > h || k > w) throw fail('graph.err.kernelTooBig', { k, h, w });
     this.type = 'conv';
     Object.assign(this, { h, w, c, k, filters, oh: h - k + 1, ow: w - k + 1 });
     this.outShape = [this.oh, this.ow, filters];
@@ -156,9 +159,9 @@ class Conv2D {
 
 class MaxPool {
   constructor(inShape, p) {
-    if (inShape.length !== 3) throw new Error('Пулингу нужен вход-картинка (после свёртки)');
+    if (inShape.length !== 3) throw fail('graph.err.poolNeedsImage');
     const [h, w, c] = inShape;
-    if (h < p || w < p) throw new Error(`Окно пулинга ${p}×${p} больше карты ${h}×${w}`);
+    if (h < p || w < p) throw fail('graph.err.poolTooBig', { p, h, w });
     this.type = 'pool';
     Object.assign(this, { h, w, c, p, oh: Math.floor(h / p), ow: Math.floor(w / p) });
     this.outShape = [this.oh, this.ow, c];
@@ -220,7 +223,7 @@ export class Network {
         if (s.activation && s.activation !== 'linear') push(new Activation(shape, s.activation));
       } else if (s.type === 'pool') push(new MaxPool(shape, s.size));
       else if (s.type === 'flatten') push(new Flatten(shape));
-      else throw new Error(`Неизвестный слой «${s.type}»`);
+      else throw fail('graph.err.unknownLayer', { type: s.type });
     }
     this.outputShape = shape;
     this.params = this.layers.flatMap(L => L.params);
@@ -307,7 +310,7 @@ export class Network {
 
   /** Краткое описание слоёв для вывода */
   summary() {
-    const name = L => ({ dense: `Полносвязный ${L.units}`, activation: L.fn, conv: `Свёртка ${L.filters}×${L.k}×${L.k}`, pool: `Пулинг ${L.p}×${L.p}`, flatten: 'В вектор' })[L.type];
+    const name = L => ({ dense: Lt('graph.layer.dense', { n: L.units }), activation: L.fn, conv: Lt('graph.layer.conv', { f: L.filters, k: L.k }), pool: Lt('graph.layer.pool', { p: L.p }), flatten: Lt('graph.layer.flatten') })[L.type];
     return this.layers.map(L => ({ name: name(L), shape: L.outShape, params: L.params.reduce((a, p) => a + p.w.length, 0) }));
   }
 }

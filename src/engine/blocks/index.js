@@ -2,18 +2,20 @@
 //
 //   export default {
 //     id: 'my-block',                 // латиница, цифры и дефис (хранится в файле пространства)
-//     title: 'Название', group: 'data' | 'prep' | 'model' | 'train' | 'result',
-//     info: 'Подсказка в палитре',
-//     inputs:  [{ id: 'data', title: 'Данные', types: ['data', 'split'], optional?: true }],
-//     outputs: [{ id: 'out', title: 'Данные', type: 'data' }],   // type: 'same:<id входа>' — как у входа
-//     params:  [{ id: 'units', title: '…', kind: 'number' | 'select' | 'text' | 'bool' | 'dataset', default, … }],
-//     summary?: params => 'строка под заголовком',
+//     title: L('blk.my-block.title'), group: 'data' | 'prep' | 'model' | 'train' | 'result',
+//     info: L('blk.my-block.info'),   // подсказка в палитре; все тексты — L(...) из словарей src/i18n/<язык>/graph.js
+//     inputs:  [{ id: 'data', title: L('blk.port.data'), types: ['data', 'split'], optional?: true }],
+//     outputs: [{ id: 'out', title: L('blk.port.data'), type: 'data' }],   // type: 'same:<id входа>' — как у входа
+//     params:  [{ id: 'units', title: L('…'), kind: 'number' | 'select' | 'text' | 'bool' | 'dataset', default, … }],
+//     summary?: params => L('blk.my-block.summary', { … }),   // строка под заголовком (строка или L)
 //     long?: true,                     // долгий блок: показывать прогресс (ctx.tick)
 //     run({ inputs, params, ctx }) → { outputs?: { [portId]: value }, view?: Element | Element[] }
 //   }
 //
 // Чтобы добавить блок, создайте файл и допишите его в список ниже — ядро (редактор и исполнитель) менять не нужно.
 // Типы портов: data — таблица, split — train/test, model — описание слоёв, trained — обученная модель.
+
+import { L } from '../../i18n/i18n.js';
 
 const FILES = [
   'data-example', 'data-file',
@@ -24,18 +26,18 @@ const FILES = [
 ];
 
 export const GROUPS = [
-  ['data', 'Данные'],
-  ['prep', 'Подготовка'],
-  ['model', 'Модель'],
-  ['train', 'Обучение'],
-  ['result', 'Результаты'],
+  ['data', L('graph.group.data')],
+  ['prep', L('graph.group.prep')],
+  ['model', L('graph.group.model')],
+  ['train', L('graph.group.train')],
+  ['result', L('graph.group.result')],
 ];
 
 export const PORT_TYPES = {
-  data: 'таблица данных',
-  split: 'train / test',
-  model: 'модель (слои)',
-  trained: 'обученная модель',
+  data: L('graph.portType.data'),
+  split: L('graph.portType.split'),
+  model: L('graph.portType.model'),
+  trained: L('graph.portType.trained'),
 };
 
 /** Загрузить все блоки; блок с ошибкой пропускается (с предупреждением в консоли) */
@@ -44,7 +46,7 @@ export async function loadBlocks() {
   const blocks = new Map();
   res.forEach((r, i) => {
     const b = r.status === 'fulfilled' ? r.value.default : null;
-    if (!b?.id || typeof b.run !== 'function') { console.warn(`Блок ${FILES[i]} не загрузился`, r.reason); return; }
+    if (!b?.id || typeof b.run !== 'function') { console.warn(`Block ${FILES[i]} failed to load`, r.reason); return; }
     blocks.set(b.id, b);
   });
   return blocks;

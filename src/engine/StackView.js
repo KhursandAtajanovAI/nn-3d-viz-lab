@@ -6,6 +6,7 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { PALETTE, IDLE_COLOR as COLOR_IDLE, signColor, setGlow } from './palette.js';
 import { kindInfo, formatShape, formatCount } from './stackKinds.js';
 import { formatValue } from './format.js';
+import { L as Lt, isText, setT, setAttrT } from '../i18n/i18n.js';
 
 const GAP = 0.7;
 const MAX_SPHERES = 12;
@@ -13,7 +14,7 @@ const MAX_SPHERES = 12;
 function label(className, text) {
   const el = document.createElement('div');
   el.className = className;
-  el.textContent = text;
+  if (isText(text)) setT(el, text); else el.textContent = text ?? ''; // L(...) переводится при смене языка
   return new CSS2DObject(el);
 }
 
@@ -168,7 +169,7 @@ export class StackView {
       s.userData.valueLabel = v;
     }
     if (n > ns) {
-      const more = label('shape-label', `⋮ всего ${formatCount(n)}`);
+      const more = label('shape-label', Lt('stack.totalMore', { n: formatCount(n) }));
       more.position.set(0, -((ns - 1) / 2) * step - 0.35, 0);
       item.obj.add(more);
     }
@@ -185,14 +186,16 @@ export class StackView {
       // Чередуем высоту подписей (2 или 3 уровня), чтобы соседние не наезжали друг на друга
       const levels = this.items.length > 8 ? 3 : this.items.length > 5 ? 2 : 1;
       const lift = 0.45 + (i % levels) * 0.5;
-      const name = label('layer-label', `${L.name}${L.repeat > 1 ? ` ×${L.repeat}` : ''}`);
+      const text = L.repeat > 1 ? Lt('stack.repeat', { name: L.name, n: L.repeat }) : L.name;
+      const name = label('layer-label', text);
       name.position.set(it.cx, it.h / 2 + lift, 0);
-      name.element.title = name.element.textContent;
+      if (isText(text)) setAttrT(name.element, 'title', text); else name.element.title = name.element.textContent;
       this.group.add(name);
       it.nameLabel = name;
       const params = ''; // число параметров — в таблице «Сцена» и в «Под курсором», чтобы подписи не наезжали
-      const extra = it.hidden > 0 && L.kind !== 'input' ? ` (показано ${L.shape[2] - it.hidden})` : '';
-      const shape = label('shape-label', `${formatShape(L.shape)}${extra}${params}`);
+      const shape = label('shape-label', it.hidden > 0 && L.kind !== 'input'
+        ? Lt('stack.shapeShown', { shape: formatShape(L.shape), n: L.shape[2] - it.hidden })
+        : `${formatShape(L.shape)}${params}`);
       shape.position.set(it.cx, -it.h / 2 - 0.35, 0);
       shape.visible = this.showNumbers;
       this.group.add(shape);

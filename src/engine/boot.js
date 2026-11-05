@@ -2,6 +2,9 @@
 import { isValidSpaceId } from './catalog.js';
 import { escapeHtml } from './format.js';
 import { isValidUserId } from './spaceFormat.js';
+import { initI18n, t, T, str, onLangChange, langSwitchHtml } from '../i18n/i18n.js';
+
+await initI18n();
 
 // Визуализаторы по полю `type` конфига. Новый тип визуализации = новая строка здесь;
 // сами пространства при этом остаются просто файлами с данными.
@@ -19,18 +22,24 @@ const VISUALIZERS = {
 const sidebar = document.getElementById('sidebar');
 const container = document.getElementById('scene');
 
-function fail(title, details) {
-  document.title = `${title} — NN 3D Viz Lab`;
+let pageTitle = () => 'NN 3D Viz Lab';
+const setTitle = () => { document.title = `${pageTitle()} — NN 3D Viz Lab`; };
+onLangChange(setTitle);
+
+/** Страница ошибки: titleKey и detailsKey — ключи словаря (boot.*), extra — уже экранированный HTML */
+function fail(titleKey, detailsKey, params, extra = '') {
+  pageTitle = () => t(titleKey);
+  setTitle();
   sidebar.innerHTML = `
-    <header class="brand"><a class="back" href="./">← Каталог</a><h1>${escapeHtml(title)}</h1></header>
-    <section class="card"><p>${details}</p></section>`;
+    <header class="brand"><div class="brand-top"><a class="back" href="./">${T('lab.backToCatalog')}</a>${langSwitchHtml()}</div><h1>${T(titleKey)}</h1></header>
+    <section class="card"><p>${T(detailsKey, params)}${extra}</p></section>`;
   container.innerHTML = '';
 }
 
 /** Пользовательское пространство из IndexedDB: space.html?user=<id> */
 async function loadUserSpace(id) {
   if (!isValidUserId(id)) {
-    fail('Пространство не найдено', 'Неверная ссылка на пользовательское пространство. Откройте его из блока «Мои» в <a href="./">каталоге</a>.');
+    fail('boot.notFound', 'boot.badUserLinkHtml');
     return null;
   }
   const [{ getSpace }, { toRuntimeConfig }] = await Promise.all([import('./userStore.js'), import('./userSpace.js')]);
@@ -38,15 +47,15 @@ async function loadUserSpace(id) {
   try {
     rec = await getSpace(id);
   } catch (e) {
-    fail('Хранилище недоступно', escapeHtml(e.message));
+    fail('boot.storageUnavailable', 'boot.errorText', { msg: e.message });
     return null;
   }
   if (!rec) {
-    fail('Пространство не найдено', 'В этом браузере нет такого пространства — возможно, оно удалено или создано в другом браузере. Вернитесь в <a href="./#my-spaces">каталог</a>.');
+    fail('boot.notFound', 'boot.noUserSpaceHtml');
     return null;
   }
   if (!rec.check.ok) {
-    fail('Пространство повреждено', `Сохранённые данные не прошли проверку:<br />${rec.check.errors.map(escapeHtml).join('<br />')}`);
+    fail('boot.damaged', 'boot.damagedText', undefined, `<br />${rec.check.errors.map(escapeHtml).join('<br />')}`);
     return null;
   }
   return toRuntimeConfig(id, rec.check.space);
@@ -61,7 +70,7 @@ async function boot() {
   }
   const id = params.get('id');
   if (!isValidSpaceId(id)) {
-    return fail('Пространство не выбрано', 'Откройте пространство из <a href="./">каталога</a>.');
+    return fail('boot.notSelected', 'boot.notSelectedHtml');
   }
 
   let space;
@@ -69,7 +78,7 @@ async function boot() {
     space = (await import(`../../spaces/${id}.js`)).default;
   } catch (e) {
     console.error(e);
-    return fail('Пространство не найдено', `Не удалось загрузить <code>spaces/${escapeHtml(id)}.js</code>. Вернитесь в <a href="./">каталог</a>.`);
+    return fail('boot.notFound', 'boot.loadFailedHtml', { id });
   }
 
   await start(space);
@@ -78,10 +87,11 @@ async function boot() {
 async function start(space) {
   const load = VISUALIZERS[space.type ?? 'mlp'];
   if (!load) {
-    return fail(space.meta?.title ?? 'Пространство', `Тип визуализации «${escapeHtml(space.type)}» пока не поддерживается.`);
+    return fail('boot.unsupportedTitle', 'boot.unsupported', { type: String(space.type) });
   }
 
-  document.title = `${space.meta.title} — NN 3D Viz Lab`;
+  pageTitle = () => str(space.meta.title);
+  setTitle();
   const Visualizer = await load();
   window.lab = new Visualizer(space, { sidebar, container }); // для отладки из консоли
   // Пользовательское пространство: карточка «Моё пространство» (сохранение и скачивание)

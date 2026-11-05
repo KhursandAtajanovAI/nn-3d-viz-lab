@@ -1,6 +1,8 @@
 // Обучение и оценка модели блочного конструктора (используется блоками «Обучение» и результатов).
 import { Network, rng } from './nn.js';
 import { toXY } from './data.js';
+import { L } from '../../i18n/i18n.js';
+import { fail } from './fail.js';
 
 /** Оценка на выборке: средняя потеря, точность (для классификации), предсказания */
 export function evaluate(net, set, task, loss) {
@@ -47,8 +49,8 @@ export function exportWeights(net) {
 
 /** Почему сохранённые веса не подходят к сети (null — подходят) */
 function savedMismatch(net, saved, sig) {
-  if (saved.sig !== sig) return 'изменились слои, данные или настройки обучения';
-  if (saved.weights.length !== net.params.length || saved.weights.some((w, i) => w.length !== net.params[i].w.length)) return 'не совпадают размеры слоёв';
+  if (saved.sig !== sig) return L('graph.stale.changed');
+  if (saved.weights.length !== net.params.length || saved.weights.some((w, i) => w.length !== net.params[i].w.length)) return L('graph.stale.sizes');
   return null;
 }
 
@@ -66,20 +68,20 @@ const oneHot = (k, n) => { const v = new Float32Array(n); v[k] = 1; return v; };
 export async function trainModel(model, split, p, ctx, saved = null) {
   const train = toXY(split.train);
   const test = toXY(split.test, { classes: train.classes });
-  const warnings = [...train.warnings, ...test.warnings.map(w => `тест: ${w}`)];
+  const warnings = [...train.warnings, ...test.warnings.map(w => L('graph.warn.testPrefix', { w }))];
   const task = train.task;
   const nOut = task === 'class' ? train.classes.length : 1;
-  if (task === 'class' && nOut < 2) throw new Error('В цели только один класс — учить нечему');
+  if (task === 'class' && nOut < 2) throw fail('graph.err.oneClass');
 
   const spec = model.spec.slice();
   if (p.autoOutput) spec.push({ type: 'dense', units: nOut, activation: task === 'class' ? 'softmax' : 'linear' });
   const net = new Network(spec, train.inputShape, p.seed);
   const outSize = net.outputShape.reduce((a, b) => a * b, 1);
   if (outSize !== nOut) {
-    throw new Error(`Выход модели — ${outSize} ${outSize === 1 ? 'число' : 'чисел'}, а нужно ${nOut} (${task === 'class' ? 'по числу классов' : 'одно число'}). Включите «Выходной слой автоматически» или поправьте последний слой`);
+    throw fail('graph.err.outSize', { out: outSize, noun: L('graph.numNoun', { n: outSize }), need: nOut, how: L(task === 'class' ? 'graph.byClasses' : 'graph.oneNumber') });
   }
   const loss = p.loss === 'auto' ? (task === 'class' ? 'ce' : 'mse') : p.loss;
-  if (loss === 'ce' && task !== 'class') throw new Error('Кросс-энтропия — только для классификации; для чисел выберите MSE');
+  if (loss === 'ce' && task !== 'class') throw fail('graph.err.ceOnlyClass');
 
   const sig = signature(spec, train, p);
   const base = { net, task, loss, classes: train.classes, featureNames: train.featureNames, inputShape: train.inputShape, train, test, testData: split.test, warnings, params: p, sig };
@@ -106,7 +108,7 @@ export async function trainModel(model, split, p, ctx, saved = null) {
       for (let k = s; k < end; k++) {
         const i = order[k];
         const res = net.trainSample(train.X[i], target(i), loss);
-        if (!Number.isFinite(res.loss)) throw new Error(`Потеря стала ${res.loss} на эпохе ${e + 1} — уменьшите скорость обучения`);
+        if (!Number.isFinite(res.loss)) throw fail('graph.err.lossNaN', { loss: String(res.loss), epoch: e + 1 });
         lossSum += res.loss;
         if (task === 'class') {
           let best = 0;
@@ -116,7 +118,7 @@ export async function trainModel(model, split, p, ctx, saved = null) {
       }
       net.apply(p.optimizer, p.lr, end - s);
       done += end - s;
-      await ctx.tick(done / total, `Эпоха ${e + 1} из ${p.epochs}`);
+      await ctx.tick(done / total, L('graph.epoch', { e: e + 1, n: p.epochs }));
     }
     const ev = evaluate(net, test, task, loss);
     history.push({

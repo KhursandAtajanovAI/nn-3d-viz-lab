@@ -4,8 +4,9 @@ import { NetworkView } from './NetworkView.js';
 import { ForwardPassAnimation } from './ForwardPassAnimation.js';
 import { MLP } from './models/mlp.js';
 import { sceneHtml, hoverHtml, tooltipText, stageText, resultHtml, outputBarsHtml } from './panels.js';
-import { headerHtml, detailsCardHtml, FORWARD_PASS_HTML, LEGEND_HTML, HINT_HTML } from './sidebar.js';
-import { escapeHtml, formatValue } from './format.js';
+import { headerHtml, detailsCardHtml, forwardPassHtml, legendHtml, hintHtml } from './sidebar.js';
+import { escapeHtml, formatValue, fmtSigned } from './format.js';
+import { t, T, H, L, At, Tx, Hx, TA, AtX, str, isText, setT, setText, onLangChange } from '../i18n/i18n.js';
 import { CustomWeightsPanel } from './customWeights.js';
 import { checkWeights, LIMITS } from './spaceFormat.js';
 
@@ -38,7 +39,17 @@ export class NetworkLab {
     this.initCustomWeights();
     this.rebuildView();
     this.frameCamera();
-    setTimeout(() => this.setStatus(`Сеть ${this.model.layers.join(' → ')} готова`), 0);
+    setTimeout(() => this.setStatus(L('lab.netReady', { arch: this.model.layers.join(' → ') })), 0);
+    onLangChange(() => this.onLang());
+  }
+
+  /** Смена языка: всё, что собрано из данных, перерисовываем (помеченные тексты переводятся сами) */
+  onLang() {
+    this.ui.sceneInfo.innerHTML = sceneHtml(this.ctx, { editable: !!this.space.editable && !this.custom?.applied });
+    if (this.lastResult && this.renderResult) this.renderResult();
+    this.updateStage();
+    this.refreshHover();
+    this.custom?.onLang?.();
   }
 
   // ---------- Конфиг ----------
@@ -68,7 +79,7 @@ export class NetworkLab {
     // Веса, заданные в конфиге (model.weights / model.biases), — только для исходной архитектуры
     if (spec.weights && !layers) {
       const errors = checkWeights(net.layers, spec.weights, spec.biases);
-      if (errors.length) throw new Error(`model.weights: ${errors[0]}`);
+      if (errors.length) throw new Error(`model.weights: ${errors[0]}`); // для автора пространства
       net.restore({ weights: spec.weights, biases: spec.biases });
     }
     return net;
@@ -97,41 +108,41 @@ export class NetworkLab {
       ${headerHtml(s.meta)}
 
       <section class="card">
-        <h2>Управление</h2>
+        <h2>${T('lab.controls')}</h2>
         ${editable ? `
-          <label for="arch">Архитектура (нейронов в каждом слое)</label>
+          <label for="arch">${T('lab.arch')}</label>
           <input id="arch" type="text" value="${spec.layers.join(', ')}" spellcheck="false" />` : ''}
         ${inputs.length ? `
-          <label for="input-preset">Входные данные</label>
+          <label for="input-preset">${T('lab.inputData')}</label>
           <select id="input-preset">
-            ${inputs.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join('')}
-            ${s.randomInput !== false ? `<option value="random" title="${escapeHtml(s.randomInputNote ?? 'Случайные числа в диапазоне [−1, 1]')}">Случайный вход</option>` : ''}
+            ${inputs.map((p, i) => `<option value="${i}" ${isText(p.name) ? TA(p.name) : ''}>${escapeHtml(str(p.name))}</option>`).join('')}
+            ${s.randomInput !== false ? `<option value="random" ${AtX('title', s.randomInputNote ?? L('lab.randomInputHint'))} ${TA('lab.randomInput')}>${H('lab.randomInput')}</option>` : ''}
           </select>
-          ${s.randomInputNote ? `<p id="random-note" class="small muted" hidden>${s.randomInputNote}</p>` : ''}` : ''}
+          ${s.randomInputNote ? `<p id="random-note" class="small muted" hidden>${Hx(s.randomInputNote)}</p>` : ''}` : ''}
         <div class="grid2">
           ${editable ? `
             <div>
-              <label for="activation">Активация скрытых слоёв</label>
+              <label for="activation">${T('lab.hiddenActivation')}</label>
               <select id="activation">
                 ${['tanh', 'relu', 'sigmoid'].map(a => `<option value="${a}"${a === spec.activation ? ' selected' : ''}>${a === 'relu' ? 'ReLU' : a}</option>`).join('')}
               </select>
             </div>` : ''}
           <div${editable ? '' : ' class="span2"'}>
-            <label for="speed">Скорость анимации</label>
+            <label for="speed">${T('lab.speed')}</label>
             <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1.5" />
           </div>
         </div>
         ${editable || s.randomizable !== false ? `
           <div class="row">
-            ${editable ? '<button id="build">Построить</button>' : ''}
-            ${s.randomizable !== false ? '<button id="randomize">Новые веса</button>' : ''}
+            ${editable ? `<button id="build">${T('lab.build')}</button>` : ''}
+            ${s.randomizable !== false ? `<button id="randomize">${T('lab.newWeights')}</button>` : ''}
           </div>` : ''}
-        <button id="run" class="primary">▶ Запустить forward pass</button>
+        <button id="run" class="primary">${T('lab.runForward')}</button>
 
-        <label>Режим отображения</label>
-        <div class="segmented" role="group" aria-label="Режим отображения">
-          <button id="mode-visual" aria-pressed="true">Визуальный</button>
-          <button id="mode-detail" aria-pressed="false">Детальный · числа</button>
+        <label>${T('lab.viewMode')}</label>
+        <div class="segmented" role="group" ${At('aria-label', 'lab.viewMode')}>
+          <button id="mode-visual" aria-pressed="true">${T('lab.modeVisual')}</button>
+          <button id="mode-detail" aria-pressed="false">${T('lab.modeDetail')}</button>
         </div>
         <p id="status" role="status"></p>
       </section>
@@ -139,25 +150,25 @@ export class NetworkLab {
       ${editable || s.customWeights ? CustomWeightsPanel.html() : ''}
 
       <section class="card" id="hover-card">
-        <h2>Под курсором</h2>
+        <h2>${T('lab.underCursor')}</h2>
         <div id="hover-info"></div>
       </section>
 
       <section class="card" id="result-card" hidden>
-        <h2>Результат на выходе</h2>
+        <h2>${T('lab.outputResult')}</h2>
         <div id="result"></div>
       </section>
 
       <section class="card">
-        <h2>Сцена</h2>
-        ${s.intro ?? ''}
+        <h2>${T('lab.scene')}</h2>
+        ${Hx(s.intro)}
         <div id="scene-info"></div>
       </section>
 
       ${(s.sections ?? []).map(detailsCardHtml).join('')}
-      ${detailsCardHtml({ title: 'Что такое forward pass', html: FORWARD_PASS_HTML, open: !(s.sections?.length) })}
-      ${detailsCardHtml({ title: 'Как читать картинку', html: LEGEND_HTML, open: !(s.sections?.length) })}
-      ${HINT_HTML}`;
+      ${detailsCardHtml({ title: L('lab.whatIsForward'), html: forwardPassHtml(), open: !(s.sections?.length) })}
+      ${detailsCardHtml({ title: L('lab.howToRead'), html: legendHtml(), open: !(s.sections?.length) })}
+      ${hintHtml()}`;
 
     const $ = id => this.sidebar.querySelector(`#${id}`);
     this.ui = {
@@ -174,7 +185,7 @@ export class NetworkLab {
   }
 
   setStatus(text, isError = false) {
-    this.ui.status.textContent = text;
+    if (isText(text)) setT(this.ui.status, text); else setText(this.ui.status, text);
     this.ui.status.classList.toggle('error', isError);
   }
 
@@ -183,7 +194,7 @@ export class NetworkLab {
   parseArch(text) {
     const layers = text.split(/[^0-9]+/).filter(Boolean).map(Number);
     if (layers.length < 2 || layers.some(n => n < 1 || n > 64)) {
-      throw new Error('Архитектура: минимум 2 слоя, 1–64 нейрона в слое, например «3, 4, 2»');
+      throw new Error(t('lab.archError'));
     }
     return layers;
   }
@@ -213,10 +224,10 @@ export class NetworkLab {
       this.applyArchitecture(layers);
       // В своём пространстве лимит слоёв формата файла: предупреждаем сразу, а не при сохранении
       if (this.space.user && layers.length > LIMITS.layers) {
-        this.setStatus(`Сеть построена, но слоёв ${layers.length}, а сохранить и скачать можно сеть до ${LIMITS.layers} слоёв (вместе с входным и выходным). Уберите лишние слои, чтобы сохранить`, true);
+        this.setStatus(L('lab.tooManyLayers', { n: layers.length, max: LIMITS.layers }), true);
         return;
       }
-      this.setStatus(`Сеть ${this.model.layers.join(' → ')} построена`);
+      this.setStatus(L('lab.netBuilt', { arch: this.model.layers.join(' → ') }));
     } catch (e) {
       this.setStatus(e.message, true);
     }
@@ -235,14 +246,14 @@ export class NetworkLab {
   /** Вход для очередного прогона: выбранный пресет или случайные числа */
   nextInput() {
     const own = this.custom?.customInput(); // бросает ошибку, если свой вход введён неверно
-    if (own) return { values: own, caption: 'свой вход' };
+    if (own) return { values: own, caption: L('lab.ownInput') };
     const presets = this.space.inputs ?? [];
     const v = this.ui.inputPreset?.value;
     if (presets.length && v !== 'random') {
       const p = presets[Number(v)];
       return { values: p.values, caption: p.name };
     }
-    return { values: this.model.randomInput(), caption: presets.length ? 'случайный' : '' };
+    return { values: this.model.randomInput(), caption: presets.length ? L('lab.randomCaption') : '' };
   }
 
   runForward() {
@@ -255,12 +266,15 @@ export class NetworkLab {
     this.anim.start(acts, result => {
       this.ui.run.disabled = false;
       this.lastResult = result;
-      const helpers = { outputBarsHtml, formatValue, escapeHtml, defaultResult: () => resultHtml(this.ctx, result, { inputCaption: input.caption }) };
-      this.ui.result.innerHTML = this.space.explainResult
-        ? this.space.explainResult(this.ctx, result, helpers)
-        : helpers.defaultResult();
+      const helpers = { outputBarsHtml, formatValue: fmtSigned, escapeHtml, t, H, str, defaultResult: () => resultHtml(this.ctx, result, { inputCaption: input.caption }) };
+      this.renderResult = () => {
+        this.ui.result.innerHTML = this.space.explainResult
+          ? this.space.explainResult(this.ctx, result, helpers)
+          : helpers.defaultResult();
+      };
+      this.renderResult();
       this.ui.resultCard.hidden = false;
-      this.setStatus('Forward pass завершён — результат ниже');
+      this.setStatus(L('lab.forwardDone'));
       this.updateStage();
       this.refreshHover();
     });
@@ -283,16 +297,14 @@ export class NetworkLab {
         li.classList.toggle('active', onLayer ? l === current : l === current || l === current + 1);
         li.classList.toggle('done', l < current || (l === current && !onLayer));
       });
-      ui.stage.textContent = stageText(anim.stage, this.model);
+      setText(ui.stage, stageText(anim.stage, this.model));
       ui.stage.classList.add('live');
     } else {
       items.forEach(li => {
         li.classList.remove('active');
         li.classList.toggle('done', !!this.lastResult);
       });
-      ui.stage.textContent = this.lastResult
-        ? 'Готово: сигнал дошёл до выходного слоя. Запустите ещё раз с другим входом.'
-        : 'Нажмите «Запустить forward pass» или пробел.';
+      setT(ui.stage, this.lastResult ? 'lab.stageDone' : 'lab.stageIdle');
       ui.stage.classList.remove('live');
     }
   }
@@ -384,13 +396,13 @@ export class NetworkLab {
     ui.activation?.addEventListener('change', () => {
       this.model.activation = ui.activation.value;
       this.rebuildView();
-      this.setStatus(`Активация скрытых слоёв: ${ui.activation.value}`);
+      this.setStatus(L('lab.activationSet', { act: ui.activation.value }));
     });
     ui.randomize?.addEventListener('click', () => {
       this.model.randomize();
       this.rebuildView();
       this.custom?.syncFromModel();
-      this.setStatus('Веса перегенерированы');
+      this.setStatus(L('lab.weightsRegenerated'));
     });
     ui.run.addEventListener('click', () => this.runForward());
     ui.speed.addEventListener('input', () => { this.anim.stageDuration = 1.2 / Number(ui.speed.value); });
