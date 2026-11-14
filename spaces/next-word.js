@@ -95,6 +95,26 @@ B.sleep = B.sleeps;
 B.walk = B.walks;
 B.is = B.outside; // «outside it is …» — то же, что «на улице …»
 
+// Казахский: порядок SOV — глагол стоит в конце. Поэтому подлежащее «тянет» за собой объект, а объект — глагол.
+// Таблица строится из той же английской/русской: x → объект (через глагол x → v → o) и объект → глагол.
+const isVerbId = id => (VEC[id]?.[4] ?? 0) > 0.5;
+const B_SOV = (() => {
+  const R = {};
+  const add = (a, b, v) => { (R[a] ??= {})[b] = Math.max(R[a]?.[b] ?? -9, v); };
+  for (const x of Object.keys(B)) {
+    for (const [v, bv] of Object.entries(B[x])) {
+      if (!isVerbId(v)) { if (!isVerbId(x)) add(x, v, bv); continue; }
+      add(x, v, 0.5 * bv); // «таңертең ішемін», «мысық ішеді»
+      for (const [o, bo] of Object.entries(B[v] ?? {})) {
+        add(x, o, 0.55 * (bv + bo)); // подлежащее → объект
+        add(o, v, bo); // объект → глагол
+      }
+    }
+  }
+  return R;
+})();
+const bigrams = () => (lang === 'kk' ? B_SOV : B);
+
 const ZERO = [0, 0, 0, 0, 0, 0];
 const vec = id => VEC[id] ?? ZERO;
 
@@ -157,7 +177,7 @@ export default {
     const isVerb = vec(lastId)[4] > 0.5;
     const raw = candidates.map(v => {
       const c = 1.8 * dot(ctx, vec(v));
-      const b = B[lastId]?.[v] ?? 0;
+      const b = bigrams()[lastId]?.[v] ?? 0;
       const pen = (ids.includes(v) ? -1.5 : 0) + (isVerb && vec(v)[4] > 0.5 ? -1 : 0);
       return { id: v, word: wordOf[v], score: c + b + pen, c, b };
     });

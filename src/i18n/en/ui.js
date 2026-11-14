@@ -8,7 +8,7 @@ export default {
     failed: 'Something went wrong',
     usesLabel: 'Used in:',
     langSwitch: 'Interface language',
-    lang: { ru: 'Русский', en: 'English' },
+    lang: { ru: 'Русский', en: 'English', kk: 'Қазақша' },
   },
 
   theme: {

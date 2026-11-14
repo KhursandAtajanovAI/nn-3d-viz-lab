@@ -13,7 +13,13 @@
 // Смена языка без перезагрузки: элементы с data-t / data-t-<атрибут> переводятся заново (relabel),
 // подписчики onLangChange перерисовывают то, что нарисовано на canvas, и списки.
 
-export const LANGS = ['ru', 'en'];
+export const LANGS = ['ru', 'en', 'kk']; // порядок кнопок в переключателе: Русский / English / Қазақша
+/** Короткие подписи кнопок переключателя */
+const SHORT = { ru: 'RU', en: 'EN', kk: 'ҚАЗ' };
+const LOCALES = { ru: 'ru-RU', en: 'en-US', kk: 'kk-KZ' };
+/** Язык, написанный иначе (kz — как в платформе), приводится к коду языка лаборатории */
+const ALIASES = { kz: 'kk' };
+const normalize = x => ALIASES[x] ?? x;
 const KEY = 'nnlab-lang';
 const PLURAL_KEYS = new Set(['zero', 'one', 'two', 'few', 'many', 'other']);
 const ATTRS = ['title', 'aria-label', 'placeholder', 'alt', 'content'];
@@ -26,16 +32,17 @@ function stored() {
   try { return typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null; } catch { return null; }
 }
 
-/** ?lang= → сохранённый выбор → язык браузера (русский → ru, иначе en) */
+/** ?lang= → сохранённый выбор → язык браузера (русский → ru, казахский → kk, иначе en) */
 export function detectLang() {
   try {
-    const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lang') : null;
+    const q = typeof location !== 'undefined' ? normalize(new URLSearchParams(location.search).get('lang')) : null;
     if (LANGS.includes(q)) return q;
   } catch { /* нет location */ }
-  const s = stored();
+  const s = normalize(stored());
   if (LANGS.includes(s)) return s;
   const nav = typeof navigator !== 'undefined' ? (navigator.languages?.[0] ?? navigator.language ?? '') : '';
-  return /^ru\b/i.test(nav) ? 'ru' : (typeof navigator === 'undefined' ? 'ru' : 'en');
+  if (typeof navigator === 'undefined') return 'ru';
+  return /^ru\b/i.test(nav) ? 'ru' : /^k[kz]\b/i.test(nav) ? 'kk' : 'en';
 }
 
 function flatten(obj, prefix = '', out = {}) {
@@ -48,8 +55,9 @@ function flatten(obj, prefix = '', out = {}) {
   return out;
 }
 
+// ru и en — папки с файлами по областям; казахский — один плоский файл kk.js (ключ → текст), чтобы его было удобно править вручную
 async function load(l) {
-  if (!dicts[l]) dicts[l] = flatten((await import(`./${l}/index.js`)).default);
+  if (!dicts[l]) dicts[l] = flatten((l === 'kk' ? await import('./kk.js') : await import(`./${l}/index.js`)).default);
   return dicts[l];
 }
 
@@ -64,7 +72,7 @@ export async function initI18n(l = lang) {
   return lang;
 }
 
-export const locale = () => (lang === 'ru' ? 'ru-RU' : 'en-US');
+export const locale = () => LOCALES[lang] ?? 'en-US';
 export const has = key => dicts[lang]?.[key] !== undefined;
 
 // ---------- Числа ----------
@@ -277,7 +285,7 @@ export async function setLang(l) {
 /** Разметка переключателя языка; стиль — как у кружков тем (base.css .lang-switch) */
 export function langSwitchHtml() {
   return `<div class="lang-switch" role="group" ${At('aria-label', 'common.langSwitch')}>${LANGS.map(l =>
-    `<button type="button" class="lang-btn" data-lang-set="${l}" aria-pressed="${l === lang}" ${At('title', `common.lang.${l}`)}>${l.toUpperCase()}</button>`).join('')}</div>`;
+    `<button type="button" class="lang-btn" data-lang-set="${l}" aria-pressed="${l === lang}" ${At('title', `common.lang.${l}`)}>${SHORT[l]}</button>`).join('')}</div>`;
 }
 
 function syncLangSwitch() {
