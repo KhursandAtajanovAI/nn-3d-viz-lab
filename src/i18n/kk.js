@@ -1366,7 +1366,7 @@ export default {
   'sp.imagenet.fine.1.0': 'спорткар',
   'sp.imagenet.fine.1.1': 'такси',
   'sp.imagenet.fine.1.2': 'кабриолет',
-  'sp.imagenet.fine.2.0': 'щегол',
+  'sp.imagenet.fine.2.0': 'кәдімгі пайыз',
   'sp.imagenet.fine.2.1': 'торғай',
   'sp.imagenet.fine.2.2': 'көкшымшық',
   'sp.imagenet.fine.3.0': 'жолақты мысық',
