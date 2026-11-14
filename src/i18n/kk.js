@@ -2040,4 +2040,6 @@ export default {
   'sp.lstm.reorderNoteHtml': 'Қазақ тілінде «емес» болымсыздығы өзі қатысты сөзден <i>кейін</i> тұрады, сондықтан модель үшін ол осы сөздің алдына ауыстырылды: <b>{order}</b>.',
   'sp.lstm.w.this': 'бұл',
   'tag.loss': 'шығын функциясы',
+  'sp.lstm.w.dontLike': 'ұнатпаймын',
+  'sp.lstm.w.dontRecommend': 'ұсынбаймын',
 };

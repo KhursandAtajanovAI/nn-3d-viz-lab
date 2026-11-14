@@ -32,6 +32,8 @@ const VEC = {
   dragging: [-0.6, 0, 0],
   sluggish: [-0.5, 0, 0],
   hate: [-0.9, 0, 0],
+  dontLike: [-0.8, 0, 0],
+  dontRecommend: [-0.9, 0, 0],
   not: [0, 1, 0],
   no: [0, 1, 0],
   never: [0, 1, 0],

@@ -87,6 +87,8 @@ export default {
     a: 'a',
     is: 'is',
     are: 'are',
+    dontLike: '',
+    dontRecommend: '',
     this: 'this',
     it: 'it',
     at: 'at',
