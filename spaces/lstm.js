@@ -32,6 +32,8 @@ const VEC = {
   dragging: [-0.6, 0, 0],
   sluggish: [-0.5, 0, 0],
   hate: [-0.9, 0, 0],
+  dontLike: [-0.8, 0, 0],
+  dontRecommend: [-0.9, 0, 0],
   not: [0, 1, 0],
   no: [0, 1, 0],
   never: [0, 1, 0],
@@ -63,6 +65,7 @@ const VEC = {
   a: [0, 0, 0],
   is: [0, 0, 0],
   are: [0, 0, 0],
+  this: [0, 0, 0],
   it: [0, 0, 0],
   at: [0, 0, 0],
 };
@@ -106,7 +109,18 @@ export default {
   process(text) {
     const V = lexicon();
     const DIMS = dims();
-    const words = tokenize(text);
+    let words = tokenize(text);
+    // Казахский: отрицание «емес» стоит ПОСЛЕ слова («жақсы емес» = «не хорошо»). Для модели, читающей слева направо,
+    // ставим его перед этим словом и объясняем это в пояснении под результатом.
+    let reordered = false;
+    if (lang === 'kk') {
+      const isNeg = w => (VEC[Object.keys(VEC).find(id => S.t(`w.${id}`) === w)]?.[1] ?? 0) > 0.5;
+      const out = [];
+      for (const w of words) {
+        if (isNeg(w) && out.length && !isNeg(out.at(-1))) { out.splice(out.length - 1, 0, w); reordered = true; } else out.push(w);
+      }
+      if (reordered) words = out;
+    }
     const base = words.map(w => lookupForm(V, w));
     const tokens = words.map((w, i) => ({ text: w, known: !!base[i] }));
     const embeddings = base.map(b => (b ? V[b] : [0, 0, 0]));
@@ -138,7 +152,7 @@ export default {
         { label: S.t('negative'), value: 1 - p },
       ],
       html: `<p>${S.t('resultHtml', { verdict, p: Math.round(p * 100), words: S.t('wordsCount', { n: tokens.length }) })}</p>
-        <p class="small muted">${S.t('hoverNoteHtml')}</p>`,
+        <p class="small muted">${S.t('hoverNoteHtml')}</p>${reordered ? `<p class="small muted">${S.t('reorderNoteHtml', { order: words.join(' ') })}</p>` : ''}`,
     };
   },
 

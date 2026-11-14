@@ -304,6 +304,7 @@ b.bad { color: var(--error); }
 
 /* ---------- Текст (tokens) ---------- */
 .token-label { color: var(--token-text); font-weight: 600; font-size: calc(13px * var(--label-scale)); white-space: nowrap; text-shadow: 0 1px 2px var(--text-shadow); }
+@media (max-width: 600px) { .token-label { font-size: calc(9px * var(--label-scale)); max-width: 6.6em; overflow: hidden; text-overflow: ellipsis; } .cand-label { font-size: calc(9.5px * var(--label-scale)); } } /* телефон: длинные слова (казахский) не налезают друг на друга */
 .cand-label { color: var(--on-accent); background: rgba(255, 209, 102, .95); padding: 0 calc(5px * var(--label-scale)); border-radius: 3px; font-weight: 700; font-size: calc(12px * var(--label-scale)); white-space: nowrap; }
 .dim-label { color: var(--muted); font-size: calc(11px * var(--label-scale)); white-space: nowrap; background: rgba(var(--overlay), .6); padding: 0 calc(4px * var(--label-scale)); border-radius: 3px; }
 .gate-label { color: var(--gate-text); font: 600 calc(10px * var(--num-scale))/1.15 ui-monospace, Consolas, monospace; white-space: pre; text-align: center; text-shadow: 0 1px 2px var(--text-shadow); }

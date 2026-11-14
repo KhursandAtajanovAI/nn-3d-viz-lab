@@ -8,7 +8,7 @@ export default {
     failed: 'Не получилось',
     usesLabel: 'Где применяется:',
     langSwitch: 'Язык интерфейса',
-    lang: { ru: 'Русский', en: 'English' },
+    lang: { ru: 'Русский', en: 'English', kk: 'Қазақша' },
   },
 
   theme: {
@@ -55,6 +55,7 @@ export default {
     generation: 'генерация',
     autoencoder: 'автоэнкодер',
     epochs: 'эпохи',
+    loss: 'функция потерь',
     'chain-rule': 'цепное правило',
     color: 'цвет',
     tabular: 'табличные данные',

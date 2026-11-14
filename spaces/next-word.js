@@ -95,6 +95,29 @@ B.sleep = B.sleeps;
 B.walk = B.walks;
 B.is = B.outside; // «outside it is …» — то же, что «на улице …»
 
+// Казахский: порядок SOV — глагол стоит в конце. Поэтому подлежащее «тянет» за собой объект, а объект — глагол.
+// Таблица строится из той же английской/русской: x → объект (через глагол x → v → o) и объект → глагол.
+const isVerbId = id => (VEC[id]?.[4] ?? 0) > 0.5;
+const B_SOV = (() => {
+  const R = {};
+  const add = (a, b, v) => { (R[a] ??= {})[b] = Math.max(R[a]?.[b] ?? -9, v); };
+  for (const x of Object.keys(B)) {
+    for (const [v, bv] of Object.entries(B[x])) {
+      if (!isVerbId(v)) { if (!isVerbId(x)) add(x, v, bv); continue; }
+      const objects = Object.entries(B[v] ?? {});
+      const transitive = objects.some(([o]) => (VEC[o]?.[0] ?? 0) > 0.5); // «ішеді» требует объект, «ұйықтайды» — нет
+      add(x, v, transitive ? 0.5 * bv : bv); // «таңертең ішемін», «мысық мырылдайды»
+      for (const [o, bo] of objects) {
+        if (transitive) add(x, o, 0.55 * (bv + bo)); // подлежащее → объект
+        add(o, v, 2 * bo); // объект → глагол: «сүт» почти всегда за собой тянет «ішеді»
+      }
+    }
+  }
+  return R;
+})();
+const FIRST = new Set(['drink', 'eat', 'sleep', 'go', 'walk']); // формы 1-го лица в казахском словаре: ішемін, жеймін, ұйықтаймын, барамын, серуендейміз
+const bigrams = () => (lang === 'kk' ? B_SOV : B);
+
 const ZERO = [0, 0, 0, 0, 0, 0];
 const vec = id => VEC[id] ?? ZERO;
 
@@ -155,10 +178,15 @@ export default {
     const ctx = embeddings[0].map((_, k) => weights.reduce((s, w, j) => s + w * embeddings[j][k], 0));
     const last = words[qi], lastId = ids[qi];
     const isVerb = vec(lastId)[4] > 0.5;
+    const hasPronoun = ids.includes('i') || ids.includes('we');
     const raw = candidates.map(v => {
       const c = 1.8 * dot(ctx, vec(v));
-      const b = B[lastId]?.[v] ?? 0;
-      const pen = (ids.includes(v) ? -1.5 : 0) + (isVerb && vec(v)[4] > 0.5 ? -1 : 0);
+      const b = bigrams()[lastId]?.[v] ?? 0;
+      // В казахском за объектом (едой) следует глагол, а не ещё один объект
+        const afterObject = lang === 'kk' && vec(lastId)[0] >= 0.7 && vec(lastId)[4] < 0.5 && vec(v)[4] < 0.5 ? -1.5 : 0;
+      // Лицо глагола: «мен … ішемін», «біз … серуендейміз», без местоимения — «ішеді»
+        const person = lang === 'kk' && (vec(v)[4] > 0.5) ? ((hasPronoun ? 1 : 0) === (FIRST.has(v) ? 1 : 0) ? 0 : -3) : 0;
+      const pen = person + (ids.includes(v) ? -1.5 : 0) + (isVerb && vec(v)[4] > 0.5 ? -1 : 0) + afterObject;
       return { id: v, word: wordOf[v], score: c + b + pen, c, b };
     });
     const probs = softmax(raw.map(r => r.score));
