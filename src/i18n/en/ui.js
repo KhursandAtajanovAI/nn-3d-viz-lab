@@ -54,6 +54,7 @@ export default {
     generation: 'generation',
     autoencoder: 'autoencoder',
     epochs: 'epochs',
+    loss: 'loss',
     'chain-rule': 'chain rule',
     color: 'color',
     tabular: 'tabular data',

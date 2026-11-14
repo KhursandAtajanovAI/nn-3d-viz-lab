@@ -55,6 +55,7 @@ export default {
     generation: 'генерация',
     autoencoder: 'автоэнкодер',
     epochs: 'эпохи',
+    loss: 'функция потерь',
     'chain-rule': 'цепное правило',
     color: 'цвет',
     tabular: 'табличные данные',
