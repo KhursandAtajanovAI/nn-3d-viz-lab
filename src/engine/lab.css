@@ -296,6 +296,7 @@ ul.legend.kinds li > .kind-swatch { flex: 0 0 12px; margin: 4px 7px 0; }
   white-space: nowrap;
 }
 .shape-label { color: var(--muted); background: rgba(var(--overlay), .7); }
+@media (max-width: 600px) { .shape-label, .skip-label { font-size: calc(8.5px * var(--label-scale)); padding: 0 calc(3px * var(--label-scale)); } .name-label.right { font-size: calc(7px * var(--label-scale)); line-height: 1; padding-top: 0; padding-bottom: 0; } } /* телефон: мелкие подписи размеров не наползают друг на друга */
 .skip-label { color: var(--neg-text); background: rgba(var(--overlay), .8); border: 1px solid color-mix(in srgb, var(--neg) 50%, transparent); }
 .group-label { color: var(--group-color, var(--accent)); font-family: inherit; font-size: calc(13px * var(--label-scale)); background: rgba(var(--overlay), .75); }
 

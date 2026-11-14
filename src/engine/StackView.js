@@ -170,7 +170,7 @@ export class StackView {
     }
     if (n > ns) {
       const more = label('shape-label', Lt('stack.totalMore', { n: formatCount(n) }));
-      more.position.set(0, -((ns - 1) / 2) * step - 0.35, 0);
+      more.position.set(0, -((ns - 1) / 2) * step - 0.35 - (item.index % 3) * 1.2, 0); // соседние «⋮ всего N» на разной высоте, чтобы не наползали
       item.obj.add(more);
     }
     item.w = 0.4;
